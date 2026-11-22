@@ -1,0 +1,2413 @@
+{
+ "title": "Landlord Resolution Pipeline",
+ "eyebrow": "Working map \u00b7 nyc-landlord-resolution v0.2.0",
+ "heading": "Landlord resolution pipeline",
+ "intro": "How two HPD owner records become one landlord. Record work prepares the data, a Fellegi-Sunter model scores each candidate pair in bits, a gate with two vetoes protects precision, and a final pass joins offices that share a company. Select any box for what it does, the numbers for one real landlord (Domenico Antonelli), and what is measured or still open. From v0.2.0 a run can also return the decisions behind its clusters. The Release evidence tab on each box says what is recorded at that step and shows the rows that a beneficial-owner-resolution release stores for it, with the names and addresses they stand for.",
+ "labels": {
+  "nums": "Antonelli example"
+ },
+ "repos": {
+  "nlr": {
+   "path": "~/Learning/Sabbatical/nyc-landlord-resolution",
+   "sha": "6a9b1a1",
+   "slug": "bobflagg/nyc-landlord-resolution",
+   "label": "nlr v0.2.0"
+  },
+  "wow": {
+   "path": "~/git-alt/who-owns-what",
+   "sha": "1fdaa57c",
+   "slug": "bobflagg/who-owns-what",
+   "label": "wow patch"
+  },
+  "bor": {
+   "path": "~/Learning/Sabbatical/beneficial-ownership-resolution",
+   "sha": "e6839fe",
+   "slug": "bobflagg/nyc-beneficial-owner-resolution",
+   "label": "bor v0.2.1"
+  }
+ },
+ "default_node": "s4",
+ "legend_extra": [
+  {
+   "label": "Whole-city input"
+  }
+ ],
+ "views": [
+  {
+   "id": "pipe",
+   "label": "Pipeline",
+   "layout": "flow",
+   "width": 680,
+   "x": 190,
+   "w": 300,
+   "default_node": "s4",
+   "title": "Pipeline overview",
+   "desc": "HPD owner contacts are extracted into records, hub addresses are masked, candidate pairs are blocked on surname and first initial, scored, gated by a threshold and two vetoes into base groups, then joined further by a shared-company pass. The result is a set of owner entities. Whole-city statistics feed three stages.",
+   "items": [
+    {
+     "id": "input",
+     "kind": "io",
+     "title": "HPD owner contacts",
+     "sub": "hpd_contacts \u00b7 hpd_registrations"
+    },
+    {
+     "id": "s1",
+     "kind": "det",
+     "title": "1 \u00b7 Extract",
+     "sub": "one record per name + address"
+    },
+    {
+     "id": "s2",
+     "kind": "det",
+     "title": "2 \u00b7 Mask hub addresses",
+     "sub": "shared offices lose address evidence"
+    },
+    {
+     "id": "s3",
+     "kind": "det",
+     "title": "3 \u00b7 Block",
+     "sub": "same surname + first initial"
+    },
+    {
+     "id": "s4",
+     "kind": "ml",
+     "title": "4 \u00b7 Score",
+     "sub": "match weight in bits, per pair"
+    },
+    {
+     "id": "s5",
+     "kind": "det",
+     "title": "5 \u00b7 Gate",
+     "sub": "\u2265 0.999 and two vetoes",
+     "label_before": "pairs \u2265 0.5"
+    },
+    {
+     "id": "s6",
+     "kind": "warn",
+     "title": "6 \u00b7 Shared-company pass",
+     "sub": "rare name + a company on the registrations",
+     "label_before": "base groups"
+    },
+    {
+     "id": "outcome",
+     "kind": "rem",
+     "h": 56,
+     "gap_before": 42,
+     "title": "Owner entities",
+     "sub": "owner_index \u2192 edges added to WoW"
+    }
+   ],
+   "side": [
+    {
+     "id": "stats",
+     "kind": "io",
+     "title": [
+      "City-wide",
+      "statistics"
+     ],
+     "x": 524,
+     "w": 148,
+     "span": [
+      "s2",
+      "s6"
+     ],
+     "marks": [
+      {
+       "text": "address degree",
+       "to": "s2"
+      },
+      {
+       "text": "name rarity",
+       "to": "s5"
+      },
+      {
+       "text": "company degree",
+       "to": "s6"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "verdict",
+   "label": "Join decision",
+   "layout": "manual",
+   "width": 680,
+   "height": 640,
+   "default_node": "v-score",
+   "title": "Join decision for one pair",
+   "desc": "Two records are compared only if they share a surname and first initial. A pair joins on name and address when its match weight is high enough and neither the first-name veto nor the common-name veto applies. Otherwise the shared-company test can still join them. Anything else stays separate.",
+   "nodes": [
+    {
+     "id": "v-start",
+     "kind": "io",
+     "x": 40,
+     "y": 24,
+     "w": 300,
+     "h": 50,
+     "title": "Two owner records",
+     "sub": "name \u00b7 business address \u00b7 buildings"
+    },
+    {
+     "id": "v-block",
+     "kind": "det",
+     "x": 40,
+     "y": 98,
+     "w": 300,
+     "h": 50,
+     "title": "Same surname + first initial?",
+     "sub": "the only blocking rule"
+    },
+    {
+     "id": "v-notcomp",
+     "kind": "io",
+     "x": 400,
+     "y": 98,
+     "w": 240,
+     "h": 50,
+     "title": "Not compared",
+     "sub": "never scored, no link"
+    },
+    {
+     "id": "v-score",
+     "kind": "ml",
+     "x": 40,
+     "y": 172,
+     "w": 300,
+     "h": 52,
+     "title": "Match weight above about 10 bits?",
+     "sub": "probability 0.999 or more"
+    },
+    {
+     "id": "v-first",
+     "kind": "det",
+     "x": 40,
+     "y": 250,
+     "w": 300,
+     "h": 52,
+     "title": "First names agree?",
+     "sub": "first-name veto"
+    },
+    {
+     "id": "v-common",
+     "kind": "det",
+     "x": 40,
+     "y": 328,
+     "w": 300,
+     "h": 52,
+     "title": "Common name at different addresses?",
+     "sub": "common-name veto"
+    },
+    {
+     "id": "v-second",
+     "kind": "warn",
+     "x": 400,
+     "y": 232,
+     "w": 240,
+     "h": 88,
+     "title": "Shared-company test",
+     "lines": [
+      "rare name, compatible first",
+      "names, and a company shared",
+      "by the buildings?"
+     ]
+    },
+    {
+     "id": "v-join-a",
+     "kind": "det",
+     "x": 40,
+     "y": 460,
+     "w": 180,
+     "h": 54,
+     "title": "JOIN",
+     "sub": "name + address"
+    },
+    {
+     "id": "v-join-b",
+     "kind": "warn",
+     "x": 240,
+     "y": 460,
+     "w": 180,
+     "h": 54,
+     "title": "JOIN",
+     "sub": "shared company"
+    },
+    {
+     "id": "v-sep",
+     "kind": "io",
+     "x": 460,
+     "y": 460,
+     "w": 180,
+     "h": 54,
+     "title": "STAYS SEPARATE",
+     "sub": "no link asserted"
+    },
+    {
+     "id": "v-entity",
+     "kind": "rem",
+     "x": 40,
+     "y": 568,
+     "w": 380,
+     "h": 56,
+     "title": "Owner entity",
+     "sub": "joins chain: groups are connected components"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v-start",
+     "to": "v-block"
+    },
+    {
+     "from": "v-block",
+     "to": "v-score",
+     "label": "yes"
+    },
+    {
+     "from": "v-block",
+     "to": "v-notcomp",
+     "label": "no"
+    },
+    {
+     "from": "v-score",
+     "to": "v-first",
+     "label": "yes"
+    },
+    {
+     "from": "v-first",
+     "to": "v-common",
+     "label": "yes"
+    },
+    {
+     "d": "M340 198 L370 198 M340 276 L370 276 M340 354 L370 354 M370 198 L370 354",
+     "arrow": false
+    },
+    {
+     "d": "M370 276 L398 276"
+    },
+    {
+     "d": "M190 380 L190 424 L130 424 L130 458",
+     "label": "no",
+     "lx": 200,
+     "ly": 416
+    },
+    {
+     "d": "M470 320 L470 396 L330 396 L330 458",
+     "label": "yes",
+     "lx": 480,
+     "ly": 372
+    },
+    {
+     "d": "M590 320 L590 458",
+     "label": "no",
+     "lx": 600,
+     "ly": 372
+    },
+    {
+     "from": "v-join-a",
+     "to": "v-entity"
+    },
+    {
+     "from": "v-join-b",
+     "to": "v-entity"
+    }
+   ],
+   "labels": [
+    {
+     "text": "no",
+     "x": 346,
+     "y": 192
+    },
+    {
+     "text": "no",
+     "x": 346,
+     "y": 270
+    },
+    {
+     "text": "yes",
+     "x": 346,
+     "y": 348
+    }
+   ]
+  }
+ ],
+ "widgets": {
+  "waterfall": {
+   "type": "waterfall",
+   "title": "Worked pairs",
+   "unit": "bits",
+   "threshold": 9.964,
+   "threshold_label": "the weight for probability 0.999",
+   "min": -19,
+   "max": 28,
+   "total_label": "Match weight",
+   "remainder_label": "ZIP rarity",
+   "pass_text": "the pair joins on name and address",
+   "fail_text": "the pair does not join on name and address",
+   "base": [
+    [
+     "Prior",
+     -17.97
+    ],
+    [
+     "Surname",
+     7.65
+    ],
+    [
+     "Surname rarity",
+     4.35
+    ],
+    [
+     "First name",
+     7.32
+    ],
+    [
+     "First-name rarity",
+     1.75
+    ]
+   ],
+   "cases": {
+    "H\u2013I": {
+     "note": "The same office spelled two ways: POWELLS COVE BOULEVARD and POWELLS COW B. House number, street and ZIP all agree.",
+     "steps": [
+      [
+       "House number",
+       10.59
+      ],
+      [
+       "Street",
+       5.39
+      ],
+      [
+       "ZIP",
+       6.67
+      ]
+     ],
+     "total": 26.066
+    },
+    "D\u2013E": {
+     "note": "Different house numbers and different streets (147TH and 154TH) in the same ZIP. Passes by 0.6 bits.",
+     "steps": [
+      [
+       "House number",
+       -2.76
+      ],
+      [
+       "Street",
+       3.28
+      ],
+      [
+       "ZIP",
+       6.67
+      ]
+     ],
+     "total": 10.601
+    },
+    "E\u2013G": {
+     "note": "Similar house numbers (21-48 and 21-27), different streets. About 2.7 bits short.",
+     "steps": [
+      [
+       "House number",
+       -0.54
+      ],
+      [
+       "Street",
+       -2.21
+      ],
+      [
+       "ZIP",
+       6.67
+      ]
+     ],
+     "total": 7.336
+    },
+    "D\u2013F": {
+     "note": "A typical cross-office pair. House number and street both disagree, so only the name and ZIP agree. About 5 bits short.",
+     "steps": [
+      [
+       "House number",
+       -2.76
+      ],
+      [
+       "Street",
+       -2.21
+      ],
+      [
+       "ZIP",
+       6.67
+      ]
+     ],
+     "total": 5.114
+    }
+   },
+   "default": "D\u2013E"
+  }
+ },
+ "snippets": {
+  "own": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "OWNER_ROLES = \"{HeadOfficer,IndividualOwner,CorporateOwner,JointOwner}\"",
+   "count": 1,
+   "lang": "python",
+   "caption": "The roles that count as an owner. Agents and site managers are not in the list."
+  },
+  "obs": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "  FROM chosen_reg cr",
+   "count": 7,
+   "lang": "sql",
+   "caption": "Only those roles, with a business address, from each building's most recent registration."
+  },
+  "extract": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "SELECT",
+   "count": 15,
+   "lang": "sql",
+   "caption": "One row per (name, business address). The id is an md5 of the identity, and the buildings are aggregated. The __SOURCES__ marker is filled in when the run captures its sources."
+  },
+  "agg_const": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "# A (house, street) shared by more than this many distinct landlords is treated as",
+   "count": 4,
+   "lang": "python",
+   "caption": "The hub-address cutoff: more than 25 distinct landlords at one address."
+  },
+  "mask": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "    d = df.copy()",
+   "count": 13,
+   "lang": "python",
+   "caption": "Records at a hub address lose their address fields. With a trace, the masked records and their degree are kept."
+  },
+  "corpdeg": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "CORP_DEGREE_SQL = r\"\"\"",
+   "count": 11,
+   "lang": "sql",
+   "caption": "Company degree: distinct named contacts listed under each company name."
+  },
+  "namefreq": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "NAME_FREQ_SQL = r\"\"\"",
+   "count": 12,
+   "lang": "sql",
+   "caption": "Name rarity: distinct identities per surname and first initial."
+  },
+  "block": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "        # NAME-ANCHORED blocking \u2014 one rule: same last name + first initial. Landlord",
+   "count": 20,
+   "lang": "python",
+   "caption": "One blocking rule. The comment records why an address-only rule was removed."
+  },
+  "comps": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "        comparisons=[",
+   "count": 17,
+   "lang": "python",
+   "caption": "The five comparisons. Names and ZIP carry a term-frequency adjustment."
+  },
+  "first_cmp": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "            cl.JaroWinklerAtThresholds(\"first_name\", [0.92, 0.80]).configure(term_frequency_adjustments=True),",
+   "count": 1,
+   "lang": "python",
+   "caption": "The first-name comparison. A similarity below 0.80 is the lowest level, which the veto treats as disagreement."
+  },
+  "gate": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "    above = p[p[\"match_probability\"] >= threshold]",
+   "count": 19,
+   "lang": "python",
+   "caption": "The probability gate, then the common-name veto. With a trace, every pair above the threshold is kept with its outcome."
+  },
+  "addrkey": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "def _addr_key(house, street_norm) -> str:",
+   "count": 8,
+   "lang": "python",
+   "caption": "Addresses are compared after normalizing house digits and the street suffix."
+  },
+  "unionfind": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "    parent = {u: u for u in ids}",
+   "count": 18,
+   "lang": "python",
+   "caption": "Surviving links become groups, as connected components."
+  },
+  "fn_compat": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "FIRST_NAME_SIM = 0.7",
+   "count": 8,
+   "lang": "python",
+   "caption": "First-name compatibility for the second pass: a similarity ratio of at least 0.7."
+  },
+  "caps": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "    if corp_deg is not None:",
+   "count": 7,
+   "lang": "python",
+   "caption": "Ignore companies above the degree cap, and allow only rare names."
+  },
+  "fbrule": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "    def blocks(ent):",
+   "count": 32,
+   "lang": "python",
+   "caption": "The shared-company test. Every pair it considers is logged with its outcome and reason."
+  },
+  "oi": {
+   "repo": "nlr",
+   "path": "src/nlr/resolve.py",
+   "start": "def owner_index(",
+   "count": 18,
+   "lang": "python",
+   "caption": "owner_index is now a thin layer over resolve_entities, which also returns the decisions."
+  },
+  "patch": {
+   "repo": "wow",
+   "path": "portfoliograph/splink_edges.py",
+   "a": 57,
+   "b": 67,
+   "lang": "python",
+   "caption": "The WoW patch adds one splink edge between graph nodes that resolve to the same owner."
+  },
+  "nb_ant": {
+   "repo": "nlr",
+   "path": "What-joins-Antonelli.ipynb",
+   "lang": "python",
+   "caption": "Antonelli's records: 9 rows, covering 10 buildings.",
+   "lines": [
+    "full = ss.extract(conn, \"TRUE\")",
+    "full = full[full.contact_kind == \"person\"].drop_duplicates(\"unique_id\").reset_index(drop=True)",
+    "ant = (full[(full.last_name == \"ANTONELLI\") & full.first_name.fillna(\"\").str.startswith(\"DOM\")]",
+    "       .sort_values([\"biz_zip\", \"biz_street_norm\", \"biz_house\"]).reset_index(drop=True))"
+   ]
+  },
+  "nb_bits": {
+   "repo": "nlr",
+   "path": "What-joins-Antonelli.ipynb",
+   "lang": "python",
+   "caption": "How the worked-pair bits are computed from Splink's output.",
+   "lines": [
+    "pp[\"name_bits\"] = sum(bits(c) for c in [\"bf_last_name\", \"bf_tf_adj_last_name\", \"bf_first_name\", \"bf_tf_adj_first_name\"])",
+    "pp[\"tf_bits\"] = bits(\"bf_tf_adj_last_name\") + bits(\"bf_tf_adj_first_name\")",
+    "pp[\"address_bits\"] = sum(bits(c) for c in [\"bf_biz_house\", \"bf_biz_street_norm\", \"bf_biz_zip\", \"bf_tf_adj_biz_zip\"])",
+    "pp[\"prior_bits\"] = pp.match_weight - pp.name_bits - pp.address_bits",
+    "thr_bits = math.log2(DEFAULT_THRESHOLD / (1 - DEFAULT_THRESHOLD))      # match weight that equals probability 0.999"
+   ]
+  },
+  "nb_base": {
+   "repo": "nlr",
+   "path": "What-joins-Antonelli.ipynb",
+   "lang": "python",
+   "caption": "Run the gate on the scored pairs: Antonelli's records fall into 5 groups.",
+   "lines": [
+    "base = ss.cluster_gated(preds, full, DEFAULT_THRESHOLD, name_freq=nf)"
+   ]
+  },
+  "nb_final": {
+   "repo": "nlr",
+   "path": "What-joins-Antonelli.ipynb",
+   "lang": "python",
+   "caption": "Run the shared-company pass on the base groups: the 5 groups become 1.",
+   "lines": [
+    "final = ss.feedback_merge(full, base, corp_df, corp_deg, name_freq=nf)    # corp_cap=25, name_cap=15 are the defaults"
+   ]
+  },
+  "cap_resolution": {
+   "repo": "nlr",
+   "path": "src/nlr/resolve.py",
+   "start": "class Resolution:",
+   "count": 15,
+   "lang": "python",
+   "caption": "A resolution returns its trace when it is asked to capture decisions."
+  },
+  "cap_resolve_body": {
+   "repo": "nlr",
+   "path": "src/nlr/resolve.py",
+   "start": "    trace = {} if capture else None",
+   "count": 14,
+   "lang": "python",
+   "caption": "The same run, with a dict that each stage fills in as it decides."
+  },
+  "cap_pair_trace": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "def _pair_trace(",
+   "count": 17,
+   "lang": "python",
+   "caption": "One row per pair above the threshold: its probability, its outcome, and the veto that stopped it."
+  },
+  "cap_feedback_trace": {
+   "repo": "nlr",
+   "path": "src/nlr/splink_source.py",
+   "start": "        trace[\"feedback\"] = pd.DataFrame(",
+   "count": 4,
+   "lang": "python",
+   "caption": "The shared-company pass logs each pair of groups it considered, and the contact rows that carry the company."
+  },
+  "cap_bor_events": {
+   "repo": "bor",
+   "path": "src/bor/identity_events.py",
+   "start": "    for r in trace[\"pairs\"].itertuples():",
+   "count": 31,
+   "lang": "python",
+   "caption": "bor turns the trace into decision events, smaller id first. This is the release's side of the capture."
+  }
+ },
+ "nodes": {
+  "input": {
+   "kind": "io",
+   "tag": "Input",
+   "title": "HPD owner contacts",
+   "ref": "hpd_contacts \u00b7 hpd_registrations",
+   "lede": "The only data the engine needs: who is named as an owner on each building's HPD registration, and the business address they gave.",
+   "what": [
+    "Four owner roles count: HeadOfficer, IndividualOwner, CorporateOwner and JointOwner. Agents and site managers are not owners, because they are shared across unrelated landlords.",
+    "Only the most recent registration for each building (BBL) is used.",
+    "The same SQL runs on Postgres or on an offline DuckDB snapshot."
+   ],
+   "nums": [
+    [
+     "145,412",
+     "person-owner records in the September 2026 data"
+    ],
+    [
+     "2",
+     "tables"
+    ]
+   ],
+   "open": [
+    "A registration says who filed, not who owns the building today. Three of Antonelli's ten buildings were sold in 2024 by his estate, and the registrations still list him."
+   ],
+   "code": [
+    "own",
+    "obs"
+   ],
+   "evidence": {
+    "lede": "A resolution that captures its decisions remembers which HPD contact records each identity stands on. That link is what lets a later reader go from a decision back to the registrations.",
+    "recorded": [
+     "For every identity, the registration and contact ids of the rows it was built from (the sources column).",
+     "In the release these are observations, written registration:contact:k, never a name."
+    ],
+    "tables": [
+     [
+      "observations",
+      "209,029 HPD contact records, by id."
+     ],
+     [
+      "identity_observations",
+      "Which observation stands behind which identity and building (199,405 rows)."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "identity_observations",
+      "cols": [
+       "identity_id",
+       "bbl",
+       "observation_id",
+       "tied_registration"
+      ],
+      "caption": "One of Antonelli's records stands on two contact records, two buildings.",
+      "limit": 3,
+      "note": "Domenico Antonelli's nine records are I0009556 and eight other identities; identity_names gives each its name and address.",
+      "where": {
+       "identity_id": "I0030939"
+      },
+      "lookups": [
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "observations",
+      "cols": [
+       "observation_id",
+       "pair_variants"
+      ],
+      "caption": "Two of his contact records, and who they name. Join them to HPD on registration and contact id.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "observation_id": [
+        "927866:92786602:0",
+        "915963:91596302:0"
+       ]
+      },
+      "order_by": [
+       "observation_id"
+      ],
+      "lookups": [
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "contact_type"
+        ],
+        "as": [
+         "contact_role"
+        ]
+       },
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "first_name",
+         "last_name"
+        ],
+        "as": [
+         "person"
+        ],
+        "merge": true
+       },
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "A contact record says who filed a registration, not who owns the building. The release records the filing, not the ownership."
+    ]
+   }
+  },
+  "stats": {
+   "kind": "io",
+   "tag": "Whole-city input",
+   "title": "City-wide statistics",
+   "ref": "name_freq \u00b7 address_degrees \u00b7 corp_degrees",
+   "lede": "Three counts taken over every record, so a rare name or a hub is judged against the whole city and not against a sample.",
+   "what": [
+    "Name rarity: the number of distinct identities that share a surname and first initial. The common-name veto starts above 15.",
+    "Address degree: the number of distinct landlords registered at one house number and street. Above 25, the address is treated as an aggregator.",
+    "Company degree: the number of distinct named contacts listed under a company name. Above 25, the second pass ignores that company."
+   ],
+   "nums": [
+    [
+     "10",
+     "identities share ANTONELLI + D"
+    ],
+    [
+     "15",
+     "name-rarity cutoff"
+    ],
+    [
+     "25",
+     "address and company cutoff"
+    ]
+   ],
+   "open": [
+    "The cutoffs are fixed constants, not learned. Company degree counts named contacts under a company name, not clients, so it is only a rough filter."
+   ],
+   "code": [
+    "agg_const",
+    "namefreq",
+    "corpdeg"
+   ],
+   "evidence": {
+    "lede": "The city-wide counts are not stored. The cutoffs applied to them are, so a reader knows which rule was in force.",
+    "recorded": [
+     "The three cutoffs: address degree 25, name rarity 15 and company degree 25.",
+     "The model threshold, seed and first-name similarity.",
+     "For each record that was masked, the address degree that triggered it."
+    ],
+    "tables": [
+     [
+      "manifest.json",
+      "parameters.resolution and threshold."
+     ],
+     [
+      "decision_events",
+      "address_evidence_masked events carry addr_degree."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "manifest",
+      "fields": [
+       "threshold",
+       "parameters.resolution"
+      ],
+      "caption": "The resolution parameters of the run.",
+      "note": ""
+     }
+    ],
+    "limits": [
+     "The counts themselves (name frequencies, address degrees) are not in the release, only their effect on decisions."
+    ]
+   }
+  },
+  "s1": {
+   "kind": "det",
+   "tag": "Rule",
+   "title": "1 \u00b7 Extract",
+   "ref": "splink_source.py \u00b7 extract",
+   "lede": "Turns raw contact rows into one record per distinct name and business address, with the buildings that record registers.",
+   "what": [
+    "The grain is (kind, name, raw business address). A person who files from three addresses becomes three records. That fragmentation is what resolution repairs.",
+    "It prepares the matching fields: a normalized name with LLC or INC suffixes removed, the street without its suffix (WEST 21ST STREET becomes WEST 21ST), first initial, apartment number and ZIP. Missing values stay null, so a comparison is skipped instead of matched.",
+    "Each record gets a deterministic id (an md5 of its identity), so reruns line up.",
+    "Only person records are resolved. Organizations and LLCs pass through unresolved."
+   ],
+   "nums": [
+    [
+     "9",
+     "records for Domenico Antonelli"
+    ],
+    [
+     "10",
+     "buildings they cover"
+    ],
+    [
+     "9",
+     "WoW portfolios those buildings sit in"
+    ]
+   ],
+   "open": [
+    "A typo creates a new record (POWELLS COW B). The later stages exist to reunite exactly these."
+   ],
+   "code": [
+    "extract",
+    "nb_ant"
+   ],
+   "evidence": {
+    "lede": "Each record the extract builds is an identity. The release says which contact records it stands on and which cluster it ended in.",
+    "recorded": [
+     "An opaque identity id for every record (145,388), local to the run, and the name and business address that define it.",
+     "The buildings and contact records each identity covers.",
+     "Its base cluster after the gate and its final cluster after the shared-company pass."
+    ],
+    "tables": [
+     [
+      "identity_names",
+      "The name and business address of each identity (145,412 rows, 24 of them removed by a curated list)."
+     ],
+     [
+      "identity_clusters",
+      "identity_id, base_cluster_id, cluster_id."
+     ],
+     [
+      "identity_observations",
+      "identity to contact record and building."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "identity_clusters",
+      "cols": [
+       "identity_id",
+       "base_cluster_id",
+       "cluster_id"
+      ],
+      "caption": "Antonelli's nine records: one name, nine addresses, five base clusters and one final cluster.",
+      "limit": 9,
+      "note": "Domenico Antonelli's nine records are I0009556 and eight other identities; identity_names gives each its name and address.",
+      "where": {
+       "cluster_id": "C0009456"
+      },
+      "order_by": [
+       "base_cluster_id",
+       "identity_id"
+      ],
+      "lookups": [
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name"
+        ]
+       },
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "The name and address are copied as filed. A typo makes a new record (POWELLS COW B), which is what the later stages reunite.",
+     "The identity id is not stable across runs."
+    ]
+   }
+  },
+  "s2": {
+   "kind": "det",
+   "tag": "Rule",
+   "title": "2 \u00b7 Mask hub addresses",
+   "ref": "splink_source.py \u00b7 _mask_aggregators",
+   "lede": "Blanks the address evidence at any address shared by many landlords, so office-mates are not fused.",
+   "what": [
+    "A house number and street used by more than 25 distinct landlords (a registered agent, an office suite, a law firm) has its address fields cleared before scoring.",
+    "Name evidence still counts. Without the address, two different people at one hub stop looking alike.",
+    "Degrees are computed over the whole city, so a hub is a hub wherever the sample falls."
+   ],
+   "nums": [
+    [
+     ">25",
+     "landlords at one address means a hub"
+    ]
+   ],
+   "open": [
+    "The address is matched as a string. The same hub written two ways splits into two smaller addresses, and either can slip under the cutoff."
+   ],
+   "code": [
+    "agg_const",
+    "mask"
+   ],
+   "evidence": {
+    "lede": "Masking leaves one event per record whose address evidence was blanked, with the degree that caused it.",
+    "recorded": [
+     "The record, the rule and the address degree.",
+     "The outcome masked, with the reason address_evidence_masked."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "5,298 masked records in this run (stage identity.splink_base)."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "outcome",
+       "reason_code",
+       "rule",
+       "detail"
+      ],
+      "caption": "Three records whose address evidence was blanked.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "outcome": "masked"
+      },
+      "order_by": [
+       "decision_id"
+      ],
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_at_hub"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "The event records the degree and the identity. The record's address is in identity_names, so a reader can see which hub it was."
+    ]
+   }
+  },
+  "s3": {
+   "kind": "det",
+   "tag": "Rule",
+   "title": "3 \u00b7 Block",
+   "ref": "splink_source.py \u00b7 _settings",
+   "lede": "Only records that share a surname and a first initial are ever compared.",
+   "what": [
+    "There is one blocking rule: same last name and same first initial. It is the entry ticket to scoring and is never enough on its own.",
+    "An address-only rule was removed. At city scale it fused 2,044 clusters of different people who share an office, with different surnames and the same first initial.",
+    "The cost: a typo in the surname means the pair is never a candidate."
+   ],
+   "nums": [
+    [
+     "36",
+     "candidate pairs among Antonelli's 9 records"
+    ],
+    [
+     "18",
+     "of them score at least 0.5"
+    ]
+   ],
+   "open": [
+    "Surname typos are not recovered. The code notes a typo-safe block could be added later."
+   ],
+   "code": [
+    "block"
+   ],
+   "evidence": {
+    "lede": "Blocking is not recorded. A pair that was never compared leaves no row.",
+    "recorded": [
+     "Nothing. Only pairs that reach the gate are kept, so a pair blocked out here is invisible in the release."
+    ],
+    "tables": [
+     [
+      "(none)",
+      "No table holds blocked-out pairs."
+     ]
+    ],
+    "examples": [],
+    "limits": [
+     "Absence of an event means the rule did not run. It never means the records were found to differ."
+    ]
+   }
+  },
+  "s4": {
+   "kind": "ml",
+   "tag": "Learned model",
+   "title": "4 \u00b7 Score",
+   "ref": "Splink Fellegi-Sunter \u00b7 fit_predict_full",
+   "lede": "Each candidate pair gets a match weight in bits: the evidence that the records are one person, added to a steep negative prior.",
+   "what": [
+    "Five comparisons: surname and first name (fuzzy, with a term-frequency adjustment so a rare name counts for more), business house number, street, and ZIP.",
+    "Match weight is the prior (about \u221218 bits) plus the evidence from each comparison. Turn the weight back into odds to get the probability.",
+    "The weights are learned on a dense slice of the data (every record that shares a surname and initial with another) and applied to the whole city, so a few common names do not bend the prior.",
+    "Pairs below 0.5 are dropped."
+   ],
+   "nums": [
+    [
+     "\u221218",
+     "bits: the prior"
+    ],
+    [
+     "+21",
+     "bits: Antonelli's name evidence, 6.1 of it from term frequency"
+    ],
+    [
+     "+6.7",
+     "bits: a matching ZIP"
+    ]
+   ],
+   "open": [
+    "The street comparison measures string similarity, so numbered streets look alike (147TH and 154TH).",
+    "Probabilities shift slightly between training runs."
+   ],
+   "widget": "waterfall",
+   "code": [
+    "comps",
+    "nb_bits"
+   ],
+   "evidence": {
+    "lede": "The score is stored as a probability, with the threshold it was held against, only for pairs at or above the threshold.",
+    "recorded": [
+     "The match probability of each pair above 0.999 and the threshold.",
+     "Pairs below the threshold are not stored."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "score and threshold on each pair event (stage identity.splink_base)."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "score",
+       "threshold"
+      ],
+      "caption": "Two of Antonelli's pairs that cleared 0.999 by a small margin, and the addresses compared.",
+      "limit": 2,
+      "note": "The model's probability, not its bits. A probability of 0.999 is about 10 bits of match weight.",
+      "where": {
+       "decision_id": [
+        "D0014208",
+        "D0019098"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ],
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_a"
+        ],
+        "merge": true
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_b"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "The probability of a pair is the model's, not the chance a whole cluster is right.",
+     "The model's bits and the term-frequency parts of a score are not stored."
+    ]
+   }
+  },
+  "s5": {
+   "kind": "det",
+   "tag": "Rule",
+   "title": "5 \u00b7 Gate",
+   "ref": "splink_source.py \u00b7 cluster_gated",
+   "lede": "A pair becomes a link only when its probability is at least 0.999 and neither veto objects.",
+   "what": [
+    "0.999 is a match weight of about 10 bits.",
+    "First-name veto: if the first names genuinely disagree (JACOB and JOSEF), the link is dropped, even with a strong address match.",
+    "Common-name veto: a name shared by more than 15 identities is not linked on name alone when the addresses differ (two unrelated JIN CHENs).",
+    "The surviving links form groups. Groups are connected components, so joins chain."
+   ],
+   "nums": [
+    [
+     "0.999",
+     "= about 10 bits"
+    ],
+    [
+     "5",
+     "base groups for Antonelli, down from 9 portfolios"
+    ]
+   ],
+   "measured": [
+    "In the labeled sample, all 49 links that join separate WoW portfolios through this stage were correct (interval 93 to 100%)."
+   ],
+   "open": [
+    "The threshold is a bright line through evidence of uneven quality. One Antonelli pair clears it by 0.6 bits and another misses by 2.7."
+   ],
+   "code": [
+    "gate",
+    "unionfind",
+    "nb_base",
+    "cap_pair_trace"
+   ],
+   "evidence": {
+    "lede": "Every pair above the threshold gets a decision: accepted, or rejected by a named veto.",
+    "recorded": [
+     "Accepted pairs, with the cluster they joined.",
+     "Rejected pairs, with first_name_veto or common_name_veto. A common-name veto also records the name rarity and whether the addresses matched.",
+     "The base clusters that result, as base_cluster_id on each identity."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "19,838 accepted, 1,682 first-name vetoes, 903 common-name vetoes."
+     ],
+     [
+      "identity_clusters",
+      "base_cluster_id: the groups after this stage."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "score"
+      ],
+      "caption": "Two of Antonelli's pairs, accepted and put in the same cluster: the same name at two spellings and two addresses.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "D0002544",
+        "D0014207"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ],
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_a"
+        ],
+        "merge": true
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_b"
+        ],
+        "merge": true
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "reason_code",
+       "score"
+      ],
+      "caption": "The first-name veto: JOSEF and JACOB at one address, above 0.999 and refused.",
+      "limit": 1,
+      "note": "",
+      "where": {
+       "decision_id": "D0026048"
+      },
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_a"
+        ]
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_b"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "reason_code",
+       "score",
+       "detail"
+      ],
+      "caption": "The common-name veto: 73 look-alike names, and addresses that differ.",
+      "limit": 1,
+      "note": "",
+      "where": {
+       "decision_id": "D0025164"
+      }
+     }
+    ],
+    "limits": [
+     "A pair below the threshold is not recorded, so a veto event shows only the pairs that would otherwise have joined."
+    ]
+   }
+  },
+  "s6": {
+   "kind": "warn",
+   "tag": "Lower confidence",
+   "title": "6 \u00b7 Shared-company pass",
+   "ref": "splink_source.py \u00b7 feedback_merge",
+   "lede": "Joins groups that share a rare name and a company named on their registrations. It connects offices at unrelated addresses.",
+   "what": [
+    "Two groups merge when all of these hold: the same surname and first initial; compatible first names (STEVE and STEVEN pass, JACOB and JOSEF do not); a rare name (at most 15 identities); and a company name that appears on both groups' registrations.",
+    "The company can be an owner or the managing agent. The pass does not tell them apart.",
+    "A company listed under more than 25 named contacts is ignored.",
+    "For Antonelli, Carollo Management, the HPD agent, joins his five office groups into one."
+   ],
+   "nums": [
+    [
+     "5 \u2192 1",
+     "Antonelli's groups after this pass"
+    ],
+    [
+     "~15%",
+     "of re-linked buildings exist only because of it"
+    ]
+   ],
+   "measured": [
+    "Sampled links through this pass: 15 of 18 correct (interval 61 to 94%), against 49 of 49 for name and address. The split was made after the errors were seen, so read it as a lead."
+   ],
+   "open": [
+    "All three errors were different people with the same full name, bridged only by a management company, each with a WoW portfolio of 50+ buildings on one side.",
+    "A shared manager is evidence of management, not ownership. Where the shared company also appears as an owner of record, all 6 sampled links were right.",
+    "Open question: ship it as its own edge type, or leave it out of a first patch."
+   ],
+   "code": [
+    "fn_compat",
+    "caps",
+    "fbrule",
+    "nb_final",
+    "cap_feedback_trace"
+   ],
+   "evidence": {
+    "lede": "The shared-company pass logs each pair of groups it considered. Accepted merges and refusals both leave events, and the contact records that carry the company are attached.",
+    "recorded": [
+     "For each pair of base clusters: accepted, or refused with the reason.",
+     "The number of shared companies, and the contact records that carry them.",
+     "Refusal reasons: name not rare, first name conflict, company degree over the cap, or company degree unknown."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "1,197 accepted; 830 refused (371 name not rare, 209 degree unknown, 175 first-name conflict, 75 degree cap)."
+     ],
+     [
+      "decision_support",
+      "17,310 rows: the contact records behind these events, role shared_company. observation_contacts says who each is."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "cluster_id"
+      ],
+      "caption": "Four of the ten merges that join Antonelli's five base clusters into one.",
+      "limit": 4,
+      "note": "Ten pairs for five groups: one shared company links every group to every other.",
+      "where": {
+       "cluster_id": "C0009456",
+       "stage": "identity.splink_feedback"
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_support",
+      "cols": [
+       "decision_id",
+       "support_id",
+       "role"
+      ],
+      "caption": "The contacts that carry the shared company: three of Antonelli's registrations list the same managing agent.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "decision_id": "D0027924"
+      },
+      "lookups": [
+       {
+        "col": "support_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "contact_type"
+        ],
+        "as": [
+         "contact_role"
+        ]
+       },
+       {
+        "col": "support_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "first_name",
+         "last_name"
+        ],
+        "as": [
+         "person"
+        ],
+        "merge": true
+       },
+       {
+        "col": "support_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "corporation_name"
+        ],
+        "as": [
+         "company"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "A refusal elsewhere: the surnames and initials match and a company is shared, but the first names conflict.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0028943"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "decision_support",
+      "cols": [
+       "decision_id",
+       "support_id",
+       "role"
+      ],
+      "caption": "Some of the 17 contact records that carry that company.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "decision_id": "D0028943"
+      },
+      "lookups": [
+       {
+        "col": "support_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "corporation_name"
+        ],
+        "as": [
+         "company"
+        ]
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "Management evidence stands in for ownership here. The company is the managing agent's, not necessarily the owner's.",
+     "Only pairs with a shared company are logged. Others leave no row."
+    ]
+   }
+  },
+  "outcome": {
+   "kind": "rem",
+   "tag": "Result",
+   "title": "Owner entities",
+   "ref": "resolve.py \u00b7 owner_index",
+   "lede": "Each final group becomes an owner id. The patch adds a splink edge between the graph nodes in the same group.",
+   "what": [
+    "owner_index maps (normalized name, building) to an owner id. Ids are stable within one run only.",
+    "The WoW patch adds one edge type (splink, weight 10) between nodes that resolve to the same owner. WoW's connected-components and Louvain steps run unchanged on the larger graph.",
+    "Edges only add, so connected components can only merge."
+   ],
+   "nums": [
+    [
+     "145 of 150",
+     "sampled links judged the same owner"
+    ],
+    [
+     "64 of 67",
+     "of those that join separate WoW portfolios"
+    ]
+   ],
+   "open": [
+    "Precision only. Recall is not estimated, and the absence of a link does not mean two owners differ.",
+    "Labels are one human annotator's. A blind second reader is planned, and the figures are provisional until then."
+   ],
+   "code": [
+    "oi",
+    "patch",
+    "cap_resolution",
+    "cap_resolve_body",
+    "cap_bor_events"
+   ],
+   "evidence": {
+    "lede": "The result is a set of clusters. In the release, a cluster is the final answer for identities, and the events explain it.",
+    "recorded": [
+     "Every identity, its base cluster and its final cluster.",
+     "The decisions that built each cluster, citing the cluster id.",
+     "The identities removed by the curated exclusion list (24 events)."
+    ],
+    "tables": [
+     [
+      "identity_clusters",
+      "145,388 identities."
+     ],
+     [
+      "decision_events",
+      "cluster_id on each accepted event."
+     ],
+     [
+      "node_cluster",
+      "How bor's landlord nodes map to clusters, with ties marked."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "cluster_id"
+      ],
+      "caption": "The first and last decisions that built Antonelli's cluster.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "cluster_id": "C0009456"
+      },
+      "order_by": [
+       "decision_id"
+      ],
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_a"
+        ],
+        "merge": true
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "identity_clusters",
+      "cols": [
+       "identity_id",
+       "base_cluster_id",
+       "cluster_id"
+      ],
+      "caption": "Its members.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "cluster_id": "C0009456"
+      },
+      "order_by": [
+       "identity_id"
+      ],
+      "lookups": [
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name"
+        ]
+       },
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "Cluster ids and identity ids are local to one run. A new fit renumbers them, and a rerun agrees with this one only to about 99.9%.",
+     "The cluster is a lead about one landlord, not a determination of ownership."
+    ]
+   }
+  },
+  "v-start": {
+   "kind": "io",
+   "tag": "Input",
+   "title": "Two owner records",
+   "ref": "extract output",
+   "lede": "Two records from the extract, each a name, a business address and the buildings registered there.",
+   "what": [
+    "Example: record D (10-03 147TH STREET, 11357) and record F (15056 20TH ROAD, 11357), both DOMENICO ANTONELLI.",
+    "The question is whether they are the same person. If they are, their buildings belong to one owner entity."
+   ],
+   "nums": [
+    [
+     "D, F",
+     "two of Antonelli's nine records"
+    ]
+   ],
+   "code": [
+    "extract"
+   ],
+   "evidence": {
+    "lede": "A record is an identity. Its row says which contact records it stands on.",
+    "recorded": [
+     "The identity id and its contact records."
+    ],
+    "tables": [
+     [
+      "identity_observations",
+      "Identity to contact record and building."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "identity_observations",
+      "cols": [
+       "identity_id",
+       "bbl",
+       "observation_id"
+      ],
+      "caption": "One identity, its address and its contact records.",
+      "limit": 3,
+      "note": "Domenico Antonelli's nine records are I0009556 and eight other identities; identity_names gives each its name and address.",
+      "where": {
+       "identity_id": "I0030939"
+      },
+      "lookups": [
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "The name and address are what HPD recorded."
+    ]
+   }
+  },
+  "v-block": {
+   "kind": "det",
+   "tag": "Rule",
+   "title": "Same surname + first initial?",
+   "ref": "blocking rule",
+   "lede": "Records that differ in surname or first initial are never scored against each other.",
+   "what": [
+    "No: the pair is never compared, so no link can form between them.",
+    "Yes: the pair goes on to scoring."
+   ],
+   "nums": [
+    [
+     "36",
+     "candidate pairs among Antonelli's 9 records"
+    ]
+   ],
+   "open": [
+    "A typo in the surname removes the pair from consideration."
+   ],
+   "code": [
+    "block"
+   ],
+   "evidence": {
+    "lede": "Blocking leaves no record.",
+    "recorded": [
+     "Nothing. A pair that is never compared has no event."
+    ],
+    "tables": [
+     [
+      "(none)",
+      "Blocked-out pairs are not stored."
+     ]
+    ],
+    "examples": [],
+    "limits": [
+     "An absent event means the rule did not run."
+    ]
+   }
+  },
+  "v-notcomp": {
+   "kind": "io",
+   "tag": "No link",
+   "title": "Not compared",
+   "ref": "blocking rule",
+   "lede": "The records share no surname and first initial, so the engine says nothing about them.",
+   "what": [
+    "This is not a finding that the owners differ. It is the absence of any comparison."
+   ],
+   "evidence": {
+    "lede": "There is no row for a pair that was not compared.",
+    "recorded": [
+     "Nothing."
+    ],
+    "tables": [
+     [
+      "(none)",
+      "No table."
+     ]
+    ],
+    "examples": [],
+    "limits": [
+     "Not compared is not a finding that the owners differ."
+    ]
+   }
+  },
+  "v-score": {
+   "kind": "ml",
+   "tag": "Learned model",
+   "title": "Match weight above about 10 bits?",
+   "ref": "Fellegi-Sunter score",
+   "lede": "The weight sums name and address evidence on top of a prior of about \u221218 bits. About 10 bits is a probability of 0.999.",
+   "what": [
+    "Antonelli's pair D\u2013E (147TH STREET and 154TH STREET, same ZIP) reaches 10.6 bits and passes.",
+    "Pair E\u2013G reaches 7.3 bits and falls short. Pair D\u2013F reaches 5.1 bits.",
+    "Pairs that fall short are not rejected outright. They go on to the shared-company test."
+   ],
+   "nums": [
+    [
+     "10.6",
+     "bits: D\u2013E, passes"
+    ],
+    [
+     "7.3",
+     "bits: E\u2013G, falls short"
+    ],
+    [
+     "5.1",
+     "bits: D\u2013F, falls short"
+    ]
+   ],
+   "open": [
+    "Select the Score box on the Pipeline tab to see these pairs as waterfall charts."
+   ],
+   "code": [
+    "comps",
+    "nb_bits"
+   ],
+   "evidence": {
+    "lede": "A pair that clears the score is recorded with its probability and the threshold.",
+    "recorded": [
+     "Probability, threshold and outcome."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "score and threshold, stage identity.splink_base."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "score",
+       "threshold"
+      ],
+      "caption": "D\u2013E: the 154TH STREET and 147TH STREET records, accepted.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0019098"
+      },
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_a"
+        ],
+        "merge": true
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_b"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "Pairs that fall short are not recorded. They still go on to the shared-company test."
+    ]
+   }
+  },
+  "v-first": {
+   "kind": "det",
+   "tag": "Rule",
+   "title": "First names agree?",
+   "ref": "first-name veto",
+   "lede": "A link is dropped when both first names are present and genuinely disagree.",
+   "what": [
+    "Genuine disagreement means Jaro-Winkler similarity below 0.80. JACOB and JOSEF fail. STEVE and STEVEN, and ZACH and ZACHARY, pass.",
+    "A missing first name passes.",
+    "Nicknames that are not near-matches (ABE and ABRAHAM) fail too. That is a deliberate precision trade."
+   ],
+   "code": [
+    "first_cmp",
+    "gate"
+   ],
+   "evidence": {
+    "lede": "A first-name veto is an event with the reason first_name_veto.",
+    "recorded": [
+     "The pair, its probability and the reason."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "1,682 first-name vetoes."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "reason_code",
+       "score"
+      ],
+      "caption": "JOSEF and JACOB: refused although they score above 0.999.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0026048"
+      },
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_a"
+        ]
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_b"
+        ]
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "The first names are in identity_names. The veto compares them by similarity, not equality."
+    ]
+   }
+  },
+  "v-common": {
+   "kind": "det",
+   "tag": "Rule",
+   "title": "Common name at different addresses?",
+   "ref": "common-name veto",
+   "lede": "A name that many people share is not enough to link records at different addresses.",
+   "what": [
+    "A name is common when more than 15 identities share its surname and first initial.",
+    "Addresses are compared after normalizing house digits and street suffix, so 140-06 and 14006 count as the same address.",
+    "Yes: the link is dropped. No: the pair joins on name and address."
+   ],
+   "nums": [
+    [
+     "10",
+     "identities share ANTONELLI + D, so it is rare"
+    ]
+   ],
+   "code": [
+    "addrkey",
+    "gate"
+   ],
+   "evidence": {
+    "lede": "A common-name veto is an event that also records the name rarity and whether the addresses matched.",
+    "recorded": [
+     "The pair, its probability, the reason, and detail with name_rarity and same_address."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "903 common-name vetoes; detail is JSON."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "score",
+       "detail"
+      ],
+      "caption": "A pair of 73 look-alike names at different addresses.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0025164"
+      }
+     }
+    ],
+    "limits": [
+     "The name rarity is a count of identities sharing a surname and first initial, taken over the whole city."
+    ]
+   }
+  },
+  "v-second": {
+   "kind": "warn",
+   "tag": "Lower confidence",
+   "title": "Shared-company test",
+   "ref": "feedback_merge",
+   "lede": "Pairs that did not join on name and address get one more chance, through a company they share.",
+   "what": [
+    "The name must be rare, the first names compatible, and the groups' buildings must share a company named on their registrations (an owner or a managing agent). Companies listed under more than 25 named contacts are ignored.",
+    "A common name can never pass this test, so a pair stopped by the common-name veto stays separate.",
+    "The decision is really made between groups, not single pairs, so one shared company can join several offices at once."
+   ],
+   "nums": [
+    [
+     "Carollo Management",
+     "joins Antonelli's five office groups"
+    ]
+   ],
+   "measured": [
+    "Sampled links through this test: 15 of 18 correct."
+   ],
+   "open": [
+    "Management evidence stands in for ownership evidence here. See stage 6 on the Pipeline tab."
+   ],
+   "code": [
+    "caps",
+    "fbrule"
+   ],
+   "evidence": {
+    "lede": "The shared-company test is logged for every pair of groups with a shared company, whether it passes or not.",
+    "recorded": [
+     "Accepted or refused, the reason, and the contact records that carry the company."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "Stage identity.splink_feedback."
+     ],
+     [
+      "decision_support",
+      "The carrying contact records."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Refusal for a conflict of first names, and the first merge that joined Antonelli's groups.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "D0028943",
+        "D0027924"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     }
+    ],
+    "limits": [
+     "The release shows which contacts carry the company (decision_support) and who they are (observation_contacts), not a single company name per event."
+    ]
+   }
+  },
+  "v-join-a": {
+   "kind": "det",
+   "tag": "Join",
+   "title": "JOIN on name and address",
+   "ref": "base link",
+   "lede": "The records score high enough, the first names agree, and the name is not common at different addresses.",
+   "what": [
+    "The strongest evidence the engine has: a rare name together with matching or near-matching address fields.",
+    "Example: Powells Cove Boulevard and Powells Cow B join at 26 bits."
+   ],
+   "nums": [
+    [
+     "49 of 49",
+     "sampled links through this route that join separate WoW portfolios were correct"
+    ]
+   ],
+   "code": [
+    "gate",
+    "unionfind"
+   ],
+   "evidence": {
+    "lede": "A join on name and address is an accepted pair event that names the cluster.",
+    "recorded": [
+     "The pair, its probability and cluster_id."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "19,838 accepted pairs."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "score",
+       "cluster_id"
+      ],
+      "caption": "An accepted pair.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0002544"
+      }
+     }
+    ],
+    "limits": [
+     "97% of 150 sampled links in this stratum were judged the same owner, on a provisional gold."
+    ]
+   }
+  },
+  "v-join-b": {
+   "kind": "warn",
+   "tag": "Join",
+   "title": "JOIN on a shared company",
+   "ref": "second-pass link",
+   "lede": "The records share a rare name and a company on their registrations, though their addresses do not match.",
+   "what": [
+    "This is how Antonelli's offices at unrelated addresses become one entity, through Carollo Management."
+   ],
+   "nums": [
+    [
+     "15 of 18",
+     "sampled links through this route were correct"
+    ]
+   ],
+   "open": [
+    "The three errors in the sample came through this route."
+   ],
+   "code": [
+    "fbrule",
+    "nb_final"
+   ],
+   "evidence": {
+    "lede": "A join through a shared company is an accepted event of stage identity.splink_feedback.",
+    "recorded": [
+     "The two base clusters, the final cluster and the number of shared companies."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "1,197 accepted merges."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "stage",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "detail"
+      ],
+      "caption": "One merge, through one shared company.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0027814"
+      }
+     }
+    ],
+    "limits": [
+     "The precision of this stratum has no published row yet (identity.splink_feedback has no sample in the release)."
+    ]
+   }
+  },
+  "v-sep": {
+   "kind": "io",
+   "tag": "No link",
+   "title": "Stays separate",
+   "ref": "no link asserted",
+   "lede": "No route produced a link, so the engine makes no claim about these records.",
+   "what": [
+    "This is not a finding that the owners differ. Recall is not estimated, and the absence of a link does not mean two owners are different."
+   ],
+   "evidence": {
+    "lede": "Records that stay separate leave a row only when a rule refused them.",
+    "recorded": [
+     "Refusals by a veto or a guard. Nothing for pairs no rule considered."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "Outcome rejected."
+     ],
+     [
+      "bbl_status",
+      "A lot with no link carries a reason such as no_linkage."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "score"
+      ],
+      "caption": "A refused pair.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0025164"
+      }
+     }
+    ],
+    "limits": [
+     "Staying separate is not a finding that the owners differ."
+    ]
+   }
+  },
+  "v-entity": {
+   "kind": "rem",
+   "tag": "Result",
+   "title": "Owner entity",
+   "ref": "connected components",
+   "lede": "Joins chain. Records linked directly or through other records form one owner entity.",
+   "what": [
+    "If A joins B and B joins C, all three are one entity even when A and C would not join on their own.",
+    "Each entity becomes an owner id, and the patch adds edges between its nodes in WoW's graph."
+   ],
+   "nums": [
+    [
+     "1",
+     "Antonelli entity: 9 records, 10 buildings"
+    ]
+   ],
+   "open": [
+    "Chaining means one wrong link can merge two whole groups."
+   ],
+   "code": [
+    "unionfind",
+    "patch"
+   ],
+   "evidence": {
+    "lede": "An owner entity is a cluster id, with the identities that belong to it.",
+    "recorded": [
+     "Identity to cluster."
+    ],
+    "tables": [
+     [
+      "identity_clusters",
+      "cluster_id for each identity."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "identity_clusters",
+      "cols": [
+       "identity_id",
+       "base_cluster_id",
+       "cluster_id"
+      ],
+      "caption": "Antonelli's cluster, with each record's address.",
+      "limit": 9,
+      "note": "",
+      "where": {
+       "cluster_id": "C0009456"
+      },
+      "order_by": [
+       "base_cluster_id",
+       "identity_id"
+      ],
+      "lookups": [
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name"
+        ]
+       },
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "Chaining means one wrong link can merge two whole groups. The events show which links did it."
+    ]
+   }
+  }
+ },
+ "releases": {
+  "v020": {
+   "path": "~/Learning/Sabbatical/beneficial-ownership-resolution/release/v0.2.1",
+   "url": "https://github.com/bobflagg/nyc-beneficial-owner-resolution/releases/tag/v0.2.1",
+   "label": "bor v0.2.1 release"
+  }
+ }
+}

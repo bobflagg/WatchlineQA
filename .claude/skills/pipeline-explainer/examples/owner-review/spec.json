@@ -1,0 +1,1281 @@
+{
+ "title": "Owner Review Adjudication",
+ "eyebrow": "Working map · owner-review",
+ "heading": "Owner review adjudication pipeline",
+ "intro": "How a blinded pair of NYC landlord sides becomes a SAME, DIFFERENT or INDETERMINATE call. Deterministic record work assembles a neutral panel that a human and an automated adjudicator both read. One model call decides, with a bounded escalation loop and a hard gate. Select any box for what it does, the worked pair P0214, how the agent compares with the human labels, and what is still open.",
+ "labels": {
+  "nums": "Example P0214"
+ },
+ "repos": {
+  "or": {
+   "path": "~/Learning/Sabbatical/owner-review",
+   "sha": "092147f",
+   "slug": "bobflagg/owner-review",
+   "label": "owner-review"
+  }
+ },
+ "default_node": "s6",
+ "views": [
+  {
+   "id": "pipe",
+   "label": "Pipeline",
+   "layout": "manual",
+   "width": 680,
+   "height": 716,
+   "default_node": "s6",
+   "title": "Pipeline overview",
+   "desc": "A blinded pair and the primary records feed deterministic assembly into a dossier, fingerprints, an overlap and busy-office coverage. The resulting panel is read by a human reviewer and by a model call that returns a verdict, with a bounded escalation loop. A verification and hard-gate step produces the final annotation.",
+   "nodes": [
+    {
+     "id": "pair",
+     "kind": "io",
+     "x": 40,
+     "y": 24,
+     "w": 260,
+     "h": 52,
+     "title": "Blinded pair",
+     "sub": "Side A vs Side B · names + BBLs"
+    },
+    {
+     "id": "records",
+     "kind": "io",
+     "x": 380,
+     "y": 24,
+     "w": 260,
+     "h": 52,
+     "title": "Primary records",
+     "sub": "ACRIS · HPD · PLUTO · DOS"
+    },
+    {
+     "id": "s1",
+     "kind": "det",
+     "x": 190,
+     "y": 118,
+     "w": 300,
+     "h": 52,
+     "title": "1 · Dossier assembly",
+     "sub": "all primary records, neutral"
+    },
+    {
+     "id": "s2",
+     "kind": "det",
+     "x": 190,
+     "y": 192,
+     "w": 300,
+     "h": 52,
+     "title": "2 · Fingerprint",
+     "sub": "per-side owner and principal rollups"
+    },
+    {
+     "id": "s3",
+     "kind": "det",
+     "x": 190,
+     "y": 266,
+     "w": 300,
+     "h": 52,
+     "title": "3 · Overlap",
+     "sub": "shared signals, noise flagged"
+    },
+    {
+     "id": "s4",
+     "kind": "det",
+     "x": 190,
+     "y": 340,
+     "w": 300,
+     "h": 52,
+     "title": "4 · Busy-office coverage",
+     "sub": "management hubs quantified"
+    },
+    {
+     "id": "s5",
+     "kind": "io",
+     "x": 190,
+     "y": 414,
+     "w": 300,
+     "h": 52,
+     "title": "5 · The panel",
+     "sub": "human and agent read this"
+    },
+    {
+     "id": "human",
+     "kind": "io",
+     "x": 540,
+     "y": 414,
+     "w": 136,
+     "h": 52,
+     "title": "Human reviewer",
+     "lines": [
+      "web app, same panel"
+     ]
+    },
+    {
+     "id": "s6",
+     "kind": "ml",
+     "x": 190,
+     "y": 488,
+     "w": 300,
+     "h": 52,
+     "title": "6 · Adjudicate",
+     "sub": "one call → Verdict"
+    },
+    {
+     "id": "s7",
+     "kind": "ml",
+     "x": 540,
+     "y": 484,
+     "w": 136,
+     "h": 60,
+     "title": "7 · Escalate",
+     "lines": [
+      "tools · ≤ 2 rounds"
+     ]
+    },
+    {
+     "id": "s8",
+     "kind": "det",
+     "x": 190,
+     "y": 562,
+     "w": 300,
+     "h": 52,
+     "title": "8 · Verify + hard gate",
+     "sub": "faithfulness flags, deed-only gate"
+    },
+    {
+     "id": "outcome",
+     "kind": "rem",
+     "x": 190,
+     "y": 636,
+     "w": 300,
+     "h": 56,
+     "title": "Annotation",
+     "sub": "SAME · DIFFERENT · INDETERMINATE"
+    }
+   ],
+   "edges": [
+    {
+     "d": "M170 76 L170 98 L330 98 L330 118"
+    },
+    {
+     "d": "M510 76 L510 98 L350 98 L350 118"
+    },
+    {
+     "from": "s1",
+     "to": "s2"
+    },
+    {
+     "from": "s2",
+     "to": "s3"
+    },
+    {
+     "from": "s3",
+     "to": "s4"
+    },
+    {
+     "from": "s4",
+     "to": "s5"
+    },
+    {
+     "from": "s5",
+     "to": "human"
+    },
+    {
+     "from": "s5",
+     "to": "s6"
+    },
+    {
+     "d": "M490 503 L540 499",
+     "dashed": true,
+     "label": "gap",
+     "lx": 507,
+     "ly": 493
+    },
+    {
+     "d": "M540 529 L490 533",
+     "dashed": true,
+     "label": "findings",
+     "lx": 507,
+     "ly": 549
+    },
+    {
+     "from": "s6",
+     "to": "s8",
+     "label": "resolved"
+    },
+    {
+     "from": "s8",
+     "to": "outcome"
+    }
+   ]
+  },
+  {
+   "id": "verdict",
+   "label": "Decision logic",
+   "layout": "manual",
+   "width": 680,
+   "height": 600,
+   "default_node": "v-owner",
+   "title": "Decision logic for one pair",
+   "desc": "Shared signals are stripped of noise. A substantive shared owner leads toward SAME, with a deed-only gate that can downgrade to INDETERMINATE. Otherwise positive distinctness leads to DIFFERENT, and an open question either escalates or holds at INDETERMINATE. Advisory flags annotate a call without changing it.",
+   "nodes": [
+    {
+     "id": "v-signals",
+     "kind": "io",
+     "x": 40,
+     "y": 24,
+     "w": 300,
+     "h": 50,
+     "title": "Shared signals",
+     "sub": "owner · agent · address · deed"
+    },
+    {
+     "id": "v-discount",
+     "kind": "det",
+     "x": 40,
+     "y": 98,
+     "w": 300,
+     "h": 50,
+     "title": "Discount the noise",
+     "sub": "institutional · busy · co-op · stale"
+    },
+    {
+     "id": "v-owner",
+     "kind": "ml",
+     "x": 40,
+     "y": 172,
+     "w": 300,
+     "h": 56,
+     "title": "Substantive shared owner?",
+     "sub": "owner, principal or current deed"
+    },
+    {
+     "id": "v-gate",
+     "kind": "det",
+     "x": 40,
+     "y": 262,
+     "w": 300,
+     "h": 56,
+     "title": "Deed alone? Three checks",
+     "sub": "otherwise the label stands"
+    },
+    {
+     "id": "v-diff",
+     "kind": "ml",
+     "x": 400,
+     "y": 172,
+     "w": 240,
+     "h": 56,
+     "title": "Positive distinctness?",
+     "sub": "distinct owners, no link"
+    },
+    {
+     "id": "v-escalate",
+     "kind": "ml",
+     "x": 400,
+     "y": 262,
+     "w": 240,
+     "h": 56,
+     "title": "Could a lookup settle it?",
+     "sub": "escalate, else hold"
+    },
+    {
+     "id": "v-same-out",
+     "kind": "det",
+     "x": 40,
+     "y": 420,
+     "w": 170,
+     "h": 52,
+     "title": "SAME",
+     "sub": "same beneficial owner"
+    },
+    {
+     "id": "v-indet-out",
+     "kind": "io",
+     "x": 250,
+     "y": 420,
+     "w": 200,
+     "h": 52,
+     "title": "INDETERMINATE",
+     "sub": "the record cannot settle it"
+    },
+    {
+     "id": "v-diff-out",
+     "kind": "rem",
+     "x": 490,
+     "y": 420,
+     "w": 150,
+     "h": 52,
+     "title": "DIFFERENT",
+     "sub": "distinct owners"
+    },
+    {
+     "id": "v-flags",
+     "kind": "warn",
+     "x": 40,
+     "y": 520,
+     "w": 600,
+     "h": 54,
+     "title": "Advisory flags (never change the label)",
+     "sub": "t3_not_address_confirmed · coop_condo_management · unsupported claims"
+    }
+   ],
+   "edges": [
+    {
+     "from": "v-signals",
+     "to": "v-discount"
+    },
+    {
+     "from": "v-discount",
+     "to": "v-owner"
+    },
+    {
+     "from": "v-owner",
+     "to": "v-gate",
+     "label": "yes"
+    },
+    {
+     "from": "v-owner",
+     "to": "v-diff",
+     "label": "no"
+    },
+    {
+     "from": "v-gate",
+     "to": "v-same-out",
+     "label": "pass"
+    },
+    {
+     "d": "M300 318 L300 380 L350 380 L350 420",
+     "label": "fail",
+     "lx": 306,
+     "ly": 374
+    },
+    {
+     "from": "v-diff",
+     "to": "v-escalate",
+     "label": "no"
+    },
+    {
+     "d": "M640 200 L660 200 L660 446 L642 446",
+     "label": "yes",
+     "lx": 646,
+     "ly": 194
+    },
+    {
+     "d": "M470 318 L470 380 L420 380 L420 420",
+     "label": "hold",
+     "lx": 476,
+     "ly": 374
+    }
+   ]
+  }
+ ],
+ "widgets": {
+  "p0214": {
+   "type": "checks",
+   "title": "Worked pair",
+   "default": "P0214",
+   "cases": {
+    "P0214": {
+     "note": "Two single-building sides, both named MINDY SPOLAN. The human label is SAME, and so is the agent's.",
+     "rows": [
+      [
+       "Shared name",
+       "head officer on both sides",
+       "info"
+      ],
+      [
+       "Sole owner on each side",
+       "1 of 1 on A, 1 of 1 on B",
+       "pass"
+      ],
+      [
+       "Business addresses coincide",
+       "118-09 83RD AVENUE vs 116-16 AUDLEY STREET",
+       "fail"
+      ],
+      [
+       "Shared managing agent",
+       "IMPERIAL CONSULTING GROUP, both buildings",
+       "pass"
+      ],
+      [
+       "Shared DOS process address",
+       "6080 Jericho Turnpike, Commack (both owners)",
+       "pass"
+      ],
+      [
+       "Deed chain on B",
+       "a Spolan estate to AUDLEY STREET REALTY LLC",
+       "pass"
+      ]
+     ],
+     "verdict": {
+      "ok": true,
+      "text": "SAME on tier T3. The address test fails, so the call leans on the other signals, and t3_not_address_confirmed is raised for review."
+     }
+    }
+   }
+  },
+  "gate": {
+   "type": "checks",
+   "title": "Worked gate cases",
+   "default": "Deed alone, three checks",
+   "cases": {
+    "Deed alone, three checks": {
+     "note": "A SAME whose only tier is T1, with every check affirmed.",
+     "rows": [
+      [
+       "Evidence tiers",
+       "T1 only",
+       "info"
+      ],
+      [
+       "entity_identity",
+       "true",
+       "pass"
+      ],
+      [
+       "successor_reality",
+       "true",
+       "pass"
+      ],
+      [
+       "restructuring_not_sale",
+       "true",
+       "pass"
+      ]
+     ],
+     "verdict": {
+      "ok": true,
+      "text": "SAME stands."
+     }
+    },
+    "Deed alone, one check missing": {
+     "note": "The same call, but the onward conveyance could be a sale.",
+     "rows": [
+      [
+       "Evidence tiers",
+       "T1 only",
+       "info"
+      ],
+      [
+       "entity_identity",
+       "true",
+       "pass"
+      ],
+      [
+       "successor_reality",
+       "true",
+       "pass"
+      ],
+      [
+       "restructuring_not_sale",
+       "false",
+       "fail"
+      ]
+     ],
+     "verdict": {
+      "ok": false,
+      "text": "Downgraded to INDETERMINATE."
+     }
+    },
+    "Deed plus a principal": {
+     "note": "A SAME that also rests on a shared principal.",
+     "rows": [
+      [
+       "Evidence tiers",
+       "T1 and T3",
+       "info"
+      ],
+      [
+       "Gate applies",
+       "only when the tiers equal T1",
+       "info"
+      ]
+     ],
+     "verdict": {
+      "ok": true,
+      "text": "SAME stands. The gate does not apply."
+     }
+    }
+   }
+  }
+ },
+ "snippets": {
+  "queue": {
+   "repo": "or",
+   "path": "owner_review/review/queue.py",
+   "a": 8,
+   "b": 24,
+   "lang": "python",
+   "caption": "The loader refuses any queue line that carries a field that would reveal its origin."
+  },
+  "dossier_dos": {
+   "repo": "or",
+   "path": "owner_review/records/dossier.py",
+   "a": 18,
+   "b": 32,
+   "lang": "python",
+   "caption": "Which names are looked up in DOS: PLUTO owner, the latest deed's grantees, and HPD corporate contacts."
+  },
+  "dossier_entity": {
+   "repo": "or",
+   "path": "owner_review/records/dossier.py",
+   "a": 35,
+   "b": 42,
+   "lang": "python",
+   "caption": "One side's records: buildings, deeds and HPD contacts. DOS is not loaded here."
+  },
+  "dossier_pair": {
+   "repo": "or",
+   "path": "owner_review/records/dossier.py",
+   "a": 63,
+   "b": 72,
+   "lang": "python",
+   "caption": "A pair: both sides, optional DOS, fingerprints, overlap, then citywide coverage."
+  },
+  "fp_owner": {
+   "repo": "or",
+   "path": "owner_review/records/fingerprint.py",
+   "a": 172,
+   "b": 188,
+   "lang": "python",
+   "caption": "The owner of record is the latest deed grantee that is not a bank or lender."
+  },
+  "fp_roles": {
+   "repo": "or",
+   "path": "owner_review/records/fingerprint.py",
+   "a": 202,
+   "b": 219,
+   "lang": "python",
+   "caption": "HPD contacts become roles: principals (owner-side) and the managing agent (management)."
+  },
+  "fp_coop": {
+   "repo": "or",
+   "path": "owner_review/records/fingerprint.py",
+   "a": 271,
+   "b": 274,
+   "lang": "python",
+   "caption": "A side is a co-op or condo portfolio when at least half its buildings are marked so."
+  },
+  "ov_names": {
+   "repo": "or",
+   "path": "owner_review/records/fingerprint.py",
+   "a": 483,
+   "b": 505,
+   "lang": "python",
+   "caption": "Shared names: exact matches, plus fuzzy person-name matches (reversed order, or address-gated variants)."
+  },
+  "ov_deeds": {
+   "repo": "or",
+   "path": "owner_review/records/fingerprint.py",
+   "a": 520,
+   "b": 544,
+   "lang": "python",
+   "caption": "Shared deeds, with stale, nominal, mega, bank and financier flags. Substantive deeds are the clean subset."
+  },
+  "ov_roles": {
+   "repo": "or",
+   "path": "owner_review/records/fingerprint.py",
+   "a": 570,
+   "b": 580,
+   "lang": "python",
+   "caption": "Role structure: a shared head officer, disjoint head officers, a shared shareholder."
+  },
+  "cov_const": {
+   "repo": "or",
+   "path": "owner_review/records/coverage.py",
+   "a": 19,
+   "b": 19,
+   "lang": "python",
+   "caption": "Five or more distinct head officers at one address marks it busy."
+  },
+  "cov_addr": {
+   "repo": "or",
+   "path": "owner_review/records/coverage.py",
+   "a": 46,
+   "b": 50,
+   "lang": "python",
+   "caption": "Distinct buildings and head officers at an address, citywide."
+  },
+  "cov_enrich": {
+   "repo": "or",
+   "path": "owner_review/records/coverage.py",
+   "a": 75,
+   "b": 85,
+   "lang": "python",
+   "caption": "Coverage is added to the shared addresses, agents and address-confirmed names."
+  },
+  "prompt_tiers": {
+   "repo": "or",
+   "path": "owner_review/agent/prompts.py",
+   "a": 40,
+   "b": 56,
+   "lang": "python",
+   "caption": "The evidence tiers, and why a name alone or an address alone is not one."
+  },
+  "prompt_rules": {
+   "repo": "or",
+   "path": "owner_review/agent/prompts.py",
+   "a": 58,
+   "b": 74,
+   "lang": "python",
+   "caption": "The decision rules in the system prompt."
+  },
+  "ctx_side": {
+   "repo": "or",
+   "path": "owner_review/agent/prompts.py",
+   "a": 128,
+   "b": 140,
+   "lang": "python",
+   "caption": "What the model sees of each side: records, with deeds trimmed to the most recent few."
+  },
+  "ctx_payload": {
+   "repo": "or",
+   "path": "owner_review/agent/prompts.py",
+   "a": 176,
+   "b": 180,
+   "lang": "python",
+   "caption": "The panel is the overlap first, then each side."
+  },
+  "schema_verdict": {
+   "repo": "or",
+   "path": "owner_review/agent/schema.py",
+   "a": 39,
+   "b": 66,
+   "lang": "python",
+   "caption": "The structured verdict the model returns."
+  },
+  "graph_assess": {
+   "repo": "or",
+   "path": "owner_review/agent/graph.py",
+   "a": 119,
+   "b": 125,
+   "lang": "python",
+   "caption": "One call over the panel plus anything gathered on escalation."
+  },
+  "graph_route": {
+   "repo": "or",
+   "path": "owner_review/agent/graph.py",
+   "a": 164,
+   "b": 168,
+   "lang": "python",
+   "caption": "Escalate while the verdict is unresolved and budget remains."
+  },
+  "graph_build": {
+   "repo": "or",
+   "path": "owner_review/agent/graph.py",
+   "a": 216,
+   "b": 229,
+   "lang": "python",
+   "caption": "The graph: context, assess, an escalation loop, finalize."
+  },
+  "graph_gather": {
+   "repo": "or",
+   "path": "owner_review/agent/graph.py",
+   "a": 133,
+   "b": 161,
+   "lang": "python",
+   "caption": "One escalation round: the model calls curated tools to fill the named gap."
+  },
+  "graph_budget": {
+   "repo": "or",
+   "path": "owner_review/agent/graph.py",
+   "a": 21,
+   "b": 23,
+   "lang": "python",
+   "caption": "The model, the annotator id, and the escalation budget."
+  },
+  "tools_list": {
+   "repo": "or",
+   "path": "owner_review/agent/tools.py",
+   "a": 89,
+   "b": 91,
+   "lang": "python",
+   "caption": "The curated tools. All are primary-records only, plus web search."
+  },
+  "tools_cross": {
+   "repo": "or",
+   "path": "owner_review/agent/tools.py",
+   "a": 94,
+   "b": 106,
+   "lang": "python",
+   "caption": "A pair-bound tool that computes in code whether a person ties both sides."
+  },
+  "verify_grounded": {
+   "repo": "or",
+   "path": "owner_review/agent/verify.py",
+   "a": 38,
+   "b": 45,
+   "lang": "python",
+   "caption": "A value is grounded when at least 80% of its significant tokens appear in the source."
+  },
+  "verify_t3": {
+   "repo": "or",
+   "path": "owner_review/agent/verify.py",
+   "a": 60,
+   "b": 69,
+   "lang": "python",
+   "caption": "The namesake check behind t3_not_address_confirmed."
+  },
+  "verify_coop": {
+   "repo": "or",
+   "path": "owner_review/agent/verify.py",
+   "a": 80,
+   "b": 92,
+   "lang": "python",
+   "caption": "The co-op or condo management check: an officer link with no owning entity and no deed."
+  },
+  "verify_flags": {
+   "repo": "or",
+   "path": "owner_review/agent/verify.py",
+   "a": 135,
+   "b": 149,
+   "lang": "python",
+   "caption": "The two structural flags. Neither changes the label."
+  },
+  "gate": {
+   "repo": "or",
+   "path": "owner_review/review/gate.py",
+   "a": 17,
+   "b": 26,
+   "lang": "python",
+   "caption": "The hard gate: a SAME resting on a lone deed needs all three checks."
+  },
+  "finalize": {
+   "repo": "or",
+   "path": "owner_review/agent/graph.py",
+   "a": 186,
+   "b": 198,
+   "lang": "python",
+   "caption": "Finalize: faithfulness flags first, then the gate, then the annotation."
+  },
+  "store_latest": {
+   "repo": "or",
+   "path": "owner_review/review/store.py",
+   "a": 57,
+   "b": 72,
+   "lang": "python",
+   "caption": "The export view: the latest annotation per pair and annotator."
+  },
+  "app_annotate": {
+   "repo": "or",
+   "path": "owner_review/review/app.py",
+   "a": 87,
+   "b": 92,
+   "lang": "python",
+   "caption": "The human path applies the same gate on submit."
+  },
+  "run_agent": {
+   "repo": "or",
+   "path": "scripts/run_agent.py",
+   "a": 52,
+   "b": 65,
+   "lang": "python",
+   "caption": "The batch runner: one adjudication per pair, with an annotation and a meta record."
+  }
+ },
+ "nodes": {
+  "pair": {
+   "kind": "io",
+   "title": "Blinded pair",
+   "ref": "review/queue.py · schema/review_queue.schema.json",
+   "lede": "Two landlord sides, A and B, each a name plus the building lots (BBLs) attributed to it, handed over with no grouping or label attached.",
+   "what": [
+    "One queue line holds the pair id and, for each side, a reference, a name and its BBLs.",
+    "The loader raises an error for any line that carries stratum, signal, watchline, wow, decision, label or anchor. The tool cannot see which system produced a pair.",
+    "The agent gets no prior grouping either. Its codebook says to judge only on the records provided."
+   ],
+   "tag": "Input",
+   "nums": [
+    [
+     "512",
+     "pairs in the queue"
+    ],
+    [
+     "P0214",
+     "A: MINDY SPOLAN, 1 building. B: MINDY SPOLAN, 1 building."
+    ]
+   ],
+   "code": [
+    "queue"
+   ]
+  },
+  "records": {
+   "kind": "io",
+   "title": "Primary records",
+   "ref": "records/*.py · agent/tools.py",
+   "lede": "ACRIS conveyances, HPD registrations, PLUTO and NYS DOS filings, read through a read-only connection.",
+   "what": [
+    "The connection is read-only and autocommit, with a statement timeout on the large name searches.",
+    "Primary records only. The tools never read the system's own inference tables (landlords_with_connections, CONNECTED_BY_* edges, owner groups), because using the system's output to adjudicate the system is circular.",
+    "ACRIS gives the deed chain with parties and amounts, HPD the owner contacts and managing agent, PLUTO the recorded owner and building class, DOS each LLC's principals and process address."
+   ],
+   "tag": "Input",
+   "code": [
+    "tools_list"
+   ]
+  },
+  "s1": {
+   "kind": "det",
+   "title": "1 · Dossier assembly",
+   "ref": "records/dossier.py",
+   "lede": "Pulls every primary record for each side's buildings and lays them out neutrally: no highlighting of a match, no conclusion.",
+   "what": [
+    "Per side: PLUTO building facts, the full deed chain newest first, and HPD contacts. DOS filings are looked up for every LLC name that appears.",
+    "DOS is the one slow lookup (about 5 seconds), so the web app loads it lazily. The agent loads it up front, so DOS principals can feed the shared-name overlap.",
+    "By contract the module never imports a matching heuristic from the producing pipeline."
+   ],
+   "nums": [
+    [
+     "1 + 1",
+     "buildings in P0214: 4033240050 on A, 4033240009 on B"
+    ]
+   ],
+   "code": [
+    "dossier_entity",
+    "dossier_dos",
+    "dossier_pair"
+   ]
+  },
+  "s2": {
+   "kind": "det",
+   "title": "2 · Fingerprint",
+   "ref": "records/fingerprint.py · fingerprint",
+   "lede": "Per-side rollups of who the owners of record, PLUTO owners, HPD principals, DOS principals and managing agents are, deduplicated, counted and role-tagged.",
+   "what": [
+    "The owner of record is the latest deed grantee that is not a bank or lender, so a foreclosure or mortgage deed on top does not read as the owner.",
+    "Names are classified against public lists: institutional (City, NYCHA, HDFC and similar), financier and bank. A match is greyed as noise, never excluded.",
+    "Each name's roles are recorded (head officer, corp owner, individual owner, joint owner, officer, shareholder, owner of record, PLUTO owner, DOS principal), with the business addresses it uses.",
+    "A side is a resident co-op or condo portfolio when at least half its buildings are marked that way in HPD contacts."
+   ],
+   "nums": [
+    [
+     "A",
+     "no deed grantee on record; PLUTO owner MJB HOLDING CORP"
+    ],
+    [
+     "B",
+     "owner of record and PLUTO owner AUDLEY STREET REALTY LLC"
+    ]
+   ],
+   "open": [
+    "SiteManager contacts are not used as principals, and a DOS name counts as a person only if it has two to four words and no corporate term.",
+    "A deed attached to the wrong lot by ACRIS (a conflation) would become a false owner of record. This is a known, deferred case (P0085)."
+   ],
+   "code": [
+    "fp_owner",
+    "fp_roles",
+    "fp_coop"
+   ]
+  },
+  "s3": {
+   "kind": "det",
+   "title": "3 · Overlap",
+   "ref": "records/fingerprint.py · overlap",
+   "lede": "The cross-side signals the codebook keys on: shared names, agents, addresses and deeds, with the noise already flagged.",
+   "what": [
+    "Shared names are exact after normalization, plus fuzzy person-name matches: reversed 'Last, First' order, and dropped middle names, initials or typos when a shared business address confirms the person.",
+    "Each shared name carries address_match: true (the address confirms one person), false (addresses differ, a namesake risk) or null (a side has no address).",
+    "Shared agents are kept apart because they are management. Shared deeds carry stale, nominal, mega, bank and financier flags, and the clean subset is the substantive deeds.",
+    "Role structure is computed: a shared head officer is an owner-operator link even at a busy office, disjoint head officers point to management, and a shared shareholder is a shared equity owner."
+   ],
+   "nums": [
+    [
+     "1",
+     "shared name: a head officer on both sides, sole on each, with different addresses (address_match false)"
+    ],
+    [
+     "1",
+     "shared managing agent: IMPERIAL CONSULTING GROUP"
+    ],
+    [
+     "0",
+     "shared addresses, and 0 shared deeds"
+    ]
+   ],
+   "open": [
+    "address_match compares business addresses. An owner who registers each building at its own address gets false by design, which own_building_addresses marks.",
+    "Shared agents match on normalized names only, so one firm spelled two ways goes unmatched."
+   ],
+   "code": [
+    "ov_names",
+    "ov_deeds",
+    "ov_roles"
+   ]
+  },
+  "s4": {
+   "kind": "det",
+   "title": "4 · Busy-office coverage",
+   "ref": "records/coverage.py",
+   "lede": "Quantifies each shared address and managing agent citywide, so a management hub is not read as a shared owner.",
+   "what": [
+    "For a shared business address: the distinct buildings and distinct head officers registered there. Five or more head officers marks it busy.",
+    "For a shared agent: the buildings it registers on, for context. An agent is busy by nature, so it is not itself flagged.",
+    "A shared name confirmed only at a busy address gets address_match_office_busy: the match is management co-occurrence, not a shared owner."
+   ],
+   "nums": [
+    [
+     "2",
+     "buildings IMPERIAL CONSULTING GROUP registers on, citywide (the two in this pair)"
+    ]
+   ],
+   "open": [
+    "Addresses are matched as strings, so one office written two ways counts as two addresses and the hub is under-counted."
+   ],
+   "code": [
+    "cov_const",
+    "cov_addr",
+    "cov_enrich"
+   ]
+  },
+  "s5": {
+   "kind": "io",
+   "title": "5 · The panel",
+   "ref": "agent/prompts.py · render_context",
+   "lede": "The neutral dossier plus the overlap, serialized into what a reviewer sees. The human reads it in the web app, and the agent reads the same structure.",
+   "what": [
+    "The context starts with a note explaining the overlap fields, then the overlap, then each side's records. Deeds are trimmed to the most recent six per building and BBLs to 40.",
+    "The renderer never emits a label, a score or a prior grouping.",
+    "Whatever the fingerprint drops is absent here, and a reviewer cannot weigh what the panel does not show."
+   ],
+   "code": [
+    "ctx_payload",
+    "ctx_side"
+   ]
+  },
+  "human": {
+   "kind": "io",
+   "title": "Human reviewer",
+   "ref": "review/app.py · review/store.py",
+   "lede": "A person reads the panel in a web app and submits an annotation: label, evidence tiers, the deed checks and a rationale.",
+   "what": [
+    "Annotations go to an append-only SQLite store. The latest row per pair and annotator wins at export.",
+    "The human's labels are the gold the agent is scored against. The agent is one more annotator, agent-sonnet-v1, in the same format and never merged into the gold.",
+    "The web app applies the same hard gate when a SAME is submitted."
+   ],
+   "nums": [
+    [
+     "265 / 245 / 2",
+     "human labels, SAME / DIFFERENT / INDETERMINATE, on 512 pairs"
+    ]
+   ],
+   "open": [
+    "The gold is one person's labels."
+   ],
+   "code": [
+    "app_annotate",
+    "store_latest"
+   ]
+  },
+  "s6": {
+   "kind": "ml",
+   "title": "6 · Adjudicate",
+   "ref": "agent/graph.py · assess · agent/prompts.py · agent/schema.py",
+   "lede": "One model call reads the panel and returns a structured Verdict: the label, the evidence tiers it rests on, grounded evidence items, and whether it is resolved.",
+   "what": [
+    "The system prompt is the reviewer codebook. A shared owner or principal is the deciding axis, a shared managing agent is management and not ownership, and a shared address counts only if the owners match.",
+    "Evidence tiers: T1 a deed, T2 a DOS filing, T3 a shared HPD principal, T4 an outside record from the web. A shared name alone or an address alone is not a tier.",
+    "Every claim is quoted as a record value with its source (panel, tool:name or web). The rationale only summarizes those items.",
+    "The verdict sets resolved and, when false, the evidence gap to fill."
+   ],
+   "nums": [
+    [
+     "SAME",
+     "P0214: tier T3, resolved on the first call"
+    ],
+    [
+     "5",
+     "grounded evidence items, all sourced from the panel"
+    ],
+    [
+     "9.9 s",
+     "for the call, with claude-sonnet-5"
+    ]
+   ],
+   "measured": [
+    "Against the human labels on all 512 pairs: 483 agree (94.3%). SAME recall 95.5% and precision 97.7%; DIFFERENT recall 93.5% and precision 96.2%. The agent returned INDETERMINATE 15 times, the human twice.",
+    "The baseline run of 2026-10-01 took about 100 minutes and about $16."
+   ],
+   "open": [
+    "The disagreements: 6 false SAMEs and 8 missed SAMEs, plus 14 cases where the agent held at INDETERMINATE and the human committed. The main families are a shared officer or agent at a hub read as ownership, a shared individual owner discounted as management, and namesake or spelling-variant resolution in both directions.",
+    "The codebook and signals were tuned on cases from this same queue (P0147, P0214, P0390 and others appear in the code's comments), so the agreement is not an out-of-sample estimate.",
+    "After the role-structure change, a 12-pair rerun of earlier errors matched the human on 9, against 8 for the baseline. P0212 and P0390 are still false SAMEs and P0363 is still missed."
+   ],
+   "code": [
+    "graph_budget",
+    "graph_assess",
+    "schema_verdict",
+    "prompt_tiers",
+    "prompt_rules"
+   ],
+   "widget": "p0214"
+  },
+  "s7": {
+   "kind": "ml",
+   "title": "7 · Escalate",
+   "ref": "agent/graph.py · gather · agent/tools.py",
+   "lede": "When the verdict is not resolved, the model calls curated tools to fill the named evidence gap, then returns to adjudication with what it found.",
+   "what": [
+    "Tools are primary-records only: the deed chain, HPD contacts and PLUTO facts for a BBL, DOS by entity, a party's other ACRIS deeds, the LLCs a person is a principal of, and web search (tier T4).",
+    "principal_crosscheck is bound to the pair and computes in code whether a person's footprint ties both sides, so the model does not infer it from raw rows.",
+    "At most 2 rounds. If a round makes no tool call, that is recorded and the verdict stands."
+   ],
+   "nums": [
+    [
+     "0",
+     "escalations on P0214: resolved on the first pass"
+    ]
+   ],
+   "measured": [
+    "28 of the 507 pairs that completed in the first baseline pass escalated."
+   ],
+   "open": [
+    "Some identity questions need data the tools cannot reach. DOS lookups cover active filings only, and a missing CEO is not evidence that two entities are unrelated (the tool's own note)."
+   ],
+   "code": [
+    "graph_route",
+    "graph_build",
+    "graph_gather",
+    "tools_cross"
+   ]
+  },
+  "s8": {
+   "kind": "det",
+   "title": "8 · Verify + hard gate",
+   "ref": "agent/verify.py · review/gate.py",
+   "lede": "Flag-only faithfulness checks, then one hard gate, then a schema-conformant annotation.",
+   "what": [
+    "verify_evidence checks every evidence value against the source it claims: panel values against the serialized dossier, tool and web values against what was gathered. A value is grounded when at least 80% of its significant tokens appear.",
+    "The hard gate downgrades a SAME that rests on a deed alone (tiers equal to T1) to INDETERMINATE unless all three deed checks hold.",
+    "Two structural flags can fire on a SAME, t3_not_address_confirmed and coop_condo_management. Flags never change the label.",
+    "The annotation matches the output schema exactly, and agent-only fields go to a sidecar meta record."
+   ],
+   "nums": [
+    [
+     "1",
+     "flag on P0214: t3_not_address_confirmed, advisory"
+    ],
+    [
+     "0",
+     "label changes by the gate"
+    ]
+   ],
+   "measured": [
+    "In the baseline run, the gate downgraded 5 deed-only calls to INDETERMINATE (P0037, P0074, P0112 and P0417 among them), which prevented false SAMEs but stopped short of DIFFERENT. The run raised 30 t3_not_address_confirmed flags and 1 coop_condo_management flag."
+   ],
+   "open": [
+    "The address flag is advisory on purpose. A hard gate there would downgrade real same-owner pairs such as P0214, whose per-building addresses differ.",
+    "49 panel-sourced values were flagged as not found. That check compares tokens, so treat a flag as a prompt to look, not proof of fabrication."
+   ],
+   "code": [
+    "verify_grounded",
+    "gate",
+    "verify_t3",
+    "verify_coop",
+    "verify_flags",
+    "finalize"
+   ],
+   "widget": "gate"
+  },
+  "outcome": {
+   "kind": "rem",
+   "title": "Annotation",
+   "ref": "review/store.py · schema/annotation.schema.json",
+   "lede": "One of three labels, scored against the human gold exactly like a human line, with agent-only fields kept in a sidecar.",
+   "what": [
+    "SAME, DIFFERENT or INDETERMINATE, plus the tiers, the deed checks on a SAME, a severe flag on a DIFFERENT, and the rationale.",
+    "INDETERMINATE is a first-class answer, used when the record cannot settle it.",
+    "The store is append-only, so a correction never erases the trail."
+   ],
+   "nums": [
+    [
+     "SAME",
+     "P0214: the agent and the human agree"
+    ]
+   ],
+   "measured": [
+    "Agent labels on 512 pairs: 259 SAME, 238 DIFFERENT, 15 INDETERMINATE."
+   ],
+   "open": [
+    "The two annotators can diverge, and the agent is judged against the human's reviewed labels."
+   ],
+   "code": [
+    "run_agent"
+   ]
+  },
+  "v-signals": {
+   "kind": "io",
+   "title": "Shared signals",
+   "ref": "records/fingerprint.py · overlap",
+   "lede": "Everything the two sides have in common, ranked by what it means for ownership.",
+   "what": [
+    "A shared owner or principal (an owner-role person, or a shared conveyance deed) is the deciding axis. A sole shared owner on both sides is strongest.",
+    "A shared managing agent is management. It points DIFFERENT and never by itself makes two landlords the same owner.",
+    "A shared business address is ownership evidence only if the owners also match. Alone it is a busy-office hint.",
+    "A shared name alone, or an address alone, is a hint and not a tier."
+   ],
+   "nums": [
+    [
+     "2",
+     "signals in the overlap for P0214: a shared head officer and a shared managing agent. A shared DOS process address shows up in the DOS filings."
+    ]
+   ],
+   "code": [
+    "ov_names"
+   ]
+  },
+  "v-discount": {
+   "kind": "det",
+   "title": "Discount the noise",
+   "ref": "fingerprint.py · coverage.py",
+   "lede": "Computed flags strip co-occurrence noise so only real same-owner evidence remains.",
+   "what": [
+    "Institutional and financier names (City, NYCHA, HDFC, banks) are shared because they touch everything.",
+    "A busy office (five or more head officers) links unrelated owners, and a shared name confirmed only there is flagged.",
+    "A co-op or condo officer is a board member or managing agent, which is management.",
+    "Stale (superseded), nominal, mega and bank deeds do not count as substantive bridges."
+   ],
+   "code": [
+    "ov_deeds",
+    "cov_enrich"
+   ]
+  },
+  "v-owner": {
+   "kind": "ml",
+   "title": "Substantive shared owner?",
+   "ref": "agent/prompts.py · decision rules",
+   "lede": "Is there a surviving shared owner of record, an address-confirmed principal, or a current co-conveyance deed?",
+   "what": [
+    "Yes on any of these: the same owning entity on both sides, a shared principal confirmed by a coinciding non-busy address, a DOS tie or a second co-appearing principal, or a substantive shared deed.",
+    "Same owner is not the same person: two partners, or two front LLCs one controller re-deeded a block into, are SAME.",
+    "A shared principal behind two different corporate owners is possible common control, so it is not evidence of distinctness. The model escalates or holds."
+   ],
+   "nums": [
+    [
+     "SAME",
+     "P0214: the address test failed, and the call rested on a sole shared head officer plus the managing agent, a shared DOS process address and the deed chain"
+    ]
+   ],
+   "code": [
+    "prompt_rules",
+    "prompt_tiers"
+   ],
+   "widget": "p0214"
+  },
+  "v-gate": {
+   "kind": "det",
+   "title": "Deed alone? Three checks",
+   "ref": "review/gate.py",
+   "lede": "A SAME resting on a lone deed is accepted only if all three deed checks hold. Otherwise it becomes INDETERMINATE.",
+   "what": [
+    "The checks: entity_identity (the linking party is the same entity, not a name collision), successor_reality (each successor is a single-purpose shell), restructuring_not_sale (a related-party transfer, not an arm's-length sale).",
+    "It applies only when the tiers equal T1. A SAME that also rests on a principal passes through.",
+    "It is the one place a label is changed mechanically. It is signal-agnostic and unit-tested."
+   ],
+   "measured": [
+    "5 deed-only calls were downgraded in the baseline run."
+   ],
+   "code": [
+    "gate",
+    "app_annotate"
+   ],
+   "widget": "gate"
+  },
+  "v-diff": {
+   "kind": "ml",
+   "title": "Positive distinctness?",
+   "ref": "agent/prompts.py · decision rules",
+   "lede": "DIFFERENT needs positive evidence of distinct owners, not merely that no link was found.",
+   "what": [
+    "Distinct grantees, distinct principals and no linking conveyance count. A shared managing agent, a busy-office address or a family office is management, which supports DIFFERENT once the owners themselves differ.",
+    "On a DIFFERENT, severe is true when conflating the sides would be a consequential mis-attribution, for example when one side has a large footprint.",
+    "Absence of a link on a PLUTO-only side is not distinctness. The model prefers INDETERMINATE."
+   ],
+   "code": [
+    "prompt_rules",
+    "schema_verdict"
+   ]
+  },
+  "v-escalate": {
+   "kind": "ml",
+   "title": "Could a lookup settle it?",
+   "ref": "agent/graph.py · _route_after_assess",
+   "lede": "An open call either escalates for the specific missing evidence or, if nothing more would help, holds at INDETERMINATE.",
+   "what": [
+    "Before resting on DIFFERENT, the model checks it is not absence of a link: a shared owner-role principal, a distinctive shared name or a shared non-busy office with no confirming deed or DOS filing is a gap to escalate.",
+    "The route is code: escalate while resolved is false and fewer than 2 rounds have run, otherwise finalize."
+   ],
+   "code": [
+    "graph_route",
+    "graph_gather"
+   ]
+  },
+  "v-same-out": {
+   "kind": "det",
+   "title": "SAME",
+   "ref": "schema · gate",
+   "lede": "The records show the same beneficial owner.",
+   "what": [
+    "It rests on a shared owner or principal, or a linking deed. A deed-only SAME has passed the three checks.",
+    "It carries the deed checks when it rests on T1."
+   ],
+   "tag": "Outcome",
+   "measured": [
+    "The agent's SAME calls matched the human label 253 times out of 259 (97.7%)."
+   ]
+  },
+  "v-indet-out": {
+   "kind": "io",
+   "title": "INDETERMINATE",
+   "ref": "codebook",
+   "lede": "The record cannot settle it. It is a first-class answer, not a cop-out.",
+   "what": [
+    "A PLUTO-only side, a lone address-unconfirmed principal, or an unresolved identity all land here.",
+    "It is also where a gated deed-only SAME ends up."
+   ],
+   "tag": "Outcome",
+   "measured": [
+    "The agent returned INDETERMINATE 15 times on 512 pairs, the human 2 times."
+   ],
+   "open": [
+    "The agent holds more often than the human commits. Ten of its holds were pairs the human called DIFFERENT."
+   ]
+  },
+  "v-diff-out": {
+   "kind": "rem",
+   "title": "DIFFERENT",
+   "ref": "codebook",
+   "lede": "The records show genuinely distinct owners.",
+   "what": [
+    "Positive distinctness, not absence of a link.",
+    "The severe flag marks consequential conflation."
+   ],
+   "tag": "Outcome",
+   "measured": [
+    "The agent's DIFFERENT calls matched the human label 229 times out of 238 (96.2%)."
+   ]
+  },
+  "v-flags": {
+   "kind": "warn",
+   "title": "Advisory flags",
+   "ref": "agent/verify.py",
+   "lede": "Faithfulness and risk flags surfaced for the reviewer. They annotate a call and never change its label.",
+   "what": [
+    "t3_not_address_confirmed: a SAME resting on a shared principal whose addresses do not coincide, with none confirmed (namesake risk).",
+    "coop_condo_management: a SAME resting only on an officer link between two resident co-op or condo portfolios.",
+    "unsupported panel, tool or web claim: an evidence value the verifier could not find in its cited source."
+   ],
+   "measured": [
+    "Baseline run: 30 t3_not_address_confirmed, 1 coop_condo_management, 49 unsupported panel claims."
+   ],
+   "open": [
+    "Flags are advisory by design. Gating the address flag would downgrade genuine same-owner pairs confirmed by other signals."
+   ],
+   "code": [
+    "verify_flags",
+    "verify_t3",
+    "verify_coop"
+   ]
+  }
+ }
+}

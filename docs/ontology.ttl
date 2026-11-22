@@ -1,0 +1,1013 @@
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:   <http://purl.org/dc/terms/> .
+@prefix onto:  <https://watchline.example/onto/> .
+
+# Watchline ontology (TBox). Graph-stored terms only; see ontology/ontology-notes.md.
+# Namespaces: concepts https://watchline.example/vocab/, elements https://watchline.example/onto/,
+# instances https://watchline.example/id/. Every element traces to concepts in ontology/concept-mapping.csv.
+
+<https://watchline.example/onto/watchline> a owl:Ontology ;
+    dct:title "Watchline ontology"@en ;
+    dct:description "Classes and properties for the WatchlineOP landlord research graph. Q1 covers tax lots, buildings and their source-reported characteristics. Q2 adds HPD registrations and their owner contacts. Q3 adds deeds, their grantees and the mailing addresses of grantees and owner contacts. Q4 adds the non-owner contacts HPD lists on a registration (managing agent, head officer, site manager and other roles). Q5 adds DOS entities. Q8 adds operational networks and landlord records. Q9 adds owner portfolios and the signals that join their landlord records. Q6 adds the two classifications of an address: a method's mask and the curated mail-drop list. Q7 adds documents and their parties, and two hub counts."@en .
+
+onto:question a owl:AnnotationProperty ;
+    rdfs:label "question"@en ;
+    rdfs:comment "Competency question or sub-question ID (for example Q1.2) that the element serves."@en .
+
+# --- Classes ---
+
+onto:TaxLot a owl:Class ;
+    rdfs:label "tax lot"@en ;
+    rdfs:comment "A parcel of land identified by its BBL, in the rental-market scope of the graph. Carries the lot-wide PLUTO values."@en ;
+    onto:question "Q1.1", "Q1.2", "Q1.4" ;
+    owl:disjointWith onto:Building .
+
+onto:Building a owl:Class ;
+    rdfs:label "building"@en ;
+    rdfs:comment "A structure identified by its BIN, as named in HPD registrations. Never carries a lot-wide value."@en ;
+    onto:question "Q1.2" .
+
+# --- Object property ---
+
+onto:hasBuilding a owl:ObjectProperty ;
+    rdfs:label "has building"@en ;
+    rdfs:comment "Links a tax lot to a building registered on it. Many to many: a lot can have several buildings and a BIN can appear on more than one lot."@en ;
+    onto:question "Q1.2" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range onto:Building .
+
+# --- Datatype properties on TaxLot ---
+
+onto:bbl a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "BBL"@en ;
+    rdfs:comment "The 10-character borough-block-lot identifier of a tax lot."@en ;
+    onto:question "Q1.1" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:string .
+
+onto:hpdRegistered a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "HPD registered"@en ;
+    rdfs:comment "True when HPD has at least one multiple-dwelling registration for the tax lot."@en ;
+    onto:question "Q1.1" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:boolean .
+
+onto:plutoBuildingCount a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "PLUTO building count"@en ;
+    rdfs:comment "The number of buildings PLUTO records on the tax lot. It is not the number of buildings HPD lists."@en ;
+    onto:question "Q1.2" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:integer .
+
+onto:yearBuilt a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "year built"@en ;
+    rdfs:comment "PLUTO's year built for the tax lot. Absent when PLUTO has none."@en ;
+    onto:question "Q1.4" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:integer .
+
+onto:buildingClass a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "building class"@en ;
+    rdfs:comment "PLUTO's building class code for the tax lot. Absent when blank."@en ;
+    onto:question "Q1.4" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:string .
+
+onto:residentialUnits a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "residential units"@en ;
+    rdfs:comment "PLUTO's count of residential units for the whole tax lot. Lot-wide: never attached to a building. 0 means PLUTO records none."@en ;
+    onto:question "Q1.4" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:integer .
+
+onto:assessedTotalValue a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "assessed total value"@en ;
+    rdfs:comment "PLUTO's total assessed value of the tax lot, in whole US dollars. 0 means PLUTO records none."@en ;
+    onto:question "Q1.4" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:integer .
+
+# --- Datatype property on Building ---
+
+onto:bin a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "BIN"@en ;
+    rdfs:comment "The 7-character Building Identification Number of a building."@en ;
+    onto:question "Q1.2" ;
+    rdfs:domain onto:Building ;
+    rdfs:range xsd:string .
+
+# --- Datatype property used on both classes ---
+
+onto:address a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "address"@en ;
+    rdfs:comment "A street address of a tax lot or of a building. Its domain is the union of both classes. Absent when tied source records name different addresses."@en ;
+    onto:question "Q1.1", "Q1.2" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:TaxLot onto:Building ) ] ;
+    rdfs:range xsd:string .
+
+# --- Q2 classes ---
+
+onto:Registration a owl:Class ;
+    rdfs:label "HPD registration"@en ;
+    rdfs:comment "A multiple-dwelling registration filed with HPD, identified by its registration id. One registration can cover several buildings, and a building can have several registrations. An HPD registrant is who registered, not proof of title."@en ;
+    onto:question "Q2.1", "Q2.2" ;
+    owl:disjointWith onto:Building, onto:Contact .
+
+onto:Contact a owl:Class ;
+    rdfs:label "contact"@en ;
+    rdfs:comment "A contact HPD records on one registration, of any of its nine types: the owner types (corporate, individual or joint owner) and the role types (managing agent, head officer, officer, shareholder, site manager, lessee). Holds the names, title and business address as HPD records them. Not the deed grantee, a process contact or proof of title."@en ;
+    onto:question "Q2.2", "Q4.1", "Q4.2" .
+
+# --- Q2 object properties ---
+
+onto:hasRegistration a owl:ObjectProperty ;
+    rdfs:label "has registration"@en ;
+    rdfs:comment "Links a building to an HPD registration that lists it. Many to many. The last registered date and registration end date belong to the building and registration pair; the graph stores them on the relationship."@en ;
+    onto:question "Q2.1" ;
+    rdfs:domain onto:Building ;
+    rdfs:range onto:Registration .
+
+onto:hasContact a owl:ObjectProperty ;
+    rdfs:label "has contact"@en ;
+    rdfs:comment "Links an HPD registration to a contact recorded on it. Contacts belong to the registration, not to one building."@en ;
+    onto:question "Q2.2", "Q4.1" ;
+    rdfs:domain onto:Registration ;
+    rdfs:range onto:Contact .
+
+# --- Q2 datatype properties ---
+
+onto:registrationId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "registration id"@en ;
+    rdfs:comment "HPD's identifier for a registration. It repeats across the buildings the registration covers."@en ;
+    onto:question "Q2.1" ;
+    rdfs:domain onto:Registration ;
+    rdfs:range xsd:integer .
+
+onto:lastRegistered a owl:DatatypeProperty ;
+    rdfs:label "last registered date"@en ;
+    rdfs:comment "The date a registration was last filed, as HPD records it for a building. In the graph it is a property of the has-registration relationship; the ontology puts it on the registration. Absent when HPD has no date or its rows disagree."@en ;
+    onto:question "Q2.1" ;
+    rdfs:domain onto:Registration ;
+    rdfs:range xsd:date .
+
+onto:registrationEnd a owl:DatatypeProperty ;
+    rdfs:label "registration end date"@en ;
+    rdfs:comment "The date a registration period ends, as HPD records it for a building. In the graph it is a property of the has-registration relationship; the ontology puts it on the registration. The source has no period start. Absent when its rows disagree."@en ;
+    onto:question "Q2.1" ;
+    rdfs:domain onto:Registration ;
+    rdfs:range xsd:date .
+
+onto:contactType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "contact type"@en ;
+    rdfs:comment "The type HPD gives a contact, stored as HPD spells it: CorporateOwner, IndividualOwner, JointOwner, Agent, HeadOfficer, Officer, Shareholder, SiteManager or Lessee. The type is the role; a title never changes it."@en ;
+    onto:question "Q2.2", "Q4.1" ;
+    rdfs:domain onto:Contact ;
+    rdfs:range xsd:string .
+
+onto:corporationName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "corporation name"@en ;
+    rdfs:comment "The corporation name HPD records for a contact, trimmed and exactly as recorded. Present on corporate owners, agents and lessees only; absent when blank."@en ;
+    onto:question "Q2.2", "Q4.1" ;
+    rdfs:domain onto:Contact ;
+    rdfs:range xsd:string .
+
+onto:personName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "person name"@en ;
+    rdfs:comment "The person name HPD records for a contact: first name, middle initial and last name joined by single spaces, as recorded. Absent when blank. Shown only with the role it was recorded in; never repeated outside the answer."@en ;
+    onto:question "Q2.2", "Q4.1" ;
+    rdfs:domain onto:Contact ;
+    rdfs:range xsd:string .
+
+# --- Q3 classes ---
+
+onto:Deed a owl:Class ;
+    rdfs:label "deed"@en ;
+    rdfs:comment "A recorded ACRIS document of one of eight deed types (DEED, DEED TS, DEED LE, DEED RC, DEEDO, DEEDP, CORRD, CONDEED), identified by its document id. It can name many tax lots. It records a transfer of title, not that a sale took place."@en ;
+    onto:question "Q3.1", "Q3.2" ;
+    owl:disjointWith onto:Registration .
+
+onto:Grantee a owl:Class ;
+    rdfs:label "grantee"@en ;
+    rdfs:comment "A party named on one deed as receiving title, with the name and address as that deed records them. Not an HPD contact; the two are compared at answer time, never merged."@en ;
+    onto:question "Q3.2" ;
+    owl:disjointWith onto:Contact .
+
+onto:Grantor a owl:Class ;
+    rdfs:label "grantor"@en ;
+    rdfs:comment "A party named on one deed as giving title, with the name and address as that deed records them. Not a prior owner of record, not an HPD contact and not a grantee; the same name on both sides of a deed is two nodes, compared at answer time, never merged."@en ;
+    onto:question "Q12.1", "Q12.3" ;
+    owl:disjointWith onto:Contact, onto:Grantee, onto:DosEntity, onto:DocumentParty .
+
+# --- Q3 object properties ---
+
+onto:hasDeed a owl:ObjectProperty ;
+    rdfs:label "has deed"@en ;
+    rdfs:comment "Links a tax lot to a deed recorded against it. Many to many: a deed can name several lots."@en ;
+    onto:question "Q3.1" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range onto:Deed .
+
+onto:hasGrantee a owl:ObjectProperty ;
+    rdfs:label "has grantee"@en ;
+    rdfs:comment "Links a deed to a grantee named on it. A deed can have several grantees, or none."@en ;
+    onto:question "Q3.2" ;
+    rdfs:domain onto:Deed ;
+    rdfs:range onto:Grantee .
+
+onto:hasGrantor a owl:ObjectProperty ;
+    rdfs:label "has grantor"@en ;
+    rdfs:comment "Links a deed to a grantor named on it. A deed can have several grantors, or none."@en ;
+    onto:question "Q12.1" ;
+    rdfs:domain onto:Deed ;
+    rdfs:range onto:Grantor .
+
+# --- Q3 datatype properties on Deed ---
+
+onto:documentId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "document id"@en ;
+    rdfs:comment "ACRIS's identifier for a recorded document."@en ;
+    onto:question "Q3.1", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Deed onto:Document ) ] ;
+    rdfs:range xsd:string .
+
+onto:documentType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "document type"@en ;
+    rdfs:comment "The ACRIS code for the kind of deed, as recorded from the current version of the document."@en ;
+    onto:question "Q3.1", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Deed onto:Document ) ] ;
+    rdfs:range xsd:string .
+
+onto:documentDate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "document date"@en ;
+    rdfs:comment "The date written on the deed, as ACRIS records it. Absent when ACRIS has none. Not used to find the most recent deed."@en ;
+    onto:question "Q3.1", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Deed onto:Document ) ] ;
+    rdfs:range xsd:date .
+
+onto:recordedDate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "recorded date"@en ;
+    rdfs:comment "The date the deed was recorded with the city register. The rule for the most recent deed."@en ;
+    onto:question "Q3.1", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Deed onto:Document ) ] ;
+    rdfs:range xsd:date .
+
+onto:documentAmount a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "document amount"@en ;
+    rdfs:comment "The dollar amount ACRIS records on the deed, in whole US dollars. 0 is common and is never read as a free sale."@en ;
+    onto:question "Q3.1", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Deed onto:Document ) ] ;
+    rdfs:range xsd:integer .
+
+# --- Q3 datatype property on Grantee ---
+
+onto:granteeName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "grantee name"@en ;
+    rdfs:comment "The name of a grantee exactly as the deed records it (trimmed). Never normalized in the graph. Absent when the party row has no name."@en ;
+    onto:question "Q3.2" ;
+    rdfs:domain onto:Grantee ;
+    rdfs:range xsd:string .
+
+# --- Q12 datatype property on Grantor ---
+
+onto:grantorName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "grantor name"@en ;
+    rdfs:comment "The name of a grantor exactly as the deed records it (trimmed). Never normalized in the graph. Absent when the party row has no name."@en ;
+    onto:question "Q12.1", "Q12.3" ;
+    rdfs:domain onto:Grantor ;
+    rdfs:range xsd:string .
+
+# --- Q3 datatype properties used on both Grantee and Contact ---
+
+onto:mailingAddress a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "mailing address"@en ;
+    rdfs:comment "The street line of the address a party gives: for a grantee or a document party the first address line on the document, for a contact the business house number and street name. Can hold a care-of line. Absent when blank, or for a contact when exact duplicate rows disagree (always absent for a site manager)."@en ;
+    onto:question "Q3.2", "Q3.5", "Q4.2", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Grantee onto:Grantor onto:Contact onto:DocumentParty ) ] ;
+    rdfs:range xsd:string .
+
+onto:addressLineTwo a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "address line two"@en ;
+    rdfs:comment "The second address line a party gives (a unit, suite, floor or another street line), as recorded. Reported apart and never compared. Absent when blank."@en ;
+    onto:question "Q3.2", "Q3.5", "Q4.2", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Grantee onto:Grantor onto:Contact onto:DocumentParty ) ] ;
+    rdfs:range xsd:string .
+
+onto:zipCode a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "ZIP code"@en ;
+    rdfs:comment "The ZIP code of the mailing address a party gives, as recorded (five digits, nine digits or non-US text). Absent when blank."@en ;
+    onto:question "Q3.2", "Q3.5", "Q4.2", "Q7.3" ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( onto:Grantee onto:Grantor onto:Contact onto:DocumentParty ) ] ;
+    rdfs:range xsd:string .
+
+# --- Q4 datatype property on Contact ---
+
+onto:contactTitle a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "contact title"@en ;
+    rdfs:comment "The title HPD records for a contact (for example PRESIDENT), trimmed and never normalized. Absent when blank. It does not change the contact's type."@en ;
+    onto:question "Q4.1" ;
+    rdfs:domain onto:Contact ;
+    rdfs:range xsd:string .
+
+
+# --- Q5 class ---
+
+onto:DosEntity a owl:Class ;
+    rdfs:label "DOS entity"@en ;
+    rdfs:comment "A record in the NY Department of State active-entity dataset: one filed business entity, identified by its DOS id. Present in the graph only when its name matches an owner or grantee name. Not an HPD contact or a deed grantee, and a name match is a lead, never identity."@en ;
+    onto:question "Q5.1", "Q5.2", "Q5.3" ;
+    owl:disjointWith onto:Contact, onto:Grantee .
+
+# --- Q5 datatype properties on DosEntity ---
+
+onto:dosId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS id"@en ;
+    rdfs:comment "The Department of State's identifier for a filed entity, unique in the dataset. Identifies the filing, not a person."@en ;
+    onto:question "Q5.1" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:integer .
+
+onto:dosEntityName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS entity name"@en ;
+    rdfs:comment "The current entity name exactly as the Department of State records it (trimmed; periods, commas and apostrophes kept). Never normalized in the graph; the comparison with an owner or grantee name is computed at answer time."@en ;
+    onto:question "Q5.1" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:entityType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "entity type"@en ;
+    rdfs:comment "The kind of entity in the Department's own wording (for example DOMESTIC LIMITED LIABILITY COMPANY). Not a controlled list here; it does not say whether the entity holds one property."@en ;
+    onto:question "Q5.1" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:jurisdiction a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "jurisdiction"@en ;
+    rdfs:comment "The place of formation the Department records, as written. Absent when blank."@en ;
+    onto:question "Q5.1" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:initialFilingDate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "initial filing date"@en ;
+    rdfs:comment "The date the entity was first filed with the Department of State. Not a later amendment and not any property purchase."@en ;
+    onto:question "Q5.1" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:date .
+
+onto:processName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS process name"@en ;
+    rdfs:comment "The name to which the Department forwards legal papers, as recorded. The statutory defaults THE COMPANY and THE LIMITED LIABILITY COMPANY are kept. Where service goes, not who runs the entity. Absent when blank."@en ;
+    onto:question "Q5.2" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:processAddress a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS process address"@en ;
+    rdfs:comment "The street line of the address to which the Department forwards legal papers, as recorded. Absent when blank."@en ;
+    onto:question "Q5.2" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:processAddressLineTwo a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS process address"@en ;
+    rdfs:comment "The second line of the process address (unit, suite, floor), as recorded. Reported apart, never compared. Absent when blank."@en ;
+    onto:question "Q5.2" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:processCity a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS process address"@en ;
+    rdfs:comment "The city of the process address, as recorded. Absent when blank."@en ;
+    onto:question "Q5.2" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:processState a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS process address"@en ;
+    rdfs:comment "The state of the process address, as recorded (not forced to two-letter codes). Absent when blank."@en ;
+    onto:question "Q5.2" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:processZip a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "DOS process address"@en ;
+    rdfs:comment "The ZIP of the process address, as recorded, not normalized. Absent when blank."@en ;
+    onto:question "Q5.2" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:registeredAgentName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "registered agent name"@en ;
+    rdfs:comment "The registered agent the entity lists, as recorded. Can be a commercial service company; absent means none is listed and none is inferred."@en ;
+    onto:question "Q5.3" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:registeredAgentAddress a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "registered agent address"@en ;
+    rdfs:comment "The street line of the registered agent's address, as recorded. Shared by every client of a commercial agent. Absent when blank."@en ;
+    onto:question "Q5.3" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:registeredAgentAddressLineTwo a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "registered agent address"@en ;
+    rdfs:comment "The second line of the registered agent's address, as recorded. Reported apart. Absent when blank."@en ;
+    onto:question "Q5.3" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:registeredAgentCity a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "registered agent address"@en ;
+    rdfs:comment "The city of the registered agent's address, as recorded. Absent when blank."@en ;
+    onto:question "Q5.3" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:registeredAgentState a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "registered agent address"@en ;
+    rdfs:comment "The state of the registered agent's address, as recorded. Can be present when no agent name is. Absent when blank."@en ;
+    onto:question "Q5.3" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+onto:registeredAgentZip a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "registered agent address"@en ;
+    rdfs:comment "The ZIP of the registered agent's address, as recorded, not normalized. Absent when blank."@en ;
+    onto:question "Q5.3" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:string .
+
+# --- Q8 classes ---
+
+onto:OperationalNetwork a owl:Class ;
+    rdfs:label "operational network"@en ;
+    rdfs:comment "A group of rental lots that connect through registration infrastructure in one pipeline run, as a whole connected component or a Louvain community. A derived grouping and a lead, never a finding of common ownership; its id is run-local. Not a lot, a landlord record or an owner."@en ;
+    onto:question "Q8.1", "Q8.2" ;
+    owl:disjointWith onto:TaxLot, onto:Landlord .
+
+onto:Landlord a owl:Class ;
+    rdfs:label "landlord"@en ;
+    rdfs:comment "A Who Owns What landlord record: one distinct contact kind, name and business address as filed with HPD, with the lots where it appears. Not a verified person or owner, and not an HPD contact itself. One person can have several records."@en ;
+    onto:question "Q8.3", "Q9.3" ;
+    owl:disjointWith onto:TaxLot, onto:Contact .
+
+# --- Q8 object properties ---
+
+onto:inNetwork a owl:ObjectProperty ;
+    rdfs:label "in network"@en ;
+    rdfs:comment "Links a tax lot to the operational network it belongs to in the selected run. A lot has at most one; a lot with none is in no network and may carry a network absence."@en ;
+    onto:question "Q8.1", "Q8.2" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range onto:OperationalNetwork .
+
+onto:covers a owl:ObjectProperty ;
+    rdfs:label "covers"@en ;
+    rdfs:comment "Links a landlord record to a tax lot where it appears, through the HPD registration the pipeline used for that lot (graph: COVERS with registrationId). A record link, not proof of ownership."@en ;
+    onto:question "Q8.3" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range onto:TaxLot .
+
+onto:basedOnContact a owl:ObjectProperty ;
+    rdfs:label "based on contact"@en ;
+    rdfs:comment "Links a landlord record to an HPD contact Who Owns What selected to stand for it: on the registration of one of its selected observations, with that observation's type and names (graph: BASED_ON_CONTACT). The record the pipeline used, not a finding that the landlord is the owner or that the contact is the landlord."@en ;
+    onto:question "Q8.3" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range onto:Contact .
+
+onto:connectedByName a owl:ObjectProperty ;
+    rdfs:label "connected by name"@en ;
+    rdfs:comment "Links two landlord records whose names the fuzzy match judged alike (graph: CONNECTED_BY_NAME). A network link only. The direction is the order of the two record ids and carries no meaning. A lead, not a finding of common ownership."@en ;
+    onto:question "Q8.3" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range onto:Landlord .
+
+onto:connectedByAddress a owl:ObjectProperty ;
+    rdfs:label "connected by address"@en ;
+    rdfs:comment "Links two landlord records that share a business address in the address match (graph: CONNECTED_BY_ADDRESS). A network link only. Links at a masked address are not stored. A lead, not a finding of common ownership."@en ;
+    onto:question "Q8.3" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range onto:Landlord .
+
+onto:connectedByIdentity a owl:ObjectProperty ;
+    rdfs:label "connected by identity"@en ;
+    rdfs:comment "Links two landlord records judged to be one party: a resolved identity cluster, a curated owner or a registered-company entity (graph: CONNECTED_BY_IDENTITY). Serves both the operational network and the owner portfolio. Evidence the method counted, not a finding of ownership."@en ;
+    onto:question "Q8.3", "Q9.3" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range onto:Landlord .
+
+# --- Q8 datatype properties ---
+
+onto:groupId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "network id"@en ;
+    rdfs:comment "The identifier of an operational network within the selected run, such as ON-98617. Run-local: the same id in another run can mean a different group."@en ;
+    onto:question "Q8.1" ;
+    rdfs:domain onto:OperationalNetwork ;
+    rdfs:range xsd:string .
+
+onto:networkSplit a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "network split"@en ;
+    rdfs:comment "How the network was formed, stored as BOR spells it: wcc (a whole connected component) or louvain (a community cut from a component of more than 300 lots)."@en ;
+    onto:question "Q8.1" ;
+    rdfs:domain onto:OperationalNetwork ;
+    rdfs:range xsd:string .
+
+onto:networkAbsence a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "network absence"@en ;
+    rdfs:comment "The top-level reason a rental lot is in no operational network, stored as BOR spells it. Absent when the lot is in a network or BOR has no status row for it. Not a finding that the lot has no common operator."@en ;
+    onto:question "Q8.4" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:string .
+
+onto:networkAbsenceDetail a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "network absence detail"@en ;
+    rdfs:comment "The specific reason code behind the lot's network absence, stored as BOR spells it. Each code belongs to exactly one top-level reason."@en ;
+    onto:question "Q8.4" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:string .
+
+onto:linkWeight a owl:DatatypeProperty ;
+    rdfs:label "link weight"@en ;
+    rdfs:comment "The strength the operational network gave a link: 1.5 times the name match, 1.0 times the address match, 100 for an identity link. A method score, not a probability. A property of the link; OWL cannot attach it to the relationship, so no domain is declared."@en ;
+    onto:question "Q8.3" ;
+    rdfs:range xsd:double .
+
+# --- Q9 classes ---
+
+onto:OwnerPortfolio a owl:Class ;
+    rdfs:label "owner portfolio"@en ;
+    rdfs:comment "A group of rental lots that the pipeline attributes to one apparent owner in one run, from ownership signals: resolved identities, registered-company matches, curated owner lists and deeds. A derived attribution and a lead, never a finding of legal ownership; its id is run-local. Not a lot, a landlord record or an operational network."@en ;
+    onto:question "Q9.1", "Q9.2", "Q9.4" ;
+    owl:disjointWith onto:TaxLot, onto:Landlord, onto:OperationalNetwork .
+
+# --- Q9 object properties ---
+
+onto:inPortfolio a owl:ObjectProperty ;
+    rdfs:label "in portfolio"@en ;
+    rdfs:comment "Links a rental lot to the owner portfolio it belongs to in the selected run. A lot has at most one; a lot with none is in no portfolio and may carry a portfolio absence. A co-op or condo lot outside a portfolio's footprint has no link."@en ;
+    onto:question "Q9.1", "Q9.2", "Q9.4" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range onto:OwnerPortfolio .
+
+onto:connectedByDeed a owl:ObjectProperty ;
+    rdfs:label "connected by deed"@en ;
+    rdfs:comment "Links two landlord records whose buildings one joint deed conveyed (graph: CONNECTED_BY_DEED). An owner portfolio link only. A deed shows ownership, not shared operation."@en ;
+    onto:question "Q9.3" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range onto:Landlord .
+
+# --- Q9 datatype properties ---
+
+onto:portfolioId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "portfolio id"@en ;
+    rdfs:comment "The identifier of an owner portfolio within the selected run, such as OP-98617. Run-local: the same id in another run can mean a different group, and it is not the id of the operational network with the same number."@en ;
+    onto:question "Q9.1" ;
+    rdfs:domain onto:OwnerPortfolio ;
+    rdfs:range xsd:string .
+
+onto:portfolioComposition a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "portfolio composition"@en ;
+    rdfs:comment "How the portfolio was built, stored as BOR spells it: identity (from identity signals), deed_only (from deeds alone) or deed_bridged (identity groups joined by a deed)."@en ;
+    onto:question "Q9.1" ;
+    rdfs:domain onto:OwnerPortfolio ;
+    rdfs:range xsd:string .
+
+onto:portfolioAbsence a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "portfolio absence"@en ;
+    rdfs:comment "The top-level reason a rental lot is in no owner portfolio, stored as BOR spells it. Absent when the lot is in a portfolio or BOR has no status row for it. Not a finding that the lot has a different owner."@en ;
+    onto:question "Q9.5" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:string .
+
+onto:portfolioAbsenceDetail a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "portfolio absence detail"@en ;
+    rdfs:comment "The specific reason code behind the lot's portfolio absence, stored as BOR spells it. Each code belongs to exactly one top-level reason."@en ;
+    onto:question "Q9.5" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range xsd:string .
+
+onto:ownershipSignal a owl:DatatypeProperty ;
+    rdfs:label "ownership signal"@en ;
+    rdfs:comment "The stage that joined two landlord records in a portfolio, stored as BOR spells it (identity.splink_base, identity.splink_feedback, identity.curated, identity.registered_llc, deed.held_since or deed.linked_successor). How two records were joined, not proof that they are one owner. A property of the link; OWL cannot attach it to the relationship, so no domain is declared (see name weight)."@en ;
+    onto:question "Q9.3" ;
+    rdfs:range xsd:string .
+
+# --- Q6 classes ---
+
+onto:NetworkMaskedAddress a owl:Class ;
+    rdfs:label "network masked address"@en ;
+    rdfs:comment "An address text that the Operational Network method masked as an aggregator address in one pipeline run, because more landlord records share it than the method's threshold. A method's decision, not a finding about the address or its users; its id is run-local and its text has no ZIP. Not a mail-drop address, a contact or a lot."@en ;
+    onto:question "Q6.2" ;
+    owl:disjointWith onto:MailDropAddress, onto:Contact .
+
+onto:PortfolioMaskedAddress a owl:Class ;
+    rdfs:label "portfolio masked address"@en ;
+    rdfs:comment "An address text at which the Owner Portfolio method gave identity address evidence no weight in one pipeline run, because more landlord records share it than the method's threshold. The release records the mask on identities, so the text is derived from the masked identities' own business addresses and has no ZIP. A method's decision, not a finding about the address or its users. Not a network masked address, a mail-drop address or a contact."@en ;
+    onto:question "Q6.3" ;
+    owl:disjointWith onto:NetworkMaskedAddress, onto:MailDropAddress, onto:Contact .
+
+onto:MailDropAddress a owl:Class ;
+    rdfs:label "mail-drop address"@en ;
+    rdfs:comment "An address on the project's curated list of mail-drop and registered-agent addresses, with a kind and a basis. A preliminary project classification, separate from any method's masking, and every entry is unreviewed. Not a network masked address or a contact."@en ;
+    onto:question "Q6.4" ;
+    owl:disjointWith onto:Contact .
+
+# --- Q6 datatype properties ---
+
+onto:maskedAddressId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "masked address id"@en ;
+    rdfs:comment "The identifier of a masked address within the selected run, such as A0000011. Run-local: the same id in another run can mean a different address."@en ;
+    onto:question "Q6.2" ;
+    rdfs:domain onto:NetworkMaskedAddress ;
+    rdfs:range xsd:string .
+
+onto:maskedAddressText a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "masked address text"@en ;
+    rdfs:comment "The address as the release writes it: uppercase, city and ZIP removed, floor and unit text kept (the HPD street line, a space, then the second line). One text can name several HPD addresses because it has no ZIP."@en ;
+    onto:question "Q6.2" ;
+    rdfs:domain onto:NetworkMaskedAddress ;
+    rdfs:range xsd:string .
+
+onto:maskedAddressDegree a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "masked address degree"@en ;
+    rdfs:comment "The number of landlord records (Who Owns What nodes) that share the masked address in the run, above the method's threshold of 25."@en ;
+    onto:question "Q6.2" ;
+    rdfs:domain onto:NetworkMaskedAddress ;
+    rdfs:range xsd:integer .
+
+onto:portfolioMaskedAddressText a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "portfolio masked address text"@en ;
+    rdfs:comment "The derived address of the masked identities as filed: house, street and apartment joined by single spaces, uppercase, no city or ZIP, floor and unit text kept. Derived by this project, not named by the release."@en ;
+    onto:question "Q6.3" ;
+    rdfs:domain onto:PortfolioMaskedAddress ;
+    rdfs:range xsd:string .
+
+onto:portfolioMaskedAddressDegree a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "portfolio masked address degree"@en ;
+    rdfs:comment "The release's address degree for the masked identities at the text, above the method's threshold of 25. One value per text; not the network method's degree."@en ;
+    onto:question "Q6.3" ;
+    rdfs:domain onto:PortfolioMaskedAddress ;
+    rdfs:range xsd:integer .
+
+onto:maskedIdentities a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "masked identities"@en ;
+    rdfs:comment "How many resolved identities with this address text the Owner Portfolio method masked. Counted in identities, not landlord records."@en ;
+    onto:question "Q6.3" ;
+    rdfs:domain onto:PortfolioMaskedAddress ;
+    rdfs:range xsd:integer .
+
+onto:mailDropAddressKey a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "mail-drop address key"@en ;
+    rdfs:comment "The listed address as the list spells it: uppercase street line, street types abbreviated, ordinals as 116TH, hyphens as spaces, no unit or floor. Not HPD's spelling, so a miss is not a clearance."@en ;
+    onto:question "Q6.4" ;
+    rdfs:domain onto:MailDropAddress ;
+    rdfs:range xsd:string .
+
+onto:zipFive a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "ZIP five"@en ;
+    rdfs:comment "The first five digits of the ZIP of a listed address. Absent for the one entry that matches any ZIP."@en ;
+    onto:question "Q6.4" ;
+    rdfs:domain onto:MailDropAddress ;
+    rdfs:range xsd:string .
+
+onto:mailDropKind a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "mail-drop kind"@en ;
+    rdfs:comment "The project's classification of a listed address, stored as the list spells it: registered_agent, law_firm, management_office or unknown. Describes the address, not the parties that use it."@en ;
+    onto:question "Q6.4" ;
+    rdfs:domain onto:MailDropAddress ;
+    rdfs:range xsd:string .
+
+onto:mailDropBasis a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "mail-drop basis"@en ;
+    rdfs:comment "The evidence the list's classification rests on, in the list's own words. Not normalized."@en ;
+    onto:question "Q6.4" ;
+    rdfs:domain onto:MailDropAddress ;
+    rdfs:range xsd:string .
+
+onto:listReviewStatus a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "list review status"@en ;
+    rdfs:comment "Whether a person has reviewed the list entry, stored as the list spells it. Every entry is unreviewed, so each is a lead."@en ;
+    onto:question "Q6.4" ;
+    rdfs:domain onto:MailDropAddress ;
+    rdfs:range xsd:string .
+
+# --- Link evidence and masked-address counts ---
+
+onto:evidenceType a owl:DatatypeProperty ;
+    rdfs:label "evidence type"@en ;
+    rdfs:comment "The kind of release record an identity or deed link cites, stored as BOR spells it: identity_cluster, link_set or evidence_item. A property of the link; no domain is declared (see link weight)."@en ;
+    onto:question "Q9.3" ;
+    rdfs:range xsd:string .
+
+onto:maskedEdges a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "masked address edges"@en ;
+    rdfs:comment "How many address links the pipeline offered between landlord records at this masked address and set aside. The links are not stored. An edge touching two masked addresses is counted at the one with the lower id."@en ;
+    onto:question "Q6.2" ;
+    rdfs:domain onto:NetworkMaskedAddress ;
+    rdfs:range xsd:nonNegativeInteger .
+
+# --- Landlord name, business addresses and group anchor ---
+
+onto:landlordName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "landlord name"@en ;
+    rdfs:comment "The name Who Owns What gives a landlord record, exactly as the release spells it. A label on a record the method built, not the legal name of an owner."@en ;
+    onto:question "Q8.3", "Q8.1", "Q9.1" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range xsd:string .
+
+onto:landlordBusinessAddress a owl:DatatypeProperty ;
+    rdfs:label "landlord business address"@en ;
+    rdfs:comment "A business address filed on an HPD contact that Who Owns What chose for the landlord record's lots, as filed (house, street, apartment, city, state, ZIP). A record can have several, mostly spelling variants; none is preferred."@en ;
+    onto:question "Q8.3" ;
+    rdfs:domain onto:Landlord ;
+    rdfs:range xsd:string .
+
+onto:anchoredBy a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "anchor landlord"@en ;
+    rdfs:comment "Links an operational network or an owner portfolio to its anchor: the member landlord record with the most lots, ties to the smallest record id. The group is shown under the anchor's name. A display rule, not the owner or controller; valid for the pinned release only (graph: ANCHORED_BY)."@en ;
+    onto:question "Q8.1", "Q9.1" ;
+    rdfs:range onto:Landlord .
+
+# --- Q7 classes ---
+
+onto:Document a owl:Class ;
+    rdfs:label "document"@en ;
+    rdfs:comment "A recorded ACRIS document, identified by its document id, loaded for one of three scopes: a deed-type or other document naming two or more distinct parties whose names equal HPD corporate-owner names (rule N3), a mortgage naming an HPD corporate owner, or a financing document (MTGE, ASST, SAT, AGMT, AL&R, TL&R, SAGE) recorded against a graph lot. Not a Deed: the two are separate nodes that share an id, and a document can be of a deed type. A financing document is a Document with its documentType; no subclass per type."@en ;
+    onto:question "Q7.3", "Q11.1", "Q13.1" ;
+    owl:disjointWith onto:Registration, onto:DocumentParty .
+
+onto:DocumentParty a owl:Class ;
+    rdfs:label "document party"@en ;
+    rdfs:comment "A party row recorded on one loaded document, whatever its role, with the name and address as the document records them. Not an HPD contact and not a grantee; a name match to either is a lead, never identity."@en ;
+    onto:question "Q7.3" ;
+    owl:disjointWith onto:Contact, onto:Grantee .
+
+# --- Q13 object property ---
+
+onto:hasFinancingDocument a owl:ObjectProperty ;
+    rdfs:label "has financing document"@en ;
+    rdfs:comment "Links a tax lot to a financing document (mortgage, assignment, satisfaction, termination or agreement) that names it in the ACRIS legals. A record link, many to many: a document can name several lots. It does not say which loan is outstanding (graph: HAS_FINANCING_DOCUMENT)."@en ;
+    onto:question "Q13.1", "Q13.3" ;
+    rdfs:domain onto:TaxLot ;
+    rdfs:range onto:Document .
+
+# --- Q7 object property ---
+
+onto:hasParty a owl:ObjectProperty ;
+    rdfs:label "has party"@en ;
+    rdfs:comment "Links a document to a party recorded on it. The party's role is a property of the link (partyRole)."@en ;
+    onto:question "Q7.3" ;
+    rdfs:domain onto:Document ;
+    rdfs:range onto:DocumentParty .
+
+# --- Q7 datatype properties ---
+
+onto:partyName a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "party name"@en ;
+    rdfs:comment "The name of a party exactly as the document records it (trimmed). Never normalized in the graph; a lookup key holds rule N3 of it. Absent when blank."@en ;
+    onto:question "Q7.3" ;
+    rdfs:domain onto:DocumentParty ;
+    rdfs:range xsd:string .
+
+onto:partyRole a owl:DatatypeProperty ;
+    rdfs:label "party role"@en ;
+    rdfs:comment "The recorded ACRIS party type of a party on a document: 1, 2 or 3. Its meaning depends on the document type. A property of the link between a document and a party; OWL cannot attach it to the relationship, so no domain is declared."@en ;
+    onto:question "Q7.3" ;
+    rdfs:range xsd:integer .
+
+onto:addressPartyCount a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "address party count"@en ;
+    rdfs:comment "Hub count: the distinct names with at least one letter, by rule N3, that ACRIS records at the same street line and first five ZIP characters, over all documents. Counts only names with at least one letter, so it can be 0. Absent when the party has no street line."@en ;
+    onto:question "Q7.3" ;
+    rdfs:domain onto:DocumentParty ;
+    rdfs:range xsd:integer .
+
+onto:addressDocumentCount a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "address document count"@en ;
+    rdfs:comment "Hub count: the distinct ACRIS documents that record a party at the same street line and first five ZIP characters, over all documents. Absent when the party has no street line."@en ;
+    onto:question "Q7.3" ;
+    rdfs:domain onto:DocumentParty ;
+    rdfs:range xsd:integer .
+
+onto:processAddressEntities a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "process address entity count"@en ;
+    rdfs:comment "Hub count: the distinct active DOS entities that list the same process street line and first five ZIP characters, over the whole DOS table. Fixed when loaded. Absent when the record has no process street line."@en ;
+    onto:question "Q7.2" ;
+    rdfs:domain onto:DosEntity ;
+    rdfs:range xsd:integer .
+
+# --- Q15 class, object property and datatype properties ---
+
+onto:Violation a owl:Class ;
+    rdfs:label "violation"@en ;
+    rdfs:comment "A condition HPD recorded as a violation of the housing maintenance code against a building (its BIN), with a class, a status and an inspection date. What an inspector cited, not a measure of conditions or of a landlord's conduct. Loaded only for HPD-registered lots and registered buildings; the apartment is not stored."@en ;
+    onto:question "Q15.1", "Q15.2" ;
+    owl:disjointWith onto:Building, onto:TaxLot .
+
+onto:hasViolation a owl:ObjectProperty ;
+    rdfs:label "has violation"@en ;
+    rdfs:comment "Links a building to a violation recorded against its BIN. A record link: violations belong to the building, not the lot (graph: HAS_VIOLATION)."@en ;
+    onto:question "Q15.1" ;
+    rdfs:domain onto:Building ;
+    rdfs:range onto:Violation .
+
+onto:violationId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "violation id"@en ;
+    rdfs:comment "HPD's identifier for a violation. Unique in the source; it identifies one violation, never a building or a lot."@en ;
+    onto:question "Q15.1" ;
+    rdfs:domain onto:Violation ;
+    rdfs:range xsd:integer .
+
+onto:violationClass a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "violation class"@en ;
+    rdfs:comment "The inspector's class at citation: A, B, C or I. Counted by class, never added into a severity score."@en ;
+    onto:question "Q15.1" ;
+    rdfs:domain onto:Violation ;
+    rdfs:range xsd:string .
+
+onto:violationStatus a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "violation status"@en ;
+    rdfs:comment "Whether HPD records the violation as Open or Close (closed or dismissed) at the snapshot date. Finer status is not stored (graph: Violation.status)."@en ;
+    onto:question "Q15.1", "Q15.2" ;
+    rdfs:domain onto:Violation ;
+    rdfs:range xsd:string .
+
+onto:inspectionDate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "inspection date"@en ;
+    rdfs:comment "The date HPD's inspector recorded the condition behind the violation. Not the notice or entry date."@en ;
+    onto:question "Q15.1" ;
+    rdfs:domain onto:Violation ;
+    rdfs:range xsd:date .
+
+onto:orderNumber a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "order number"@en ;
+    rdfs:comment "The number of the Housing Maintenance Code order a violation cites, kept as text as HPD records it. The meaning of a code is not in the data: the pest codes are listed in data/hpd_pest_orders.yaml and the pest kind is read from that list at answer time, never stored."@en ;
+    onto:question "Q15.3" ;
+    rdfs:domain onto:Violation ;
+    rdfs:range xsd:string .
+
+# --- Q27 class, object property and datatype properties ---
+
+onto:Problem a owl:Class ;
+    rdfs:label "complaint problem"@en ;
+    rdfs:comment "One problem a tenant reported to HPD in a complaint, with a type, a major category, a status and a received date. A record of what was reported, not of what was found or cited. Loaded only since 2021-01-01 and only for HPD-registered lots and registered buildings; the apartment, anonymity and coordinates are not stored."@en ;
+    onto:question "Q27.1", "Q27.2" ;
+    owl:disjointWith onto:Building, onto:TaxLot, onto:Violation .
+
+onto:hasProblem a owl:ObjectProperty ;
+    rdfs:label "has problem"@en ;
+    rdfs:comment "Links a building to a complaint problem recorded against its BIN. A record link: problems belong to the building, not the lot (graph: HAS_PROBLEM)."@en ;
+    onto:question "Q27.1" ;
+    rdfs:domain onto:Building ;
+    rdfs:range onto:Problem .
+
+onto:problemId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "problem id"@en ;
+    rdfs:comment "HPD's identifier for a complaint problem. Unique in the source; it identifies one problem, never a complaint, a building or an apartment."@en ;
+    onto:question "Q27.1" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:integer .
+
+onto:complaintId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "complaint id"@en ;
+    rdfs:comment "HPD's identifier for the complaint a problem belongs to. Shared by the problems of one complaint, so distinct complaint ids are fewer than problems."@en ;
+    onto:question "Q27.1" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:integer .
+
+onto:problemType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "problem type"@en ;
+    rdfs:comment "HPD's urgency type of a problem as recorded: EMERGENCY, IMMEDIATE EMERGENCY, NON EMERGENCY, and rarely HAZARDOUS or REFERRAL. Counted by type, never added into a severity score."@en ;
+    onto:question "Q27.1" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:string .
+
+onto:majorCategory a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "major category"@en ;
+    rdfs:comment "HPD's main category of a problem as recorded, such as HEAT/HOT WATER or PLUMBING. The minor category and problem code are stored too (minorCategory, problemCode)."@en ;
+    onto:question "Q27.1" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:string .
+
+onto:minorCategory a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "minor category"@en ;
+    rdfs:comment "HPD's finer category of a problem within its major category as recorded, such as PESTS under UNSANITARY CONDITION. Read with the major category: a minor category can sit under two majors (CABINET, RADIATOR)."@en ;
+    onto:question "Q27.3" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:string .
+
+onto:problemCode a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "problem code"@en ;
+    rdfs:comment "HPD's code for the specific problem within a minor category as recorded, such as MICE, ROACHES or BED BUGS under PESTS. OTHER is a catch-all that appears under many minor categories and never means mice. The pest is read from this code and the minor category at answer time, never stored separately."@en ;
+    onto:question "Q27.3" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:string .
+
+onto:problemStatus a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "problem status"@en ;
+    rdfs:comment "Whether HPD records the problem as OPEN or CLOSE at the snapshot date. The complaint's own status is not stored (graph: Problem.status)."@en ;
+    onto:question "Q27.1" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:string .
+
+onto:receivedDate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "received date"@en ;
+    rdfs:comment "The date HPD received the complaint a problem belongs to. Not an inspection, citation or closure date; periods are measured on it."@en ;
+    onto:question "Q27.1", "Q27.2" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:date .
+
+onto:duplicateFlag a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "duplicate flag"@en ;
+    rdfs:comment "HPD's flag marking a problem as a duplicate of another report, kept as recorded and counted apart, never removed (graph: Problem.duplicate)."@en ;
+    onto:question "Q27.1" ;
+    rdfs:domain onto:Problem ;
+    rdfs:range xsd:boolean .
+
+# --- Q28 class, object property and datatype properties ---
+
+onto:Litigation a owl:Class ;
+    rdfs:label "litigation case"@en ;
+    rdfs:comment "An action HPD brought in Housing Court against a building's respondent, with a type, an open date, a status, an open judgement and, where made, a harassment finding and a penalty. An action brought, not a finding of fault. Loaded only for HPD-registered lots and registered buildings; the address, coordinates and judgement amount are not stored."@en ;
+    onto:question "Q28.1", "Q28.2" ;
+    owl:disjointWith onto:Building, onto:TaxLot, onto:Violation, onto:Problem .
+
+onto:hasLitigation a owl:ObjectProperty ;
+    rdfs:label "has litigation case"@en ;
+    rdfs:comment "Links a building to a litigation case recorded against its BIN. A record link: cases belong to the building, not the lot or an owner (graph: HAS_LITIGATION)."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Building ;
+    rdfs:range onto:Litigation .
+
+onto:litigationId a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "litigation id"@en ;
+    rdfs:comment "HPD's identifier for a litigation case. Unique in the source; it identifies one case, never a building or an owner."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:integer .
+
+onto:caseType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "case type"@en ;
+    rdfs:comment "HPD's category of the case, as spelled in the source (for example Tenant Action or Heat and Hot Water). It names the kind of action and does not say a harassment finding was made."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:string .
+
+onto:caseOpenDate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "case open date"@en ;
+    rdfs:comment "The date HPD records the case as opened. Absent when none is recorded; a date that cannot be right is kept as recorded and reported, never corrected."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:date .
+
+onto:caseStatus a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "case status"@en ;
+    rdfs:comment "HPD's free-text status of the case at the snapshot date (for example CLOSED or PENDING). Not normalised."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:string .
+
+onto:openJudgement a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "open judgement"@en ;
+    rdfs:comment "Whether HPD records a judgement in the case as open: YES or NO. The amount is not recorded."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:string .
+
+onto:harassmentFinding a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "harassment finding"@en ;
+    rdfs:comment "The recorded harassment outcome of the case: After Inquest or After Trial is a finding; No Harassment is an outcome that is not a finding. Absent when none is recorded."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:string .
+
+onto:findingDate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "finding date"@en ;
+    rdfs:comment "The date HPD records for a harassment finding. Absent when none is recorded."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:date .
+
+onto:penalty a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "case penalty"@en ;
+    rdfs:comment "The penalty in whole dollars HPD records on the case. Absent when none is recorded; 0 is a recorded zero."@en ;
+    onto:question "Q28.1" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:integer .
+
+onto:respondent a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "respondent"@en ;
+    rdfs:comment "The party or parties HPD names in the case, as one recorded comma-joined string. Roles are not recorded: a respondent can be an owner, an agent or an individual."@en ;
+    onto:question "Q28.1", "Q28.2" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:string .
+
+onto:respondentKeys a owl:DatatypeProperty ;
+    rdfs:label "respondent"@en ;
+    rdfs:comment "The N3 key of each comma-separated part of the respondent, kept for matching to registered owner names. A lead, never a finding of identity. Several per case; absent when there is none."@en ;
+    onto:question "Q28.2" ;
+    rdfs:domain onto:Litigation ;
+    rdfs:range xsd:string .

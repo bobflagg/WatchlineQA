@@ -1,0 +1,4151 @@
+{
+ "title": "Beneficial Owner Resolution",
+ "eyebrow": "Working map \u00b7 nyc-beneficial-owner-resolution \u00b7 contract 0.2.1",
+ "heading": "Beneficial owner resolution pipeline",
+ "intro": "How HPD landlord nodes become Owner Portfolios, and what a release records at each step. Identity edges (a resolved name-and-address match, a curated list, the same registered LLC) and deed edges (the name-free ACRIS veil-pierce) are pooled into connected components, then checked for co-op and condo artifacts. Select any box for what it does, the Citadel example, and what is measured or still open. The Release evidence tab on each box says which tables of a release hold the evidence and shows real rows from it, with the names of the people, companies and lots the ids stand for (contract 0.2.0 and 0.2.1); the third view maps the release as a whole. Every grouping is an inference to verify, not a legal determination of ownership.",
+ "labels": {
+  "nums": "Citadel example"
+ },
+ "repos": {
+  "bor": {
+   "path": "~/Learning/Sabbatical/beneficial-ownership-resolution",
+   "sha": "e6839fe",
+   "slug": "bobflagg/nyc-beneficial-owner-resolution",
+   "label": "bor v0.2.1"
+  },
+  "nlr": {
+   "path": "~/Learning/Sabbatical/nyc-landlord-resolution",
+   "sha": "6a9b1a1",
+   "slug": "bobflagg/nyc-landlord-resolution",
+   "label": "nlr v0.2.0"
+  }
+ },
+ "default_node": "succ",
+ "legend_extra": [],
+ "views": [
+  {
+   "id": "pipe",
+   "label": "Pipeline",
+   "layout": "manual",
+   "width": 680,
+   "height": 730,
+   "default_node": "succ",
+   "title": "Pipeline overview",
+   "desc": "Public records become landlord nodes. Identity edges and deed edges are built separately, the deed edges through a held-since rule, a linked-successor guard and a hub cap. The edges are pooled into connected components, classified by composition, filtered for co-ops and condos, and returned as Owner Portfolios.",
+   "nodes": [
+    {
+     "id": "input",
+     "kind": "io",
+     "x": 170,
+     "y": 24,
+     "w": 340,
+     "h": 52,
+     "title": "Public records",
+     "sub": "HPD registrations \u00b7 ACRIS deeds \u00b7 PLUTO"
+    },
+    {
+     "id": "lwc",
+     "kind": "det",
+     "x": 170,
+     "y": 98,
+     "w": 340,
+     "h": 52,
+     "title": "1 \u00b7 Landlord nodes",
+     "sub": "one node per landlord contact + its buildings"
+    },
+    {
+     "id": "ident",
+     "kind": "ml",
+     "x": 16,
+     "y": 190,
+     "w": 296,
+     "h": 64,
+     "title": "2 \u00b7 Identity edges",
+     "lines": [
+      "name + address match, curated owners,",
+      "and the same registered LLC"
+     ]
+    },
+    {
+     "id": "held",
+     "kind": "det",
+     "x": 352,
+     "y": 190,
+     "w": 296,
+     "h": 52,
+     "title": "3 \u00b7 Deeds held since",
+     "sub": "joint deed is each building's latest"
+    },
+    {
+     "id": "succ",
+     "kind": "warn",
+     "x": 352,
+     "y": 264,
+     "w": 296,
+     "h": 52,
+     "title": "4 \u00b7 Linked-successor guard",
+     "sub": "recovers $0 re-deeds into shell LLCs"
+    },
+    {
+     "id": "hub",
+     "kind": "det",
+     "x": 352,
+     "y": 338,
+     "w": 296,
+     "h": 52,
+     "title": "5 \u00b7 Deed hub cap",
+     "sub": "serial co-investors are masked"
+    },
+    {
+     "id": "union",
+     "kind": "det",
+     "x": 150,
+     "y": 432,
+     "w": 380,
+     "h": 52,
+     "title": "6 \u00b7 Union",
+     "sub": "identity + deed edges \u2192 connected components"
+    },
+    {
+     "id": "comp",
+     "kind": "det",
+     "x": 150,
+     "y": 506,
+     "w": 380,
+     "h": 52,
+     "title": "7 \u00b7 Classify composition",
+     "sub": "identity \u00b7 deed_only \u00b7 deed_bridged"
+    },
+    {
+     "id": "coop",
+     "kind": "det",
+     "x": 150,
+     "y": 580,
+     "w": 380,
+     "h": 52,
+     "title": "8 \u00b7 Co-op and condo exclusion",
+     "sub": "drop groups that are mostly co-ops or condos"
+    },
+    {
+     "id": "groups",
+     "kind": "rem",
+     "x": 150,
+     "y": 654,
+     "w": 380,
+     "h": 56,
+     "title": "Owner Portfolios",
+     "sub": "OP-<min nodeid> \u00b7 composition \u00b7 rental building count"
+    }
+   ],
+   "edges": [
+    {
+     "from": "input",
+     "to": "lwc"
+    },
+    {
+     "d": "M340 150 L340 170 L164 170 L164 188"
+    },
+    {
+     "d": "M340 170 L500 170 L500 188"
+    },
+    {
+     "d": "M648 216 L664 216 L664 364 L650 364"
+    },
+    {
+     "d": "M648 290 L664 290",
+     "arrow": false
+    },
+    {
+     "d": "M164 254 L164 408 L250 408 L250 430"
+    },
+    {
+     "d": "M500 390 L500 408 L430 408 L430 430"
+    },
+    {
+     "from": "union",
+     "to": "comp"
+    },
+    {
+     "from": "comp",
+     "to": "coop"
+    },
+    {
+     "from": "coop",
+     "to": "groups"
+    }
+   ]
+  },
+  {
+   "id": "deed",
+   "label": "Deed link decision",
+   "layout": "manual",
+   "width": 680,
+   "height": 560,
+   "default_node": "d-nominal",
+   "title": "Deed link decision for two buildings",
+   "desc": "Two buildings on one joint deed are linked when the deed is private and bundle-sized and is still each building's latest deed. Otherwise a linked-successor test applies: the latest deed's grantor is the joint grantee, the successor owns three buildings or fewer, and the onward deed is at most one hundred dollars. Anything else is not linked.",
+   "nodes": [
+    {
+     "id": "d-start",
+     "kind": "io",
+     "x": 40,
+     "y": 24,
+     "w": 300,
+     "h": 50,
+     "title": "Two buildings, one joint deed",
+     "sub": "ACRIS deed \u00b7 2 to 25 lots"
+    },
+    {
+     "id": "d-scope",
+     "kind": "det",
+     "x": 40,
+     "y": 98,
+     "w": 300,
+     "h": 50,
+     "title": "Private grantee, not mostly co-ops?",
+     "sub": "scope filters on the joint deed"
+    },
+    {
+     "id": "d-none",
+     "kind": "io",
+     "x": 400,
+     "y": 98,
+     "w": 240,
+     "h": 50,
+     "title": "No deed link",
+     "sub": "filtered out"
+    },
+    {
+     "id": "d-held",
+     "kind": "det",
+     "x": 40,
+     "y": 172,
+     "w": 300,
+     "h": 52,
+     "title": "Joint deed is each one's latest?",
+     "sub": "held since the joint deed"
+    },
+    {
+     "id": "d-join-a",
+     "kind": "det",
+     "x": 400,
+     "y": 172,
+     "w": 240,
+     "h": 54,
+     "title": "JOIN",
+     "sub": "held since the joint deed"
+    },
+    {
+     "id": "d-grantor",
+     "kind": "warn",
+     "x": 40,
+     "y": 246,
+     "w": 300,
+     "h": 52,
+     "title": "Latest grantor is the joint grantee?",
+     "sub": "linked-successor test 1 of 3"
+    },
+    {
+     "id": "d-shell",
+     "kind": "warn",
+     "x": 40,
+     "y": 320,
+     "w": 300,
+     "h": 52,
+     "title": "Successor owns 3 buildings or fewer?",
+     "sub": "linked-successor test 2 of 3"
+    },
+    {
+     "id": "d-nominal",
+     "kind": "warn",
+     "x": 40,
+     "y": 394,
+     "w": 300,
+     "h": 52,
+     "title": "Onward deed at $100 or less?",
+     "sub": "linked-successor test 3 of 3"
+    },
+    {
+     "id": "d-join-b",
+     "kind": "warn",
+     "x": 40,
+     "y": 468,
+     "w": 300,
+     "h": 54,
+     "title": "JOIN",
+     "sub": "restructured into shell LLCs"
+    },
+    {
+     "id": "d-stale",
+     "kind": "io",
+     "x": 400,
+     "y": 320,
+     "w": 240,
+     "h": 52,
+     "title": "No link",
+     "sub": "stale deed or arm's-length sale"
+    }
+   ],
+   "edges": [
+    {
+     "from": "d-start",
+     "to": "d-scope"
+    },
+    {
+     "from": "d-scope",
+     "to": "d-held",
+     "label": "yes"
+    },
+    {
+     "from": "d-scope",
+     "to": "d-none",
+     "label": "no"
+    },
+    {
+     "from": "d-held",
+     "to": "d-join-a",
+     "label": "yes"
+    },
+    {
+     "from": "d-held",
+     "to": "d-grantor",
+     "label": "no"
+    },
+    {
+     "from": "d-grantor",
+     "to": "d-shell",
+     "label": "yes"
+    },
+    {
+     "from": "d-shell",
+     "to": "d-nominal",
+     "label": "yes"
+    },
+    {
+     "from": "d-nominal",
+     "to": "d-join-b",
+     "label": "yes"
+    },
+    {
+     "from": "d-shell",
+     "to": "d-stale",
+     "label": "no"
+    },
+    {
+     "d": "M340 272 L370 272",
+     "arrow": false
+    },
+    {
+     "d": "M340 420 L370 420",
+     "arrow": false
+    },
+    {
+     "d": "M370 272 L370 420",
+     "arrow": false
+    }
+   ],
+   "labels": [
+    {
+     "text": "no",
+     "x": 346,
+     "y": 266
+    },
+    {
+     "text": "no",
+     "x": 346,
+     "y": 414
+    }
+   ]
+  },
+  {
+   "id": "release",
+   "label": "In a release",
+   "layout": "manual",
+   "width": 680,
+   "height": 770,
+   "default_node": "r-decisions",
+   "title": "What a release records, and how it is collected",
+   "desc": "A release is not a list of groups. It is the groups plus the evidence they rest on, captured as the pipeline runs: the records each node stands on, the identity and deed decisions with their reasons, a path for each group, the lots left out and why, and the measured precision. The name tables, at the foot, say who and where the ids stand for.",
+   "nodes": [
+    {
+     "id": "r-run",
+     "x": 170,
+     "y": 24,
+     "w": 340,
+     "h": 52,
+     "kind": "io",
+     "title": "Manifest and run",
+     "sub": "provenance \u00b7 snapshot \u00b7 checksums"
+    },
+    {
+     "id": "r-lineage",
+     "x": 170,
+     "y": 98,
+     "w": 340,
+     "h": 52,
+     "kind": "det",
+     "title": "Lineage: nodes and observations",
+     "sub": "which HPD record stands behind each node"
+    },
+    {
+     "id": "r-ident",
+     "x": 16,
+     "y": 190,
+     "w": 296,
+     "h": 64,
+     "kind": "ml",
+     "title": "Identity evidence",
+     "lines": [
+      "nlr records each pair it decides,",
+      "bor turns them into events"
+     ]
+    },
+    {
+     "id": "r-deed",
+     "x": 352,
+     "y": 190,
+     "w": 296,
+     "h": 64,
+     "kind": "det",
+     "title": "Deed evidence",
+     "lines": [
+      "bundles, parcels and the deeds",
+      "on them, with refusals"
+     ]
+    },
+    {
+     "id": "r-sets",
+     "x": 150,
+     "y": 282,
+     "w": 380,
+     "h": 64,
+     "kind": "det",
+     "title": "Link sets and the path",
+     "lines": [
+      "each rule's group of nodes,",
+      "reduced to a spanning path"
+     ]
+    },
+    {
+     "id": "r-decisions",
+     "x": 150,
+     "y": 370,
+     "w": 380,
+     "h": 64,
+     "kind": "det",
+     "title": "Decisions and support",
+     "lines": [
+      "one row per decision, with the",
+      "records it rests on"
+     ]
+    },
+    {
+     "id": "r-groups",
+     "x": 16,
+     "y": 462,
+     "w": 296,
+     "h": 64,
+     "kind": "rem",
+     "title": "Owner Portfolios and paths",
+     "lines": [
+      "groups, members, lots",
+      "and the footprint decisions"
+     ]
+    },
+    {
+     "id": "r-network",
+     "x": 352,
+     "y": 462,
+     "w": 296,
+     "h": 64,
+     "kind": "det",
+     "title": "Operational Networks",
+     "lines": [
+      "weighted name and address edges,",
+      "split into networks"
+     ]
+    },
+    {
+     "id": "r-absence",
+     "x": 150,
+     "y": 552,
+     "w": 380,
+     "h": 64,
+     "kind": "det",
+     "title": "Absence by lot",
+     "lines": [
+      "why a lot is not in a group,",
+      "ranked in five levels"
+     ]
+    },
+    {
+     "id": "r-metrics",
+     "x": 150,
+     "y": 634,
+     "w": 380,
+     "h": 52,
+     "kind": "warn",
+     "title": "Method metrics",
+     "lines": [
+      "precision by stratum, with intervals,",
+      "marked provisional"
+     ]
+    },
+    {
+     "id": "r-names",
+     "x": 150,
+     "y": 706,
+     "w": 380,
+     "h": 52,
+     "kind": "io",
+     "title": "Names, as filed",
+     "sub": "who and where the ids stand for"
+    }
+   ],
+   "edges": [
+    {
+     "from": "r-run",
+     "to": "r-lineage"
+    },
+    {
+     "d": "M340 150 L340 170 L164 170 L164 188"
+    },
+    {
+     "d": "M340 170 L500 170 L500 188"
+    },
+    {
+     "d": "M164 254 L164 268 L250 268 L250 280"
+    },
+    {
+     "d": "M500 254 L500 268 L430 268 L430 280"
+    },
+    {
+     "from": "r-sets",
+     "to": "r-decisions"
+    },
+    {
+     "d": "M340 434 L340 448 L164 448 L164 460"
+    },
+    {
+     "d": "M340 448 L500 448 L500 460"
+    },
+    {
+     "d": "M164 526 L164 540 L250 540 L250 550"
+    },
+    {
+     "d": "M500 526 L500 540 L430 540 L430 550"
+    }
+   ]
+  }
+ ],
+ "widgets": {
+  "succ-checks": {
+   "type": "checks",
+   "title": "Worked parcels",
+   "default": "Citadel parcel",
+   "cases": {
+    "Citadel parcel": {
+     "note": "377 Eastern Parkway, one of the 15 buildings bought on one 2008 deed and re-deeded in 2015.",
+     "rows": [
+      [
+       "Joint deed",
+       "2008-07-15 \u00b7 $58.4M \u00b7 15 lots \u2192 Citadel Estates LLC",
+       "info"
+      ],
+      [
+       "Latest deed's grantor is the joint grantee",
+       "Citadel Estates LLC, 2015-05-01",
+       "pass"
+      ],
+      [
+       "Successor owns 3 buildings or fewer",
+       "RIPPLE EP LLC owns 2",
+       "pass"
+      ],
+      [
+       "Onward deed at $100 or less",
+       "$0",
+       "pass"
+      ]
+     ],
+     "verdict": {
+      "ok": true,
+      "text": "Linked: the parcel is still treated as co-owned with the other Citadel buildings."
+     }
+    },
+    "Arm's-length sale": {
+     "note": "The case the price test exists for: the documented block 3498 sales, at about $1.1M each to distinct buyers.",
+     "rows": [
+      [
+       "Joint deed",
+       "bought together by one grantee",
+       "info"
+      ],
+      [
+       "Latest deed's grantor is the joint grantee",
+       "yes",
+       "pass"
+      ],
+      [
+       "Successor owns 3 buildings or fewer",
+       "a small independent buyer",
+       "pass"
+      ],
+      [
+       "Onward deed at $100 or less",
+       "about $1.1M",
+       "fail"
+      ]
+     ],
+     "verdict": {
+      "ok": false,
+      "text": "Not linked: a market-price sale is not a restructuring."
+     }
+    }
+   }
+  }
+ },
+ "snippets": {
+  "lwc_read": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "_LWC_SQL = \"SELECT nodeid, name, bbls::text[] AS bbls FROM landlords_with_connections\"",
+   "count": 1,
+   "lang": "python",
+   "caption": "How the group builder reads the nodes: id, name and buildings."
+  },
+  "lwc_build": {
+   "repo": "bor",
+   "path": "src/bor/build_lwc.py",
+   "start": "\"\"\"bor.build_lwc \u2014 materialize `landlords_with_connections` (lwc) from `wow_landlords`.",
+   "count": 14,
+   "lang": "python",
+   "caption": "Where the landlord nodes come from, and why their ids are not stable across builds."
+  },
+  "id_pairs": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "def _identity_and_deed_pairs(",
+   "count": 15,
+   "lang": "python",
+   "caption": "Identity edges are the union of three builders. Deed edges are built separately."
+  },
+  "splink_cliques": {
+   "repo": "bor",
+   "path": "src/bor/splink_bridge.py",
+   "start": "def splink_edges(",
+   "count": 20,
+   "lang": "python",
+   "caption": "One clique per resolved entity, as edges between landlord nodes."
+  },
+  "llc_markers": {
+   "repo": "bor",
+   "path": "src/bor/llc_edges.py",
+   "start": "_ENTITY_MARKERS = (r\"LLC\", r\"L\\.L\\.C\", r\"CORP\", r\"INC\", r\"REALTY\", r\"ASSOCIATES\",",
+   "count": 11,
+   "lang": "python",
+   "caption": "The registered-LLC edge: which owner-of-record names count as an entity, and which are excluded."
+  },
+  "curated": {
+   "repo": "bor",
+   "path": "src/bor/curated_owners.py",
+   "start": "def curated_edges(conn, *, weight: float = SPLINK_WEIGHT,",
+   "count": 11,
+   "lang": "python",
+   "caption": "Curated owners force-merge hand-verified cliques."
+  },
+  "deed_consts": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "# A deed conveying more lots than this is a bulk / institutional transfer, not private co-ownership.",
+   "count": 4,
+   "lang": "python",
+   "caption": "Scope of a joint deed, and the hub cutoff."
+  },
+  "held_sql": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "def _deed_sql(",
+   "count": 26,
+   "lang": "python",
+   "caption": "Held since: each building's latest deed, kept only if it is still the joint deed and passes the screens."
+  },
+  "succ_consts": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "# LINKED-SUCCESSOR GUARD: a superseded joint deed still proves co-ownership when its grantee later",
+   "count": 5,
+   "lang": "python",
+   "caption": "A successor is a shell when it has received at most 3 buildings anywhere."
+  },
+  "nominal_const": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "NOMINAL_MAX = 100",
+   "count": 3,
+   "lang": "python",
+   "caption": "The consideration cutoff, and how far back joint deeds are considered."
+  },
+  "is_nominal": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "def _is_nominal(docamount, nominal_max: float = NOMINAL_MAX) -> bool:",
+   "count": 10,
+   "lang": "python",
+   "caption": "A missing price counts as not nominal."
+  },
+  "retained": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "    out: list[tuple] = []",
+   "count": 17,
+   "lang": "python",
+   "caption": "The three tests of the linked-successor guard, in order. The first that fails is the recorded reason."
+  },
+  "restructured": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "    groups: dict[str, set[str]] = {}",
+   "count": 14,
+   "lang": "python",
+   "caption": "Each joint deed keeps the parcels that were held or restructured, if at least two remain."
+  },
+  "deed_groups": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "    held = pd.read_sql(_deed_sql(max_parcels, as_of), conn)",
+   "count": 9,
+   "lang": "python",
+   "caption": "The held-since deeds and the restructured ones become groups of buildings."
+  },
+  "hub_nodes": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "def _hub_nodes(groups: dict[str, set[int]], hub_cap: int) -> set[int]:",
+   "count": 5,
+   "lang": "python",
+   "caption": "Nodes on more than the cap of joint deeds are hubs."
+  },
+  "deed_edges": {
+   "repo": "bor",
+   "path": "src/bor/deed_edges.py",
+   "start": "    groups = deed_node_groups(conn",
+   "count": 13,
+   "lang": "python",
+   "caption": "The hub cap, then a clique of landlord nodes per deed."
+  },
+  "union_find": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "def _union_groups(",
+   "count": 33,
+   "lang": "python",
+   "caption": "Union-find over the pooled edges. The group id is OP- plus the smallest node id."
+  },
+  "classify": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "def classify_composition(",
+   "count": 23,
+   "lang": "python",
+   "caption": "Composition: identity, deed_only or deed_bridged."
+  },
+  "coop_sql": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "_COOP_CONDO_SQL = \"\"\"",
+   "count": 8,
+   "lang": "python",
+   "caption": "A building is a co-op or condo when most of its owner-role contacts say so."
+  },
+  "coop_drop": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "    groups: list[OwnerPortfolio] = []",
+   "count": 20,
+   "lang": "python",
+   "caption": "A group whose rental buildings are under half its footprint is dropped; the decision is traced."
+  },
+  "ownergroup": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "class OwnerPortfolio:",
+   "count": 19,
+   "lang": "python",
+   "caption": "An Owner Portfolio in memory. The release carries its lots and nodes, never the person anchor."
+  },
+  "resolve": {
+   "repo": "bor",
+   "path": "src/bor/owner_portfolios.py",
+   "start": "def resolve_owner_portfolios(",
+   "count": 19,
+   "lang": "python",
+   "caption": "The entry point: identity and deed edges in, Owner Portfolios out."
+  },
+  "cap_identity": {
+   "repo": "bor",
+   "path": "src/bor/identity_events.py",
+   "start": "    for r in trace[\"pairs\"].itertuples():",
+   "count": 31,
+   "lang": "python",
+   "caption": "nlr hands back every pair it scored and every pair it vetoed. bor turns each into one event, smaller id first."
+  },
+  "cap_deed": {
+   "repo": "bor",
+   "path": "src/bor/deed_events.py",
+   "start": "    # Parcel-level linked-successor outcomes",
+   "count": 27,
+   "lang": "python",
+   "caption": "A rejected parcel of a deed that could have linked nodes becomes an event citing both deeds."
+  },
+  "cap_witness": {
+   "repo": "bor",
+   "path": "src/bor/group_tables.py",
+   "start": "def build_witness(",
+   "count": 25,
+   "lang": "python",
+   "caption": "The spanning path of a group: one step each time a link set joins two parts that were still apart."
+  },
+  "cap_groupev": {
+   "repo": "bor",
+   "path": "src/bor/group_events.py",
+   "start": "def portfolio_events(",
+   "count": 24,
+   "lang": "python",
+   "caption": "Dropped groups and excluded co-op or condo lots become events too."
+  },
+  "cap_decisions_tbl": {
+   "repo": "bor",
+   "path": "src/bor/release_schema.py",
+   "start": "    Table(\"decision_events\"",
+   "count": 16,
+   "lang": "python",
+   "caption": "The contract for decision_events and decision_support: one row per decision, citing its source records."
+  },
+  "cap_absence": {
+   "repo": "bor",
+   "path": "src/bor/absence.py",
+   "start": "def lot_event_ranks(",
+   "count": 21,
+   "lang": "python",
+   "caption": "The single rule that ties an event to a lot, ranked by reason. The absence summary is built from it."
+  },
+  "cap_resolution": {
+   "repo": "nlr",
+   "path": "src/nlr/resolve.py",
+   "start": "class Resolution:",
+   "count": 15,
+   "lang": "python",
+   "caption": "nlr v0.2.0: a resolution returns its trace when it is asked to capture decisions."
+  },
+  "cap_resolve_body": {
+   "repo": "nlr",
+   "path": "src/nlr/resolve.py",
+   "start": "    trace = {} if capture else None",
+   "count": 14,
+   "lang": "python",
+   "caption": "The same run, with a dict that each stage fills in as it decides."
+  },
+  "cap_names_contacts": {
+   "repo": "bor",
+   "path": "src/bor/names.py",
+   "start": "_CONTACTS_SQL = f\"\"\"",
+   "count": 14,
+   "lang": "python",
+   "caption": "Each observation's contact is found with the same ranking that numbered it, so a repeated pair has one row per variant."
+  },
+  "cap_names_docs": {
+   "repo": "bor",
+   "path": "src/bor/names.py",
+   "start": "def cited_documents(",
+   "count": 16,
+   "lang": "python",
+   "caption": "A release names exactly the deeds it cites: in evidence, in decisions and in their support."
+  }
+ },
+ "nodes": {
+  "input": {
+   "kind": "io",
+   "title": "Public records",
+   "ref": "build_lwc.py \u00b7 deed_edges.py",
+   "lede": "Three public sources feed the pipeline: HPD registrations (who is listed as owner of each building), ACRIS deeds (who conveyed to whom) and PLUTO (building facts).",
+   "what": [
+    "HPD registrations give the owner contacts and their business addresses. They are the basis of the landlord nodes.",
+    "ACRIS deeds give each conveyance with its grantors, grantees, recorded price and the lots it covers.",
+    "Everything runs off-graph in Postgres. No graph database is needed."
+   ],
+   "tag": "Input",
+   "nums": [
+    [
+     "1",
+     "joint ACRIS deed in the Citadel case (2008, $58.4M)"
+    ],
+    [
+     "15",
+     "buildings on it"
+    ]
+   ],
+   "open": [
+    "HPD registrations and ACRIS deeds are filed on different schedules, so a building's registered owner can differ from its deed owner."
+   ],
+   "evidence": {
+    "lede": "A release does not copy the public records. It records which snapshot of them it was built from, so a reader can check they hold the same data.",
+    "recorded": [
+     "The snapshot id and its date: the earlier of the newest ACRIS recordedfiled and the newest HPD lastregistrationdate, so the id means complete through that date.",
+     "A row count and a fingerprint (the count plus a sum of md5 prefixes of each row) for each source table.",
+     "The deed selection rule, and the effective date used as the deed cut-off."
+    ],
+    "tables": [
+     [
+      "manifest.json",
+      "snapshot_id, snapshot_date, snapshot_date_basis, effective_date, deed_selection_rule and source_tables."
+     ],
+     [
+      "DATA.md",
+      "The same provenance rendered as tables, with the date basis and the fingerprints."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "manifest",
+      "fields": [
+       "snapshot_id",
+       "snapshot_date",
+       "effective_date",
+       "deed_selection_rule",
+       "snapshot_date_basis",
+       "source_tables.real_property_master"
+      ],
+      "caption": "The provenance fields in manifest.json.",
+      "note": ""
+     }
+    ],
+    "limits": [
+     "The source tables are not copied. The release holds the contacts, deed parties and lots it cites, as filed, and fingerprints of the source tables. A loader checks the fingerprints against its own load of the same dump.",
+     "Other tables in the dump are newer than the snapshot date. Only the two columns named in snapshot_date_basis define it."
+    ]
+   }
+  },
+  "lwc": {
+   "kind": "det",
+   "title": "1 \u00b7 Landlord nodes",
+   "ref": "build_lwc.py \u00b7 sql/landlords_with_connections.sql",
+   "lede": "WoW's own landlord nodes: one per distinct name and standardized business address, each with the buildings it registers.",
+   "what": [
+    "The table, landlords_with_connections, is built from JustFix's wow_landlords with WoW's own SQL, vendored verbatim. Every later layer keys off its nodes.",
+    "Node ids come from row_number(), so a rebuild renumbers them. They are stable within one build and not across builds.",
+    "A building belongs to the Owner Portfolio of the node that registers it."
+   ],
+   "nums": [
+    [
+     "3",
+     "registrant nodes carry the 15 Citadel buildings: Leroy Forde (10), Thomas Forde (3) and Michael Roth (2)"
+    ]
+   ],
+   "open": [
+    "Because ids are not stable across builds, exports are keyed on building (BBL) and opaque group ids."
+   ],
+   "code": [
+    "lwc_read",
+    "lwc_build"
+   ],
+   "evidence": {
+    "lede": "Each landlord node is recorded by the buildings it holds and the HPD contact records it stands on. Node ids are local to the run.",
+    "recorded": [
+     "For each node and building, the HPD registration and the contact record chosen for it, and how many candidates there were.",
+     "Where more than one contact record could stand for a node, every candidate. The choice made is shown, not hidden.",
+     "Each contact record as registration:contact:k, and who it names: the role, the name and the business address as filed."
+    ],
+    "tables": [
+     [
+      "node_observations",
+      "One row per node and building (171,347): the selected observation and whether the choice was ambiguous."
+     ],
+     [
+      "node_observation_alternatives",
+      "The other candidates for the ambiguous choices (1,299 rows)."
+     ],
+     [
+      "observations",
+      "The HPD contact records themselves, by id (209,029 rows)."
+     ],
+     [
+      "observation_contacts, node_names, lot_addresses",
+      "Who each observation names, what each node is called, and each lot's street address."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "node_observations",
+      "cols": [
+       "node_id",
+       "bbl",
+       "selected_observation_id",
+       "ambiguous"
+      ],
+      "caption": "Node 67966, one of the three Citadel registrants, and four of its buildings.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "node_id": "67966"
+      },
+      "lookups": [
+       {
+        "col": "node_id",
+        "table": "node_names",
+        "key": "node_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "node"
+        ]
+       },
+       {
+        "col": "bbl",
+        "table": "lot_addresses",
+        "key": "bbl",
+        "take": [
+         "address"
+        ],
+        "as": [
+         "lot"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "observations",
+      "cols": [
+       "observation_id",
+       "pair_variants"
+      ],
+      "caption": "The contact records behind three of those rows, and who they name.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "observation_id": [
+        "303018:30301805:0",
+        "313483:31348305:0",
+        "335465:33546505:0"
+       ]
+      },
+      "order_by": [
+       "observation_id"
+      ],
+      "lookups": [
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "contact_type"
+        ],
+        "as": [
+         "contact_role"
+        ]
+       },
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "first_name",
+         "last_name"
+        ],
+        "as": [
+         "person"
+        ],
+        "merge": true
+       },
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "Node ids are renumbered by every rebuild of landlords_with_connections. Within a release they are consistent; across releases they mean nothing.",
+     "642 node and building rows (616 nodes) are ambiguous. The release shows the choice made and the alternatives.",
+     "Names are copied as filed, typos included. They are for reading: a contact joins to HPD on registration and contact id, never on a name."
+    ]
+   }
+  },
+  "ident": {
+   "kind": "ml",
+   "title": "2 \u00b7 Identity edges",
+   "ref": "splink_bridge.py \u00b7 curated_owners.py \u00b7 llc_edges.py",
+   "lede": "Three sources of \"these nodes are one resolved person or entity\". Each emits a clique between the nodes it joins.",
+   "what": [
+    "The nlr model resolves person records by name and business address at a 0.999 threshold, including its shared-company pass. The Landlord Resolution Pipeline artifact shows how it scores a pair.",
+    "Curated owners are a short table of hand-verified merges the model cannot reach, each with an evidence note.",
+    "The registered-LLC edge joins nodes whose buildings are owned of record by the same entity name, skipping institutions and names on too many lots.",
+    "All three carry the same edge weight, because here only the presence of an identity link matters."
+   ],
+   "nums": [
+    [
+     "0",
+     "identity links among Citadel's three registrants, so the group has no identity support"
+    ]
+   ],
+   "measured": [
+    "Sampled identity links: 97% judged the same owner (150 pairs, 92.4 to 98.6%)."
+   ],
+   "open": [
+    "The model's shared-company pass is its weakest stage, and the registered-LLC edge's precision has not been measured separately."
+   ],
+   "code": [
+    "id_pairs",
+    "splink_cliques",
+    "llc_markers",
+    "curated",
+    "cap_identity"
+   ],
+   "evidence": {
+    "lede": "Every identity decision is recorded: the pairs the model accepted, the pairs a veto stopped, the addresses that were masked, and the three kinds of edge that join nodes.",
+    "recorded": [
+     "For each scored pair, the outcome, the rule, the model's score and the threshold. A vetoed pair names its reason and, for the common-name veto, the name rarity.",
+     "For the shared-company pass, the accepted and the refused merges, and the contact records that carry the company.",
+     "Which identities form a cluster, and which cluster a node falls in. A node that straddles clusters is marked, with its votes.",
+     "For curated owners and the registered-LLC edge, the set of nodes each rule joined."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "One row per decision (36,228 in all). Identity stages: splink_base, splink_feedback, curated."
+     ],
+     [
+      "decision_support",
+      "The contact records a shared-company decision rests on (17,310 rows)."
+     ],
+     [
+      "identity_clusters",
+      "Each identity, its base cluster and its final cluster (145,388 rows)."
+     ],
+     [
+      "node_identity_matches, node_cluster",
+      "How a node maps to identities and to a cluster, with ties marked."
+     ],
+     [
+      "link_sets, link_set_members",
+      "The curated sets (4) and registered-LLC sets (1,709), with their nodes."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "identity_clusters",
+      "cols": [
+       "identity_id",
+       "base_cluster_id",
+       "cluster_id"
+      ],
+      "caption": "Cluster C0009456: Antonelli's nine records, in five base clusters, as the release names and addresses them.",
+      "limit": 9,
+      "note": "",
+      "where": {
+       "cluster_id": "C0009456"
+      },
+      "order_by": [
+       "base_cluster_id",
+       "identity_id"
+      ],
+      "lookups": [
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name"
+        ]
+       },
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "score"
+      ],
+      "caption": "Two scored pairs of that cluster that were accepted, and the addresses that differ between them.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "D0002544",
+        "D0019098"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ],
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_a"
+        ],
+        "merge": true
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_b"
+        ],
+        "merge": true
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "reason_code",
+       "score"
+      ],
+      "caption": "A pair above 0.999 that the first-name veto refused: JOSEF and JACOB at one address.",
+      "limit": 1,
+      "note": "",
+      "where": {
+       "decision_id": "D0026048"
+      },
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_a"
+        ]
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_b"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "reason_code",
+       "score",
+       "detail"
+      ],
+      "caption": "A pair the common-name veto refused (names and addresses are in identity_names).",
+      "limit": 1,
+      "note": "",
+      "where": {
+       "decision_id": "D0025164"
+      }
+     }
+    ],
+    "limits": [
+     "A score is the model's match probability for one pair, not the chance that a whole cluster is one owner.",
+     "The release records the curated sets and their members, not the reviewer's note behind each.",
+     "A name and address are what the HPD record says. Two records that share them are not thereby one person: the decisions are the evidence.",
+     "Identity ids, cluster ids and decision ids are run-local."
+    ]
+   }
+  },
+  "held": {
+   "kind": "det",
+   "title": "3 \u00b7 Deeds held since",
+   "ref": "deed_edges.py \u00b7 _deed_sql",
+   "lede": "A deed that conveyed several buildings together makes their owners one, but only while it is still each building's latest deed.",
+   "what": [
+    "A joint deed qualifies if it covers 2 to 25 lots. Larger deeds are bulk or institutional transfers.",
+    "Staleness guard: two buildings are joined only when their most recent deed is the same joint deed. A building sold on has a newer deed and drops out. This replaces a date cutoff, which would drop old bundles still held and keep recent ones already sold.",
+    "Public and affordable-housing conveyances, other institutional grantors or grantees, and deeds where most buildings are co-ops or condos are excluded."
+   ],
+   "nums": [
+    [
+     "0 of 15",
+     "Citadel buildings still have the 2008 deed as their latest, so this branch finds nothing there"
+    ]
+   ],
+   "measured": [
+    "Deed-held links: 97% judged the same owner (70 pairs, 90.0 to 99.2%)."
+   ],
+   "open": [
+    "The institutional screens are keyword lists."
+   ],
+   "code": [
+    "deed_consts",
+    "held_sql",
+    "cap_deed"
+   ],
+   "evidence": {
+    "lede": "A qualifying joint deed is stored as one evidence item with a member row for every parcel on it, so a reader can see which parcels were still held.",
+    "recorded": [
+     "The deed document id and how many parcels it covers.",
+     "For each parcel, the node that holds it, the deed it started under, its latest deed and that deed's recorded amount.",
+     "Each deed that was screened out or refused, with the reason (an institutional party, mostly co-ops or condos, or a size outside 2 to 25 lots)."
+    ],
+    "tables": [
+     [
+      "evidence_items",
+      "One row per qualifying deed bundle (839, of which 762 are held-since)."
+     ],
+     [
+      "evidence_members",
+      "One row per parcel of those deeds (2,454), with its role and both deeds."
+     ],
+     [
+      "decision_events, decision_support",
+      "Screened-out deeds as events, citing the parcels they cover."
+     ],
+     [
+      "deed_documents, deed_parties",
+      "The deed's type, dates and consideration, and its grantors and grantees as ACRIS recorded them."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "evidence_members",
+      "cols": [
+       "bbl",
+       "role",
+       "original_document_id",
+       "latest_document_id",
+       "latest_amount"
+      ],
+      "caption": "The parcels of one held-since deed. Original and latest deed are the same, so it is still current.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "evidence_id": "DV0000001"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Deeds screened out before they could link anything.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "stage": "deed.held_since",
+       "outcome": "excluded"
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "deed_documents",
+      "cols": [
+       "document_id",
+       "doc_type",
+       "doc_date",
+       "recorded_filed",
+       "doc_amount"
+      ],
+      "caption": "The document behind DV0000180: a 2011 deed at $36.6M.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "document_id": "2011071100133001"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "group_witness",
+      "cols": [
+       "group_id",
+       "step",
+       "node_a",
+       "node_b",
+       "stage",
+       "basis_id"
+      ],
+      "caption": "A path step that rests on that kind of evidence: nodes 31855 and 97058, joined by deed DV0000180.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "basis_id": "DV0000180"
+      }
+     }
+    ],
+    "limits": [
+     "A deed that was never a candidate leaves no row: an absent event means the rule did not run, not that it said no.",
+     "When two deeds tie for a building's latest, a fixed ordering settles it (date, then document id descending). The manifest counts 23,163 such ties."
+    ]
+   }
+  },
+  "succ": {
+   "kind": "warn",
+   "title": "4 \u00b7 Linked-successor guard",
+   "ref": "deed_edges.py \u00b7 _parcel_outcomes",
+   "lede": "Recovers the shell-game move: buy buildings together, then re-deed each into its own single-purpose LLC. The latest-deed rule alone drops these.",
+   "what": [
+    "A superseded joint deed still proves co-ownership when three tests pass for a parcel: the grantor of its latest deed is the joint deed's grantee, the successor LLC is a shell (it has received at most 3 buildings anywhere), and the onward deed is nominal (recorded consideration of $100 or less).",
+    "The price test separates a same-owner restructuring from an arm's-length sale to a small independent buyer. A missing price counts as not nominal.",
+    "Only joint deeds from 2005 on are considered, and the same institutional and co-op screens apply."
+   ],
+   "nums": [
+    [
+     "15 of 15",
+     "Citadel parcels kept by the guard"
+    ],
+    [
+     "12",
+     "successor LLCs, each owning 1 to 3 buildings"
+    ],
+    [
+     "$0",
+     "consideration on every onward deed, all dated 2015-05-01"
+    ]
+   ],
+   "measured": [
+    "The weakest stratum: 71% judged the same owner (strict 71.4%, 52 pairs, a census; 57.6 to 82.2%). The gold is provisional."
+   ],
+   "open": [
+    "A same-owner restructuring recorded at a market-scale price is dropped along with true sales. The 41 Haight bulk buy is the documented case: nine of ten townhouses were re-deeded at about $1.6 to 2.8M, so no Haight building is in an Owner Portfolio.",
+    "The $100 cutoff is a fixed, precision-favoring parameter. Price alone cannot tell a restructuring from a sale."
+   ],
+   "code": [
+    "succ_consts",
+    "nominal_const",
+    "is_nominal",
+    "retained",
+    "restructured",
+    "cap_deed"
+   ],
+   "widget": "succ-checks",
+   "evidence": {
+    "lede": "A deed kept by the successor guard is stored like any joint deed, with its onward deed on each parcel. A parcel the guard refused is an event that names the first test it failed.",
+    "recorded": [
+     "For each kept parcel, the joint deed, the later deed that moved it and that deed's recorded amount.",
+     "For each refused parcel of a deed that could have joined two or more nodes, the reason: not the latest deed, successor not a shell, or onward transfer not nominal.",
+     "The two deeds an event rests on, in decision_support."
+    ],
+    "tables": [
+     [
+      "evidence_items, evidence_members",
+      "77 linked-successor deeds; their 158 transferred-onward parcels carry the onward deed and amount."
+     ],
+     [
+      "decision_events",
+      "Refused parcels: deed_not_latest 1,409, successor_not_shell 565, successor_transfer_not_nominal 419."
+     ],
+     [
+      "decision_support",
+      "The joint deed and the latest deed behind each event."
+     ],
+     [
+      "deed_parties",
+      "Who conveyed to whom, on the joint deed and on the onward deed."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "evidence_members",
+      "cols": [
+       "bbl",
+       "role",
+       "original_document_id",
+       "latest_document_id",
+       "latest_amount"
+      ],
+      "caption": "Citadel's deed, DV0000136: parcels re-deeded onward in 2015 at $0.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "evidence_id": "DV0000136"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "deed_parties",
+      "cols": [
+       "party_type",
+       "party_index",
+       "name",
+       "address1",
+       "city"
+      ],
+      "caption": "The Citadel joint deed: sixteen parties, fifteen seller LLCs at one address and one buyer.",
+      "limit": 5,
+      "note": "",
+      "where": {
+       "document_id": "2008072300342001"
+      },
+      "order_by": [
+       "party_type",
+       "party_index"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "deed_parties",
+      "cols": [
+       "party_type",
+       "party_index",
+       "name",
+       "address1",
+       "city"
+      ],
+      "caption": "The onward deed of 2015: Citadel Estates LLC conveys to a single-purpose LLC at the same address, for $0.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "document_id": "2015050400848009"
+      },
+      "order_by": [
+       "party_type"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Three refused parcels, one for each reason.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "E0000853",
+        "E0000855",
+        "E0000858"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     }
+    ],
+    "limits": [
+     "Only parcels of a deed that could have joined two or more nodes get a refusal event. Other parcels leave no row.",
+     "The $100 cutoff is a parameter of the run (parameters.deed.nominal_max in the manifest).",
+     "This is the weakest evidence stratum: 71% in the sample, on a provisional gold."
+    ]
+   }
+  },
+  "hub": {
+   "kind": "det",
+   "title": "5 \u00b7 Deed hub cap",
+   "ref": "deed_edges.py \u00b7 _hub_nodes",
+   "lede": "A landlord on many distinct joint deeds is a serial co-investor, and chaining its deeds would merge unrelated partners.",
+   "what": [
+    "A node on more than 20 distinct joint deeds is dropped from the deed cliques.",
+    "This only removes edges. It can never add a wrong one.",
+    "It is the deed analogue of masking a busy aggregator office."
+   ],
+   "nums": [
+    [
+     "20",
+     "distinct deeds: the hub cutoff"
+    ]
+   ],
+   "open": [
+    "A genuine large operator with many bundles loses its deed links and has to be joined by identity edges instead."
+   ],
+   "code": [
+    "hub_nodes",
+    "deed_edges"
+   ],
+   "evidence": {
+    "lede": "A node dropped by the hub cap would be recorded as an excluded event. In this release no event of that kind exists, because no node reached the cap.",
+    "recorded": [
+     "The cap itself, in the manifest's parameters (deed.hub_cap).",
+     "A capped node would be one event, with the number of deeds it was on."
+    ],
+    "tables": [
+     [
+      "manifest.json",
+      "parameters.deed.hub_cap, the cutoff used by this run."
+     ],
+     [
+      "decision_events",
+      "Stage deed.group, reason deed_hub_capped. Zero rows in v0.1.0."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "manifest",
+      "fields": [
+       "parameters.deed.hub_cap",
+       "parameters.deed.max_parcels",
+       "parameters.deed.min_parcels"
+      ],
+      "caption": "The deed parameters of this run.",
+      "note": ""
+     }
+    ],
+    "limits": [
+     "Zero events is a finding about this snapshot. It is not a sign that the rule was switched off."
+    ]
+   }
+  },
+  "union": {
+   "kind": "det",
+   "title": "6 \u00b7 Union",
+   "ref": "owner_portfolios.py \u00b7 _union_groups",
+   "lede": "Identity and deed edges are pooled, and connected components become Owner Portfolios.",
+   "what": [
+    "Union-find over every edge pair. A component of two or more nodes becomes a group.",
+    "The group id is OP- plus the smallest node id in the component, so it is deterministic for a given edge set.",
+    "Joins chain: if A is linked to B and B to C, all three are one group."
+   ],
+   "nums": [
+    [
+     "OP-67966",
+     "the Citadel group"
+    ],
+    [
+     "20",
+     "buildings in it: the 15 on the deed plus 5 under the same registrants"
+    ]
+   ],
+   "open": [
+    "Chaining means one wrong link can merge two whole groups."
+   ],
+   "code": [
+    "union_find",
+    "cap_witness"
+   ],
+   "evidence": {
+    "lede": "The pooled edges become groups. A release keeps the groups, their members and one spanning path of steps, each step citing the link set or deed behind it.",
+    "recorded": [
+     "Each group, its composition and its lot counts, under an assertion key that starts with the run id.",
+     "Each member node, and each lot in the group.",
+     "A path of steps that connects the group, in processing order. Each step names its two nodes, its stage and its evidence.",
+     "An anchor for each group: its largest member by lot count, a label to hold the group by."
+    ],
+    "tables": [
+     [
+      "groups",
+      "16,196 groups across both layers (6,523 Owner Portfolios)."
+     ],
+     [
+      "group_members, group_bbls",
+      "Member nodes (46,547) and lots (114,986) of each group."
+     ],
+     [
+      "group_witness",
+      "Path steps (30,351 in both layers, 9,100 for Owner Portfolios). Marked representative."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "groups",
+      "cols": [
+       "group_id",
+       "composition",
+       "lot_count",
+       "anchor_node_id"
+      ],
+      "caption": "The Citadel group. Its anchor is its largest member by lot count (ties to the smallest node id), a label for the group and not its owner.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "group_id": "OP-67966",
+       "layer": "owner_portfolio"
+      },
+      "lookups": [
+       {
+        "col": "anchor_node_id",
+        "table": "node_names",
+        "key": "node_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "anchor"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "group_witness",
+      "cols": [
+       "step",
+       "node_a",
+       "node_b",
+       "stage",
+       "basis_id"
+      ],
+      "caption": "Its path: two steps, both resting on deed bundle DV0000136. The nodes are the three Citadel registrants.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "group_id": "OP-67966"
+      },
+      "lookups": [
+       {
+        "col": "node_a",
+        "table": "node_names",
+        "key": "node_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_a"
+        ]
+       },
+       {
+        "col": "node_b",
+        "table": "node_names",
+        "key": "node_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_b"
+        ]
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "The path is one way to connect the group, not the only or the strongest. The manifest marks the table representative.",
+     "Group ids are OP- plus the smallest node id, and are local to this run.",
+     "The anchor is a display choice, never evidence of ownership. Node ids are renumbered by every rebuild, so the tie-break holds within a release and not across releases."
+    ]
+   }
+  },
+  "comp": {
+   "kind": "det",
+   "title": "7 \u00b7 Classify composition",
+   "ref": "owner_portfolios.py \u00b7 classify_composition",
+   "lede": "Each group records what kind of evidence holds it together.",
+   "what": [
+    "identity: one resolved entity, joined by identity edges only.",
+    "deed_only: no identity link, so the group exists purely through deed edges. This is the intended veil-pierce.",
+    "deed_bridged: a deed joins two or more separate identity entities. This is the higher-bar case."
+   ],
+   "nums": [
+    [
+     "deed_only",
+     "the Citadel group's composition"
+    ]
+   ],
+   "open": [
+    "A deed_only group depends on its deed edges, and the weakest route to those is the linked-successor guard (71% in the sample)."
+   ],
+   "code": [
+    "classify"
+   ],
+   "evidence": {
+    "lede": "Composition is a column of the groups table, so a reader can filter for the groups that rest on deeds alone.",
+    "recorded": [
+     "identity, deed_only or deed_bridged for each Owner Portfolio.",
+     "The step stages of the path show which edge kinds were used."
+    ],
+    "tables": [
+     [
+      "groups",
+      "composition: identity 6,451, deed_only 61, deed_bridged 11 (Owner Portfolios)."
+     ],
+     [
+      "group_witness",
+      "stage of each step: identity.splink_base, splink_feedback, registered_llc, curated, deed.held_since, deed.linked_successor."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "groups",
+      "cols": [
+       "group_id",
+       "composition",
+       "lot_count",
+       "witness_pieces"
+      ],
+      "caption": "Owner Portfolios that rest on deeds alone, or on a deed that bridges identities.",
+      "limit": 5,
+      "note": "",
+      "where": {
+       "composition": [
+        "deed_only",
+        "deed_bridged"
+       ]
+      },
+      "order_by": [
+       "group_id"
+      ]
+     }
+    ],
+    "limits": [
+     "Composition says what kind of evidence joined the group. It says nothing about how strong it was."
+    ]
+   }
+  },
+  "coop": {
+   "kind": "det",
+   "title": "8 \u00b7 Co-op and condo exclusion",
+   "ref": "owner_portfolios.py \u00b7 _coop_condo_bbls",
+   "lede": "Buildings owned by shareholders or unit owners are not a landlord's portfolio, so they are removed.",
+   "what": [
+    "A building is a co-op or condo when more than half of its owner-role HPD contacts are described as CO-OP or CONDO.",
+    "Those buildings are removed from the group's rental count. A group where more than half the buildings are co-ops or condos is dropped as a management artifact.",
+    "The rental count is the attributed footprint. The full footprint is kept separately."
+   ],
+   "open": [
+    "The test uses HPD contact descriptions, so a co-op registered without them is not caught."
+   ],
+   "code": [
+    "coop_sql",
+    "coop_drop",
+    "cap_groupev"
+   ],
+   "evidence": {
+    "lede": "Both halves of the rule leave events: a dropped group, and a co-op or condo lot left out of a group that was kept.",
+    "recorded": [
+     "Each group dropped as co-op or condo dominated, with its lot count and its rental count.",
+     "Each lot excluded from the footprint, and why.",
+     "Each lot's flag: rental true or false in group_bbls."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "Stage owner_portfolio.footprint: 219 groups dropped, 2,507 of their lots and 412 lots in kept groups excluded."
+     ],
+     [
+      "group_bbls",
+      "rental false for the 412 lots outside the footprint."
+     ],
+     [
+      "bbl_status",
+      "excluded_from_footprint for those 412 lots."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_type",
+       "subject_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Two groups dropped, and two of the lots that went with the first.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "stage": "owner_portfolio.footprint"
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "group_bbls",
+      "cols": [
+       "group_id",
+       "bbl",
+       "rental"
+      ],
+      "caption": "Lots kept out of a group's footprint, with their street address.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "rental": "False"
+      },
+      "order_by": [
+       "group_id",
+       "bbl"
+      ],
+      "lookups": [
+       {
+        "col": "bbl",
+        "table": "lot_addresses",
+        "key": "bbl",
+        "take": [
+         "address"
+        ],
+        "as": [
+         "address"
+        ]
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "A dropped group does not appear in groups at all. Its lots are in bbl_status with reason coop_condo_dominated."
+    ]
+   }
+  },
+  "groups": {
+   "kind": "rem",
+   "title": "Owner Portfolios",
+   "ref": "owner_portfolios.py \u00b7 OwnerPortfolio",
+   "lede": "The result: groups of buildings that the evidence says share one beneficial owner, each with its composition and counts.",
+   "what": [
+    "An OwnerPortfolio carries the group id, member nodes, rental buildings, total buildings and composition. In memory it also carries a person anchor, which the release never exports.",
+    "A release is keyed on building (BBL) and on run-local group ids, and has no name column in any table.",
+    "The Operational Network layer (name and address edges with aggregator offices masked) is separate. Deed edges never feed it, because a deed is ownership evidence and not shared operation.",
+    "Every grouping is an inference from public records: a lead to verify, not a legal determination of ownership."
+   ],
+   "nums": [
+    [
+     "6,523",
+     "Owner Portfolios in the v0.1.0 release: 6,451 identity, 61 deed_only, 11 deed_bridged"
+    ],
+    [
+     "9,673",
+     "Operational Networks in the same release, as a separate layer"
+    ]
+   ],
+   "measured": [
+    "Precision is reported per stratum from a 512-pair gold, with no pooled figure: Splink identity links 97% (150 pairs), deed held-since 97% (70), deed linked-successor 71% (52, a census). Pairs the method keeps apart: shared aggregator address 98% (120), same surname with no linking signal 89% (120)."
+   ],
+   "open": [
+    "Precision only. Recall is not estimated, and the absence of a link does not mean two owners differ.",
+    "Labels are one human annotator plus an LLM reader, with an LLM-run resolution of disagreements. A blind human re-adjudication is planned, so every figure here is marked provisional in the release."
+   ],
+   "code": [
+    "ownergroup",
+    "resolve"
+   ],
+   "evidence": {
+    "lede": "Citadel's lots show how the pieces fit. Each lot has a status in each layer, with the reason when it is not in a group.",
+    "recorded": [
+     "For every PLUTO lot and each layer: in a group, not in a group, or excluded, with the group id or the primary reason, and the lot's address.",
+     "The group, its members and its path, under one assertion key. A lot's link id is the key plus # and the BBL.",
+     "The run id, snapshot and code revisions in the manifest, which every key traces back to."
+    ],
+    "tables": [
+     [
+      "groups, group_members, group_bbls, group_witness",
+      "The groups and what holds them together."
+     ],
+     [
+      "bbl_status",
+      "1,717,250 rows: every lot in both layers."
+     ],
+     [
+      "manifest.json",
+      "run_id, snapshot_id, bor and nlr revisions, output checksums."
+     ],
+     [
+      "observation_contacts, identity_names, node_names, deed_*, lot_addresses",
+      "Who and where the ids stand for, as filed."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "bbl_status",
+      "cols": [
+       "layer",
+       "bbl",
+       "status",
+       "group_id",
+       "reason_code",
+       "top_level_reason"
+      ],
+      "caption": "A Citadel lot (377 Eastern Parkway) in each layer: an Owner Portfolio through the deeds, and in no Operational Network because its shared office address is masked.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "bbl": "3012590047"
+      },
+      "order_by": [
+       "layer"
+      ],
+      "lookups": [
+       {
+        "col": "bbl",
+        "table": "lot_addresses",
+        "key": "bbl",
+        "take": [
+         "address"
+        ],
+        "as": [
+         "address"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "manifest",
+      "fields": [
+       "run_id",
+       "snapshot_id",
+       "bor_revision",
+       "nlr_revision",
+       "code.bor.version",
+       "code.bor.dirty",
+       "code.nlr.version"
+      ],
+      "caption": "The manifest fields every assertion key traces back to.",
+      "note": ""
+     }
+    ],
+    "limits": [
+     "People and companies are named as HPD and ACRIS filed them, in tables of their own. A name is for reading and never a key.",
+     "A group is a lead. The release says what evidence joined it and what measured precision that kind of evidence has. It is not a finding about the named people."
+    ]
+   }
+  },
+  "d-start": {
+   "kind": "io",
+   "title": "Two buildings, one joint deed",
+   "ref": "deed_edges.py",
+   "lede": "A deed that conveyed several lots in one transaction names one grantee for all of them.",
+   "what": [
+    "The question: does that shared deed prove the buildings have the same owner today?",
+    "The answer depends on whether the deed is still current and whether it was a real private purchase."
+   ],
+   "tag": "Input",
+   "nums": [
+    [
+     "2008072300342001",
+     "the Citadel joint deed: 15 lots, $58.4M, grantee Citadel Estates LLC"
+    ]
+   ],
+   "evidence": {
+    "lede": "The joint deed is a row of evidence_items. Its parcels are rows of evidence_members.",
+    "recorded": [
+     "The deed's document id and parcel count.",
+     "The role of each parcel on it."
+    ],
+    "tables": [
+     [
+      "evidence_items",
+      "document_id and parcel_count."
+     ],
+     [
+      "evidence_members",
+      "bbl, node_id and role for each parcel."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "evidence_items",
+      "cols": [
+       "evidence_id",
+       "stage",
+       "document_id",
+       "parcel_count",
+       "rule_version"
+      ],
+      "caption": "The Citadel joint deed: 15 parcels.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "document_id": "2008072300342001"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "deed_parties",
+      "cols": [
+       "party_type",
+       "party_index",
+       "name",
+       "address1",
+       "city"
+      ],
+      "caption": "Who is on it: fifteen seller LLCs and one buyer.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "document_id": "2008072300342001"
+      },
+      "order_by": [
+       "party_type",
+       "party_index"
+      ]
+     }
+    ],
+    "limits": [
+     "Only deeds that produced a link, or were refused for a stated reason, appear."
+    ]
+   }
+  },
+  "d-scope": {
+   "kind": "det",
+   "title": "Private grantee, not mostly co-ops?",
+   "ref": "deed_edges.py \u00b7 _deed_sql",
+   "lede": "Only private, bundle-sized deeds count.",
+   "what": [
+    "The deed must cover 2 to 25 lots. A larger deed is a bulk or institutional transfer.",
+    "Public and affordable-housing conveyances, other institutional grantors or grantees, and deeds where most buildings are co-ops or condos are excluded."
+   ],
+   "nums": [
+    [
+     "15",
+     "lots on the Citadel deed, inside the 2 to 25 range"
+    ]
+   ],
+   "code": [
+    "deed_consts",
+    "held_sql"
+   ],
+   "evidence": {
+    "lede": "Deeds filtered out by size or by who is on them are recorded with the screen that stopped them.",
+    "recorded": [
+     "The outcome (excluded or rejected), the reason and the rule.",
+     "The parcel count, and which screen applied."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "institutional_screen 664, coop_condo_dominated 134, deed_parcels_out_of_range 54 across both deed stages."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "A deed with an institutional party, and a deed with too many parcels.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "E0000001",
+        "E0000507"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     }
+    ],
+    "limits": [
+     "The institutional screens are keyword lists, recorded by name in the event detail."
+    ]
+   }
+  },
+  "d-none": {
+   "kind": "io",
+   "title": "No deed link",
+   "ref": "deed_edges.py",
+   "lede": "The deed is filtered out, so it creates no edge.",
+   "what": [
+    "This is not a finding that the owners differ."
+   ],
+   "tag": "No link",
+   "evidence": {
+    "lede": "A deed that fails a screen leaves a decision event and no link.",
+    "recorded": [
+     "An event with outcome excluded or rejected and a reason code."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "Stages deed.held_since and deed.linked_successor."
+     ],
+     [
+      "bbl_status",
+      "The lots on such a deed carry the reason in the absence summary."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "bbl_status",
+      "cols": [
+       "layer",
+       "bbl",
+       "status",
+       "group_id",
+       "reason_code",
+       "top_level_reason"
+      ],
+      "caption": "A lot kept out by a deed rule. The reason is a narrower term of below_eligibility_rule.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "bbl": "1000530037",
+       "layer": "owner_portfolio"
+      }
+     }
+    ],
+    "limits": [
+     "No link is not a finding that the owners differ."
+    ]
+   }
+  },
+  "d-held": {
+   "kind": "det",
+   "title": "Joint deed is each one's latest?",
+   "ref": "deed_edges.py \u00b7 _deed_sql",
+   "lede": "If nobody has conveyed the building since, the joint deed still names its owner.",
+   "what": [
+    "Checked per building: its most recent deed must be that joint deed.",
+    "Buildings sold on drop out, so there are no stale merges."
+   ],
+   "nums": [
+    [
+     "0 of 15",
+     "Citadel buildings still have the 2008 deed as their latest"
+    ]
+   ],
+   "code": [
+    "held_sql"
+   ],
+   "evidence": {
+    "lede": "A parcel still held under the joint deed has the same deed as its latest.",
+    "recorded": [
+     "For each member, the original deed, the latest deed and its amount."
+    ],
+    "tables": [
+     [
+      "evidence_members",
+      "role held_under_joint_deed (2,296 rows), original_document_id equal to latest_document_id."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "evidence_members",
+      "cols": [
+       "bbl",
+       "role",
+       "original_document_id",
+       "latest_document_id",
+       "latest_amount"
+      ],
+      "caption": "Two parcels held under their joint deed.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "role": "held_under_joint_deed"
+      },
+      "order_by": [
+       "evidence_id",
+       "bbl"
+      ]
+     }
+    ],
+    "limits": [
+     "Latest deed means the latest in this snapshot. A deed filed after the snapshot date is not seen."
+    ]
+   }
+  },
+  "d-join-a": {
+   "kind": "det",
+   "title": "JOIN: held since the joint deed",
+   "ref": "deed_edges.py \u00b7 deed_node_groups",
+   "lede": "Buildings whose latest deed is the shared joint deed are treated as one owner's.",
+   "what": [
+    "Each qualifying deed becomes a clique between the landlord nodes of its buildings, once hub nodes are removed."
+   ],
+   "tag": "Join",
+   "measured": [
+    "97% judged the same owner (70 pairs, 90.0 to 99.2%)."
+   ],
+   "code": [
+    "deed_groups",
+    "deed_edges"
+   ],
+   "evidence": {
+    "lede": "A held-since link is a path step whose basis is the deed's evidence item.",
+    "recorded": [
+     "Two nodes, the stage deed.held_since and the evidence id as the basis."
+    ],
+    "tables": [
+     [
+      "group_witness",
+      "119 held-since steps for Owner Portfolios."
+     ],
+     [
+      "evidence_items",
+      "The deed bundle the step cites."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "group_witness",
+      "cols": [
+       "group_id",
+       "step",
+       "node_a",
+       "node_b",
+       "stage",
+       "basis_id"
+      ],
+      "caption": "A held-since step.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "basis_id": "DV0000180"
+      }
+     }
+    ],
+    "limits": [
+     "97% of sampled held-since pairs were judged the same owner (70 pairs, provisional gold)."
+    ]
+   }
+  },
+  "d-grantor": {
+   "kind": "warn",
+   "title": "Latest grantor is the joint grantee?",
+   "ref": "deed_edges.py \u00b7 _parcel_outcomes",
+   "lede": "The deed that replaced the joint deed must come from the joint grantee, the owner moving its own buildings.",
+   "what": [
+    "For each building, take its latest deed. Its grantor must be the grantee of the joint deed.",
+    "If a different party conveyed it, the building changed hands and is dropped."
+   ],
+   "nums": [
+    [
+     "Citadel Estates LLC",
+     "grantor of the latest deed of all 15 buildings"
+    ]
+   ],
+   "code": [
+    "retained"
+   ],
+   "evidence": {
+    "lede": "A parcel whose latest grantor is not the joint grantee is refused with deed_not_latest.",
+    "recorded": [
+     "The refused parcel, the joint deed and the later deed's amount."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "deed_not_latest: 1,409 parcels."
+     ],
+     [
+      "decision_support",
+      "joint_deed and latest_deed documents."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Two parcels of one deed that were conveyed on to someone else.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "E0000853",
+        "E0000854"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "deed_parties",
+      "cols": [
+       "party_type",
+       "party_index",
+       "name",
+       "address1",
+       "city"
+      ],
+      "caption": "The onward deed's grantor is the joint deed's grantee: Citadel Estates LLC.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "document_id": "2015050400848009"
+      },
+      "order_by": [
+       "party_type"
+      ]
+     }
+    ],
+    "limits": [
+     "The reason code names the first failing test. A parcel that would also fail a later one is not listed twice."
+    ]
+   }
+  },
+  "d-shell": {
+   "kind": "warn",
+   "title": "Successor owns 3 buildings or fewer?",
+   "ref": "deed_edges.py \u00b7 _parcel_outcomes",
+   "lede": "A single-purpose LLC is a shell. A buyer with a larger portfolio is probably independent.",
+   "what": [
+    "The count is global: the number of buildings the successor has ever received as grantee.",
+    "The limit is 3."
+   ],
+   "nums": [
+    [
+     "1 to 3",
+     "buildings owned by each of the 12 Citadel successor LLCs"
+    ]
+   ],
+   "code": [
+    "succ_consts",
+    "retained"
+   ],
+   "evidence": {
+    "lede": "A successor that is not a shell is refused with successor_not_shell.",
+    "recorded": [
+     "The refused parcel, the deed and the amount of the onward deed."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "successor_not_shell: 565 parcels."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Two parcels refused because the buyer owns more than three buildings.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "E0000858",
+        "E0000859"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "deed_parties",
+      "cols": [
+       "party_type",
+       "party_index",
+       "name",
+       "address1",
+       "city"
+      ],
+      "caption": "The successor, RIPPLE EP LLC, and its address: the grantor's own.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "document_id": "2015050400848009"
+      },
+      "order_by": [
+       "party_type"
+      ]
+     }
+    ],
+    "limits": [
+     "The limit of three is a parameter of the run (parameters.deed.successor_max)."
+    ]
+   }
+  },
+  "d-nominal": {
+   "kind": "warn",
+   "title": "Onward deed at $100 or less?",
+   "ref": "deed_edges.py \u00b7 _is_nominal",
+   "lede": "A restructuring moves buildings at a token price. A sale moves them at a market price.",
+   "what": [
+    "The recorded consideration must be at most $100. A missing price counts as not nominal.",
+    "The cutoff sits about four orders of magnitude below any NYC building sale, so it never admits a market transaction.",
+    "The tradeoff favors precision: a restructuring recorded at a market-scale price is missed."
+   ],
+   "nums": [
+    [
+     "$0",
+     "recorded on all of the Citadel onward deeds"
+    ]
+   ],
+   "code": [
+    "nominal_const",
+    "is_nominal"
+   ],
+   "widget": "succ-checks",
+   "evidence": {
+    "lede": "An onward deed at a market price is refused with successor_transfer_not_nominal. The amount is in the event.",
+    "recorded": [
+     "The refused parcel and the recorded consideration of the onward deed."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "successor_transfer_not_nominal: 419 parcels."
+     ],
+     [
+      "evidence_members",
+      "The kept parcels carry latest_amount at $100 or less."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Two parcels refused because the onward deed was a sale at a market price.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "E0000855",
+        "E0000856"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "evidence_members",
+      "cols": [
+       "bbl",
+       "role",
+       "latest_document_id",
+       "latest_amount"
+      ],
+      "caption": "The Citadel parcels that passed: every onward deed is $0.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "evidence_id": "DV0000136"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "deed_documents",
+      "cols": [
+       "document_id",
+       "doc_type",
+       "doc_date",
+       "recorded_filed",
+       "doc_amount"
+      ],
+      "caption": "The onward deed: recorded consideration $0.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "document_id": "2015050400848009"
+      }
+     }
+    ],
+    "limits": [
+     "Price alone cannot tell a restructuring from a sale. Some restructurings at market price are refused."
+    ]
+   }
+  },
+  "d-join-b": {
+   "kind": "warn",
+   "title": "JOIN: restructured into shells",
+   "ref": "deed_edges.py \u00b7 _restructured_groups",
+   "lede": "Buildings that pass all three tests are linked as if they still held the joint deed.",
+   "what": [
+    "This is the route that links Citadel's 15 buildings, which are registered to three different people through a shared hub office."
+   ],
+   "tag": "Join",
+   "measured": [
+    "The weakest stratum: 71% judged the same owner (52 pairs, a census; 57.6 to 82.2%)."
+   ],
+   "open": [
+    "The tests cannot see intent. A sale recorded at a token price, or a restructuring recorded at a high one, is misjudged."
+   ],
+   "code": [
+    "restructured",
+    "deed_groups"
+   ],
+   "evidence": {
+    "lede": "A restructured-deed link is a path step whose basis is an evidence item of stage deed.linked_successor.",
+    "recorded": [
+     "Two nodes, the stage, the evidence id.",
+     "In evidence_members, role transferred_onward and the onward deed."
+    ],
+    "tables": [
+     [
+      "group_witness",
+      "30 linked-successor steps in 28 groups."
+     ],
+     [
+      "evidence_items",
+      "77 such deeds."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "group_witness",
+      "cols": [
+       "group_id",
+       "step",
+       "node_a",
+       "node_b",
+       "stage",
+       "basis_id"
+      ],
+      "caption": "The Citadel group's two steps.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "group_id": "OP-67966"
+      }
+     }
+    ],
+    "limits": [
+     "The weakest stratum: 71% in the sample, 52 pairs, provisional gold."
+    ]
+   }
+  },
+  "d-stale": {
+   "kind": "io",
+   "title": "No link: stale deed or sale",
+   "ref": "deed_edges.py",
+   "lede": "The joint deed no longer proves co-ownership.",
+   "what": [
+    "The building was conveyed on by someone else, to a non-shell, or at a market price.",
+    "This is the precision-first choice. It drops edges and never adds a wrong one."
+   ],
+   "tag": "No link",
+   "evidence": {
+    "lede": "A parcel that fails any test is a refusal event naming which one.",
+    "recorded": [
+     "The reason code, the rule and the amount of the later deed."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "deed_not_latest, successor_not_shell or successor_transfer_not_nominal."
+     ],
+     [
+      "bbl_status",
+      "The same reasons, per lot."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "One refusal of each kind.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "E0000853",
+        "E0000855",
+        "E0000858"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     }
+    ],
+    "limits": [
+     "Refusing is the precision-first choice. It never adds a link."
+    ]
+   }
+  },
+  "r-run": {
+   "kind": "io",
+   "title": "Manifest and run",
+   "tag": "Provenance",
+   "ref": "manifest.py \u00b7 release.py \u00b7 release_docs.py",
+   "lede": "One run of the whole pipeline is frozen as a directory: 31 CSV tables, a manifest and a generated data dictionary.",
+   "what": [
+    "The run id appears at the front of every assertion key, so any row can be traced to its run.",
+    "The manifest records the snapshot, the parameters of every stage, the revision and a hash of the code, the Python and library versions, and a checksum of every file.",
+    "A tagged release is built with a check that refuses a dirty tree, and the manifest says whether each tree was clean."
+   ],
+   "nums": [
+    [
+     "33",
+     "files: 31 tables, DATA.md and manifest.json (239 MB)"
+    ],
+    [
+     "2026-05-29-149e871f",
+     "the run id of the v0.2.1 release"
+    ]
+   ],
+   "open": [
+    "Resolution is stochastic: a rebuild agrees to about 99.9% but not exactly. The release is frozen, and a new snapshot needs a new release."
+   ],
+   "evidence": {
+    "lede": "The manifest is the one file that says how everything else was made.",
+    "recorded": [
+     "Snapshot id and date, deed cut-off, run id and creation time.",
+     "bor and nlr versions and revisions, whether each tree was clean, and a hash of the code.",
+     "The parameters of resolution, deeds and Operational Networks.",
+     "A sha256 for each of the other 32 files."
+    ],
+    "tables": [
+     [
+      "manifest.json",
+      "All of the above, plus source_tables and diagnostics."
+     ],
+     [
+      "DATA.md",
+      "A dictionary generated from the contract, with row counts for this release."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "manifest",
+      "fields": [
+       "schema_version",
+       "run_id",
+       "code.bor.version",
+       "code.bor.dirty",
+       "code.nlr.version",
+       "code.nlr.dirty",
+       "threshold",
+       "environment.splink"
+      ],
+      "caption": "Run, code and model settings.",
+      "note": ""
+     },
+     {
+      "release": "v020",
+      "table": "manifest",
+      "fields": [
+       "parameters.deed",
+       "parameters.operational_network"
+      ],
+      "caption": "Parameters of the deed rules and the Operational Network layer.",
+      "note": ""
+     }
+    ],
+    "limits": [
+     "The checksums show the files are the ones the build wrote. They do not show the groupings are right."
+    ]
+   },
+   "sub": "provenance \u00b7 snapshot \u00b7 checksums"
+  },
+  "r-lineage": {
+   "kind": "det",
+   "title": "Lineage: nodes and observations",
+   "tag": "Collected",
+   "ref": "lineage.py \u00b7 release_schema.py",
+   "lede": "Before any decision, the release records what the decisions are about: which HPD contact record stands behind each landlord node and each building.",
+   "what": [
+    "An observation is one HPD contact record, written registration:contact:k.",
+    "A node covers one or more buildings. For each, the release records the observation chosen, and the alternatives when the choice was not clear.",
+    "A node is also mapped to the identities and the cluster the resolution gave it."
+   ],
+   "nums": [
+    [
+     "118,493",
+     "landlord nodes"
+    ],
+    [
+     "209,029",
+     "observations"
+    ],
+    [
+     "171,347",
+     "node and building rows, 642 of them ambiguous"
+    ]
+   ],
+   "evidence": {
+    "lede": "Each landlord node is recorded by the buildings it holds and the HPD contact records it stands on. Node ids are local to the run.",
+    "recorded": [
+     "For each node and building, the HPD registration and the contact record chosen for it, and how many candidates there were.",
+     "Where more than one contact record could stand for a node, every candidate. The choice made is shown, not hidden.",
+     "Each contact record as registration:contact:k, and who it names: the role, the name and the business address as filed."
+    ],
+    "tables": [
+     [
+      "node_observations",
+      "One row per node and building (171,347): the selected observation and whether the choice was ambiguous."
+     ],
+     [
+      "node_observation_alternatives",
+      "The other candidates for the ambiguous choices (1,299 rows)."
+     ],
+     [
+      "observations",
+      "The HPD contact records themselves, by id (209,029 rows)."
+     ],
+     [
+      "observation_contacts, node_names, lot_addresses",
+      "Who each observation names, what each node is called, and each lot's street address."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "node_observations",
+      "cols": [
+       "node_id",
+       "bbl",
+       "selected_observation_id",
+       "ambiguous"
+      ],
+      "caption": "Node 67966, one of the three Citadel registrants, and four of its buildings.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "node_id": "67966"
+      },
+      "lookups": [
+       {
+        "col": "node_id",
+        "table": "node_names",
+        "key": "node_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "node"
+        ]
+       },
+       {
+        "col": "bbl",
+        "table": "lot_addresses",
+        "key": "bbl",
+        "take": [
+         "address"
+        ],
+        "as": [
+         "lot"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "observations",
+      "cols": [
+       "observation_id",
+       "pair_variants"
+      ],
+      "caption": "The contact records behind three of those rows, and who they name.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "observation_id": [
+        "303018:30301805:0",
+        "313483:31348305:0",
+        "335465:33546505:0"
+       ]
+      },
+      "order_by": [
+       "observation_id"
+      ],
+      "lookups": [
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "contact_type"
+        ],
+        "as": [
+         "contact_role"
+        ]
+       },
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "first_name",
+         "last_name"
+        ],
+        "as": [
+         "person"
+        ],
+        "merge": true
+       },
+       {
+        "col": "observation_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "Node ids are renumbered by every rebuild of landlords_with_connections. Within a release they are consistent; across releases they mean nothing.",
+     "642 node and building rows (616 nodes) are ambiguous. The release shows the choice made and the alternatives.",
+     "Names are copied as filed, typos included. They are for reading: a contact joins to HPD on registration and contact id, never on a name."
+    ]
+   },
+   "sub": "which HPD record stands behind each node"
+  },
+  "r-ident": {
+   "kind": "ml",
+   "title": "Identity evidence",
+   "tag": "Collected",
+   "lines": [
+    "nlr records each pair it decides,",
+    "bor turns them into events"
+   ],
+   "ref": "identity_events.py \u00b7 nlr resolve.py",
+   "lede": "nlr resolves identities. Asked to capture, it returns the trace of every decision as it makes it. bor does not re-derive them.",
+   "what": [
+    "nlr v0.2.0 returns a Resolution whose trace holds four tables: the pairs scored, the addresses masked, the shared-company merges and refusals, and the contact records behind them.",
+    "bor orders each pair smaller id first, gives every event a numbered id, and links shared-company events to their contact records.",
+    "The same model run feeds the clusters and the events. The events are the explanation of the clusters, not a second computation."
+   ],
+   "nums": [
+    [
+     "19,838",
+     "pairs accepted by the model"
+    ],
+    [
+     "2,585",
+     "pairs vetoed (1,682 first name, 903 common name)"
+    ],
+    [
+     "1,197",
+     "shared-company merges, with 830 refused"
+    ]
+   ],
+   "code": [
+    "cap_resolution",
+    "cap_resolve_body",
+    "cap_identity"
+   ],
+   "evidence": {
+    "lede": "Every identity decision is recorded: the pairs the model accepted, the pairs a veto stopped, the addresses that were masked, and the three kinds of edge that join nodes.",
+    "recorded": [
+     "For each scored pair, the outcome, the rule, the model's score and the threshold. A vetoed pair names its reason and, for the common-name veto, the name rarity.",
+     "For the shared-company pass, the accepted and the refused merges, and the contact records that carry the company.",
+     "Which identities form a cluster, and which cluster a node falls in. A node that straddles clusters is marked, with its votes.",
+     "For curated owners and the registered-LLC edge, the set of nodes each rule joined."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "One row per decision (36,228 in all). Identity stages: splink_base, splink_feedback, curated."
+     ],
+     [
+      "decision_support",
+      "The contact records a shared-company decision rests on (17,310 rows)."
+     ],
+     [
+      "identity_clusters",
+      "Each identity, its base cluster and its final cluster (145,388 rows)."
+     ],
+     [
+      "node_identity_matches, node_cluster",
+      "How a node maps to identities and to a cluster, with ties marked."
+     ],
+     [
+      "link_sets, link_set_members",
+      "The curated sets (4) and registered-LLC sets (1,709), with their nodes."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "identity_clusters",
+      "cols": [
+       "identity_id",
+       "base_cluster_id",
+       "cluster_id"
+      ],
+      "caption": "Cluster C0009456: Antonelli's nine records, in five base clusters, as the release names and addresses them.",
+      "limit": 9,
+      "note": "",
+      "where": {
+       "cluster_id": "C0009456"
+      },
+      "order_by": [
+       "base_cluster_id",
+       "identity_id"
+      ],
+      "lookups": [
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name"
+        ]
+       },
+       {
+        "col": "identity_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address"
+        ],
+        "merge": true
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "score"
+      ],
+      "caption": "Two scored pairs of that cluster that were accepted, and the addresses that differ between them.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "decision_id": [
+        "D0002544",
+        "D0019098"
+       ]
+      },
+      "order_by": [
+       "decision_id"
+      ],
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_a"
+        ],
+        "merge": true
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "business_house",
+         "business_street",
+         "business_zip"
+        ],
+        "as": [
+         "address_b"
+        ],
+        "merge": true
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "reason_code",
+       "score"
+      ],
+      "caption": "A pair above 0.999 that the first-name veto refused: JOSEF and JACOB at one address.",
+      "limit": 1,
+      "note": "",
+      "where": {
+       "decision_id": "D0026048"
+      },
+      "lookups": [
+       {
+        "col": "subject_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_a"
+        ]
+       },
+       {
+        "col": "counterpart_id",
+        "table": "identity_names",
+        "key": "identity_id",
+        "take": [
+         "name"
+        ],
+        "as": [
+         "name_b"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "reason_code",
+       "score",
+       "detail"
+      ],
+      "caption": "A pair the common-name veto refused (names and addresses are in identity_names).",
+      "limit": 1,
+      "note": "",
+      "where": {
+       "decision_id": "D0025164"
+      }
+     }
+    ],
+    "limits": [
+     "A score is the model's match probability for one pair, not the chance that a whole cluster is one owner.",
+     "The release records the curated sets and their members, not the reviewer's note behind each.",
+     "A name and address are what the HPD record says. Two records that share them are not thereby one person: the decisions are the evidence.",
+     "Identity ids, cluster ids and decision ids are run-local."
+    ]
+   }
+  },
+  "r-deed": {
+   "kind": "det",
+   "title": "Deed evidence",
+   "tag": "Collected",
+   "lines": [
+    "bundles, parcels and the deeds",
+    "on them, with refusals"
+   ],
+   "ref": "deed_events.py \u00b7 deed_edges.py",
+   "lede": "bor's deed code returns a trace beside its result: every parcel of every deed that reached the per-parcel test, and every deed a screen dropped.",
+   "what": [
+    "A qualifying deed bundle becomes an evidence item. Its parcels become members, with the deed they started under and the latest.",
+    "A refused parcel becomes an event that cites the joint deed and the later deed.",
+    "The build checks that the trace reproduces the SQL's result, and records that it did (held_trace_matches_sql, joint_trace_matches_sql)."
+   ],
+   "nums": [
+    [
+     "839",
+     "deed bundles (762 held-since, 77 linked-successor)"
+    ],
+    [
+     "2,454",
+     "parcels on them"
+    ],
+    [
+     "3,245",
+     "deed events: screens and refusals"
+    ]
+   ],
+   "code": [
+    "cap_deed"
+   ],
+   "evidence": {
+    "lede": "A qualifying joint deed is stored as one evidence item with a member row for every parcel on it, so a reader can see which parcels were still held.",
+    "recorded": [
+     "The deed document id and how many parcels it covers.",
+     "For each parcel, the node that holds it, the deed it started under, its latest deed and that deed's recorded amount.",
+     "Each deed that was screened out or refused, with the reason (an institutional party, mostly co-ops or condos, or a size outside 2 to 25 lots)."
+    ],
+    "tables": [
+     [
+      "evidence_items",
+      "One row per qualifying deed bundle (839, of which 762 are held-since)."
+     ],
+     [
+      "evidence_members",
+      "One row per parcel of those deeds (2,454), with its role and both deeds."
+     ],
+     [
+      "decision_events, decision_support",
+      "Screened-out deeds as events, citing the parcels they cover."
+     ],
+     [
+      "deed_documents, deed_parties",
+      "The deed's type, dates and consideration, and its grantors and grantees as ACRIS recorded them."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "evidence_members",
+      "cols": [
+       "bbl",
+       "role",
+       "original_document_id",
+       "latest_document_id",
+       "latest_amount"
+      ],
+      "caption": "The parcels of one held-since deed. Original and latest deed are the same, so it is still current.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "evidence_id": "DV0000001"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "subject_id",
+       "counterpart_id",
+       "outcome",
+       "reason_code",
+       "detail"
+      ],
+      "caption": "Deeds screened out before they could link anything.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "stage": "deed.held_since",
+       "outcome": "excluded"
+      },
+      "order_by": [
+       "decision_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "deed_documents",
+      "cols": [
+       "document_id",
+       "doc_type",
+       "doc_date",
+       "recorded_filed",
+       "doc_amount"
+      ],
+      "caption": "The document behind DV0000180: a 2011 deed at $36.6M.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "document_id": "2011071100133001"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "group_witness",
+      "cols": [
+       "group_id",
+       "step",
+       "node_a",
+       "node_b",
+       "stage",
+       "basis_id"
+      ],
+      "caption": "A path step that rests on that kind of evidence: nodes 31855 and 97058, joined by deed DV0000180.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "basis_id": "DV0000180"
+      }
+     }
+    ],
+    "limits": [
+     "A deed that was never a candidate leaves no row: an absent event means the rule did not run, not that it said no.",
+     "When two deeds tie for a building's latest, a fixed ordering settles it (date, then document id descending). The manifest counts 23,163 such ties."
+    ]
+   }
+  },
+  "r-sets": {
+   "kind": "det",
+   "title": "Link sets and the path",
+   "tag": "Collected",
+   "lines": [
+    "each rule's group of nodes,",
+    "reduced to a spanning path"
+   ],
+   "ref": "group_tables.py \u00b7 build_witness",
+   "lede": "Where one rule joins several nodes at once, the release records that set. A group's path then uses the sets in order and keeps only the steps that connect something new.",
+   "what": [
+    "Curated owners and registered-LLC matches are recorded as link sets with their member nodes.",
+    "Identity clusters and deed bundles are sets too, kept in their own tables.",
+    "build_witness walks the sets in processing order and records a step each time two separate parts become one. A set spanning two groups would be a bug, and it raises."
+   ],
+   "nums": [
+    [
+     "1,713",
+     "link sets: 4 curated, 1,709 registered-LLC"
+    ],
+    [
+     "30,351",
+     "path steps across both layers"
+    ]
+   ],
+   "code": [
+    "cap_witness"
+   ],
+   "evidence": {
+    "lede": "A path is a short, ordered list of reasons the group holds together.",
+    "recorded": [
+     "Link sets and their members.",
+     "For each group, steps in order: two nodes, a stage and the evidence that joined them."
+    ],
+    "tables": [
+     [
+      "link_sets, link_set_members",
+      "1,713 sets and 5,423 member rows."
+     ],
+     [
+      "group_witness",
+      "30,351 steps; every step has its own assertion key ending /w<step>."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "link_sets",
+      "cols": [
+       "set_id",
+       "stage",
+       "rule",
+       "rule_version",
+       "size"
+      ],
+      "caption": "The four curated sets.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "stage": "identity.curated"
+      },
+      "order_by": [
+       "set_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "link_set_members",
+      "cols": [
+       "set_id",
+       "node_id",
+       "source_bbl"
+      ],
+      "caption": "A registered-LLC set: two nodes joined through the same entity.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "set_id": "LG0001528"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "group_witness",
+      "cols": [
+       "group_id",
+       "step",
+       "node_a",
+       "node_b",
+       "stage",
+       "basis_id"
+      ],
+      "caption": "The path of an identity group: a model pair, then a shared-company merge.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "group_id": "OP-100021"
+      }
+     }
+    ],
+    "limits": [
+     "The path is representative, not exhaustive. The manifest marks group_witness so."
+    ]
+   }
+  },
+  "r-decisions": {
+   "kind": "det",
+   "title": "Decisions and support",
+   "tag": "Collected",
+   "lines": [
+    "one row per decision, with the",
+    "records it rests on"
+   ],
+   "ref": "release_schema.py \u00b7 decision_events",
+   "lede": "Every stage writes into one table. A row says what was decided, by which rule, with what outcome and reason, and at what score where there is one.",
+   "what": [
+    "Accepted links and refusals share the table. A refusal carries a reason code from a fixed vocabulary.",
+    "Rule and rule version are stored on every row, so a result can be tied to the code that produced it.",
+    "Support rows point from a decision to the contact records, parcels or deeds it rests on.",
+    "No row means the rule did not run. It does not mean the rule said no."
+   ],
+   "nums": [
+    [
+     "36,228",
+     "decision events"
+    ],
+    [
+     "28,032",
+     "support rows"
+    ]
+   ],
+   "code": [
+    "cap_decisions_tbl"
+   ],
+   "evidence": {
+    "lede": "The events table is where a reader asks why a link was made or refused.",
+    "recorded": [
+     "The stage and rule, the outcome, the reason code, the score and threshold.",
+     "Detail where a stage has one (a name rarity, a parcel count, a latest amount).",
+     "The records behind the decision, in decision_support."
+    ],
+    "tables": [
+     [
+      "decision_events",
+      "36,228 rows across identity, deed, footprint and network stages."
+     ],
+     [
+      "decision_support",
+      "28,032 rows: observation, parcel and deed support."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "stage",
+       "outcome",
+       "rule",
+       "score",
+       "threshold"
+      ],
+      "caption": "A scored pair, accepted by the model.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0002544"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "decision_events",
+      "cols": [
+       "decision_id",
+       "stage",
+       "outcome",
+       "reason_code",
+       "rule",
+       "detail"
+      ],
+      "caption": "A pair refused by the common-name veto.",
+      "limit": 6,
+      "note": "",
+      "where": {
+       "decision_id": "D0025164"
+      }
+     },
+     {
+      "release": "v020",
+      "table": "decision_support",
+      "cols": [
+       "decision_id",
+       "support_id",
+       "role"
+      ],
+      "caption": "The first records a refused shared-company merge rests on, and the company each carries. There are 17 for this one.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "decision_id": "D0028943"
+      },
+      "lookups": [
+       {
+        "col": "support_id",
+        "table": "observation_contacts",
+        "key": "observation_id",
+        "take": [
+         "corporation_name"
+        ],
+        "as": [
+         "company"
+        ]
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "Scores are one model's pair probabilities. They are not the chance a group is right."
+    ]
+   }
+  },
+  "r-groups": {
+   "kind": "rem",
+   "title": "Owner Portfolios and paths",
+   "tag": "Result",
+   "lines": [
+    "groups, members, lots",
+    "and the footprint decisions"
+   ],
+   "ref": "group_tables.py \u00b7 group_events.py",
+   "lede": "The result is a membership list with its reasons. A reader can start at a lot, find its group and follow the path to the evidence.",
+   "what": [
+    "Every group, member node and lot has an assertion key that begins with the run id.",
+    "Groups dropped as co-op or condo dominated, and lots left out of a footprint, are recorded as events.",
+    "Nothing here names a person."
+   ],
+   "nums": [
+    [
+     "6,523",
+     "Owner Portfolios"
+    ],
+    [
+     "46,547",
+     "group members across both layers"
+    ],
+    [
+     "114,986",
+     "group lots across both layers"
+    ]
+   ],
+   "code": [
+    "cap_groupev"
+   ],
+   "evidence": {
+    "lede": "Citadel's lots show how the pieces fit. Each lot has a status in each layer, with the reason when it is not in a group.",
+    "recorded": [
+     "For every PLUTO lot and each layer: in a group, not in a group, or excluded, with the group id or the primary reason, and the lot's address.",
+     "The group, its members and its path, under one assertion key. A lot's link id is the key plus # and the BBL.",
+     "The run id, snapshot and code revisions in the manifest, which every key traces back to."
+    ],
+    "tables": [
+     [
+      "groups, group_members, group_bbls, group_witness",
+      "The groups and what holds them together."
+     ],
+     [
+      "bbl_status",
+      "1,717,250 rows: every lot in both layers."
+     ],
+     [
+      "manifest.json",
+      "run_id, snapshot_id, bor and nlr revisions, output checksums."
+     ],
+     [
+      "observation_contacts, identity_names, node_names, deed_*, lot_addresses",
+      "Who and where the ids stand for, as filed."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "bbl_status",
+      "cols": [
+       "layer",
+       "bbl",
+       "status",
+       "group_id",
+       "reason_code",
+       "top_level_reason"
+      ],
+      "caption": "A Citadel lot (377 Eastern Parkway) in each layer: an Owner Portfolio through the deeds, and in no Operational Network because its shared office address is masked.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "bbl": "3012590047"
+      },
+      "order_by": [
+       "layer"
+      ],
+      "lookups": [
+       {
+        "col": "bbl",
+        "table": "lot_addresses",
+        "key": "bbl",
+        "take": [
+         "address"
+        ],
+        "as": [
+         "address"
+        ]
+       }
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "manifest",
+      "fields": [
+       "run_id",
+       "snapshot_id",
+       "bor_revision",
+       "nlr_revision",
+       "code.bor.version",
+       "code.bor.dirty",
+       "code.nlr.version"
+      ],
+      "caption": "The manifest fields every assertion key traces back to.",
+      "note": ""
+     }
+    ],
+    "limits": [
+     "People and companies are named as HPD and ACRIS filed them, in tables of their own. A name is for reading and never a key.",
+     "A group is a lead. The release says what evidence joined it and what measured precision that kind of evidence has. It is not a finding about the named people."
+    ]
+   }
+  },
+  "r-network": {
+   "kind": "det",
+   "title": "Operational Networks",
+   "tag": "Collected",
+   "lines": [
+    "weighted name and address edges,",
+    "split into networks"
+   ],
+   "ref": "network_tables.py \u00b7 operational_network.py",
+   "lede": "The second layer links landlord nodes that appear to operate together, by name and by shared business address, and cuts large components into networks.",
+   "what": [
+    "Each edge between two nodes records its name, address and identity weights.",
+    "Business addresses used by more than 25 landlords are masked. The mask is recorded, with the number of nodes at each address.",
+    "Large components are split by Louvain community detection. Every attempt, split or not, is recorded.",
+    "Deed evidence never enters this layer."
+   ],
+   "nums": [
+    [
+     "57,202",
+     "edges, 416 of them crossing networks"
+    ],
+    [
+     "73",
+     "masked addresses, covering 4,117 nodes"
+    ],
+    [
+     "9,673",
+     "Operational Networks"
+    ]
+   ],
+   "evidence": {
+    "lede": "The edge table holds the weights the layer was built from, and the masks and splits are rows.",
+    "recorded": [
+     "Per edge: name, address and identity weight and the total.",
+     "Each masked address: its normalised text, how many landlords use it and the threshold.",
+     "Each split attempt: the component, the outcome and the number of communities.",
+     "A path of network edges for each network."
+    ],
+    "tables": [
+     [
+      "network_edges",
+      "57,202 edges."
+     ],
+     [
+      "network_membership",
+      "Node to component, community and network (30,924 rows)."
+     ],
+     [
+      "masked_addresses, masked_address_nodes",
+      "73 addresses and 4,117 nodes."
+     ],
+     [
+      "split_attempts",
+      "Six components that were large enough to split."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "network_edges",
+      "cols": [
+       "edge_id",
+       "node_a",
+       "node_b",
+       "name_weight",
+       "address_weight",
+       "weight"
+      ],
+      "caption": "Edges that join nodes by shared address.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "component_id": [
+        "NC-1",
+        "NC-6",
+        "NC-7"
+       ]
+      },
+      "order_by": [
+       "edge_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "masked_addresses",
+      "cols": [
+       "address_id",
+       "degree",
+       "threshold",
+       "address"
+      ],
+      "caption": "Three aggregator offices that were masked, as text, with how many landlords share each. The text is the normalised form the mask groups on.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "address_id": [
+        "A0000001",
+        "A0000002",
+        "A0000003"
+       ]
+      },
+      "order_by": [
+       "address_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "split_attempts",
+      "cols": [
+       "split_id",
+       "component_id",
+       "level",
+       "outcome",
+       "communities"
+      ],
+      "caption": "Every attempt to split a large component.",
+      "limit": 6,
+      "note": "",
+      "order_by": [
+       "split_id"
+      ]
+     }
+    ],
+    "limits": [
+     "Network edges are operational linkage, looser than ownership by design.",
+     "A masked address is a rule the method applied. The lots there are not shown to be unrelated.",
+     "The text is normalised, not raw: manifest.normalizers says which steps were applied (uppercase, strip, drop a trailing city and state, collapse whitespace) and which were not (floor and suite text, punctuation, street suffixes)."
+    ]
+   }
+  },
+  "r-absence": {
+   "kind": "det",
+   "title": "Absence by lot",
+   "tag": "Summary",
+   "lines": [
+    "why a lot is not in a group,",
+    "ranked in five levels"
+   ],
+   "ref": "absence.py \u00b7 bbl_status",
+   "lede": "For every PLUTO lot in both layers the release says whether it is in a group, and if not, the primary reason.",
+   "what": [
+    "The reasons rank in five top-level levels: outside_source_coverage, outside_method_input, excluded_by_policy, below_eligibility_rule and no_qualifying_linkage. The first that applies is the primary reason.",
+    "It is a summary of decision_events and of facts about the source, tied to lots by one shared rule. The detail, with every reason that applies, stays in the events.",
+    "About four fifths of the rows are lots with no HPD registration."
+   ],
+   "nums": [
+    [
+     "1,717,250",
+     "status rows"
+    ],
+    [
+     "677,771",
+     "lots per layer with no HPD registration"
+    ],
+    [
+     "71,256",
+     "lots in an Operational Network"
+    ],
+    [
+     "43,318",
+     "lots in an Owner Portfolio"
+    ]
+   ],
+   "code": [
+    "cap_absence"
+   ],
+   "evidence": {
+    "lede": "A missing row means nothing. A present row says what the pipeline decided about a lot, and why.",
+    "recorded": [
+     "Layer, status and group id.",
+     "The detailed reason code and the top-level reason it belongs to."
+    ],
+    "tables": [
+     [
+      "bbl_status",
+      "1,717,250 rows, 137 MB. A loader may skip the no_registration rows and answer from its own HPD data."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "bbl_status",
+      "cols": [
+       "layer",
+       "bbl",
+       "status",
+       "group_id",
+       "reason_code",
+       "top_level_reason"
+      ],
+      "caption": "One lot kept out by a deed rule, and one in a group, with their addresses.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "bbl": [
+        "1000530037",
+        "3012590047"
+       ],
+       "layer": "owner_portfolio"
+      },
+      "order_by": [
+       "bbl"
+      ],
+      "lookups": [
+       {
+        "col": "bbl",
+        "table": "lot_addresses",
+        "key": "bbl",
+        "take": [
+         "address"
+        ],
+        "as": [
+         "address"
+        ]
+       }
+      ]
+     }
+    ],
+    "limits": [
+     "An absence is a rule the method applied or a record it did not use. It is never evidence the owners differ."
+    ]
+   }
+  },
+  "r-metrics": {
+   "kind": "warn",
+   "title": "Method metrics",
+   "tag": "Measured",
+   "lines": [
+    "precision by stratum, with intervals,",
+    "marked provisional"
+   ],
+   "ref": "metrics.py \u00b7 method_metrics",
+   "lede": "The release carries the measured precision of each kind of evidence, so a reader can weigh a link by how it was made.",
+   "what": [
+    "Each row is one stratum and metric: the counts, the proportion, a Wilson interval and the status of the gold.",
+    "Strict precision counts a pair as correct on cross-source corroboration only. Inclusive also counts pairs verified within one source. Indeterminate pairs are left out of both.",
+    "Two strata measure the other way: whether pairs the method keeps apart really are different owners.",
+    "There is no pooled figure.",
+    "Strata with no sample are rows with no number, so a gap is visible."
+   ],
+   "nums": [
+    [
+     "512",
+     "pairs in the gold"
+    ],
+    [
+     "20",
+     "metric rows"
+    ]
+   ],
+   "open": [
+    "Every row is human_llm_provisional until a blind human re-adjudication."
+   ],
+   "evidence": {
+    "lede": "A precision is the share of sampled pairs judged correct in one stratum on one snapshot. It is not the probability that a link is right.",
+    "recorded": [
+     "Numerator, denominator and sample size.",
+     "A Wilson interval and the method.",
+     "The status of the gold that produced it."
+    ],
+    "tables": [
+     [
+      "method_metrics",
+      "20 rows; the evaluation's checksum is in the manifest."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "method_metrics",
+      "cols": [
+       "stage",
+       "metric",
+       "n",
+       "precision",
+       "ci_lower",
+       "ci_upper"
+      ],
+      "caption": "The measured strata.",
+      "limit": 8,
+      "note": "",
+      "where": {
+       "adjudication_status": "human_llm_provisional"
+      },
+      "order_by": [
+       "stage",
+       "metric"
+      ]
+     }
+    ],
+    "limits": [
+     "Recall is not estimated.",
+     "The gold is one human annotator, an LLM second reader and an LLM-run resolution of disagreements."
+    ]
+   }
+  },
+  "r-names": {
+   "kind": "io",
+   "title": "Names, as filed",
+   "tag": "Reading aid",
+   "lines": [
+    "who and where the ids stand for"
+   ],
+   "ref": "names.py \u00b7 observation_contacts \u00b7 deed_parties",
+   "code": [
+    "cap_names_contacts",
+    "cap_names_docs"
+   ],
+   "lede": "From contract 0.2.0 a release says who its ids stand for, in six tables of their own, so the evidence can be read without a second database.",
+   "what": [
+    "Each observation has its HPD contact: the role, the name and the business address as filed. A contact HPD repeats with different content has one row per variant.",
+    "Each nlr identity has the name and address that define it, each node the landlord name WoW gave it.",
+    "Each deed the release cites has its type, dates and consideration, and its grantors and grantees as ACRIS recorded them.",
+    "Each lot the groups, evidence and decisions name has its PLUTO street address.",
+    "Names are for reading. Every join is on an HPD id, a BBL, an ACRIS document id or a run-local id."
+   ],
+   "nums": [
+    [
+     "209,029",
+     "contacts named"
+    ],
+    [
+     "145,412",
+     "identities named"
+    ],
+    [
+     "118,493",
+     "nodes named"
+    ],
+    [
+     "8,861",
+     "deed parties on 3,396 documents"
+    ],
+    [
+     "171,324",
+     "lot addresses"
+    ]
+   ],
+   "open": [
+    "Names are copied without cleaning, typos included. Many individual owners registered their own address. A grouping is a lead, not a finding about a named person."
+   ],
+   "evidence": {
+    "lede": "The name tables answer who an id is. Whether two records are one owner is still only what the decisions say.",
+    "recorded": [
+     "The contact behind each observation, the name of each identity and node, the parties and terms of each cited deed, and the address of each lot.",
+     "Blank values are null. Nothing is cleaned or merged."
+    ],
+    "tables": [
+     [
+      "observation_contacts",
+      "209,029 rows: contact_type, first and last name, corporation, business address."
+     ],
+     [
+      "identity_names, node_names",
+      "145,412 identities (including 24 a curated list removed) and 118,493 nodes."
+     ],
+     [
+      "deed_documents, deed_parties",
+      "3,396 cited documents and their 8,861 grantors and grantees."
+     ],
+     [
+      "lot_addresses",
+      "171,324 lots; 23 named lots are not in PLUTO and have no row."
+     ]
+    ],
+    "examples": [
+     {
+      "release": "v020",
+      "table": "observation_contacts",
+      "cols": [
+       "observation_id",
+       "contact_type",
+       "first_name",
+       "last_name",
+       "business_house",
+       "business_street",
+       "business_zip"
+      ],
+      "caption": "The three contacts behind node 67966, a Citadel registrant.",
+      "limit": 3,
+      "note": "",
+      "where": {
+       "observation_id": [
+        "303018:30301805:0",
+        "313483:31348305:0",
+        "335465:33546505:0"
+       ]
+      },
+      "order_by": [
+       "observation_id"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "deed_parties",
+      "cols": [
+       "party_type",
+       "party_index",
+       "name",
+       "address1",
+       "city"
+      ],
+      "caption": "The Citadel deed's buyer and its first sellers.",
+      "limit": 4,
+      "note": "",
+      "where": {
+       "document_id": "2008072300342001"
+      },
+      "order_by": [
+       "party_type",
+       "party_index"
+      ]
+     },
+     {
+      "release": "v020",
+      "table": "lot_addresses",
+      "cols": [
+       "bbl",
+       "borough",
+       "address",
+       "zip"
+      ],
+      "caption": "Two lots named in this explainer.",
+      "limit": 2,
+      "note": "",
+      "where": {
+       "bbl": [
+        "1000530037",
+        "3012590047"
+       ]
+      },
+      "order_by": [
+       "bbl"
+      ]
+     }
+    ],
+    "limits": [
+     "A name is not a key and not evidence. Two records that share a name are not thereby one person.",
+     "Copied as filed: typos and variant spellings stay. The same landlord can appear under several spellings, which is what the resolution exists to reunite.",
+     "These are public records, but a release groups individuals' names with the buildings they are said to control. Check the source records before saying anything about a named person."
+    ]
+   }
+  }
+ },
+ "releases": {
+  "v020": {
+   "path": "~/Learning/Sabbatical/beneficial-ownership-resolution/release/v0.2.1",
+   "url": "https://github.com/bobflagg/nyc-beneficial-owner-resolution/releases/tag/v0.2.1",
+   "label": "bor v0.2.1 release"
+  }
+ }
+}

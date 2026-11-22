@@ -1,0 +1,22 @@
+# Neighborhood name -> borough(s), for resolve_text (src/watchline/resolution.py). CURATED by hand, provisional, not an official
+# boundary file: a name here is a lead to a borough (Type II), never a finding. A name listed under several boroughs is ambiguous and
+# makes resolve_text ask. Add a name only with its borough(s); an unlisted name makes resolve_text ask for a borough or ZIP.
+# Spelling is compared on letters and digits only, upper case ("Bed-Stuy" = "BEDSTUY").
+Manhattan: [Harlem, East Harlem, Spanish Harlem, Washington Heights, Inwood, Upper West Side, Upper East Side, Chelsea, Greenwich Village,
+  West Village, East Village, SoHo, NoHo, Tribeca, Chinatown, Little Italy, Nolita, Lower East Side, Financial District, Midtown,
+  Hell's Kitchen, Gramercy, Kips Bay, Morningside Heights, Hamilton Heights, Manhattanville, Murray Hill, Battery Park City,
+  Stuyvesant Town, Flatiron, Yorkville, Lenox Hill, Turtle Bay, Sutton Place, Roosevelt Island]
+Brooklyn: [Williamsburg, Greenpoint, Bushwick, Bedford-Stuyvesant, Bed-Stuy, Crown Heights, Park Slope, Sunset Park, Bay Ridge, Bensonhurst,
+  Coney Island, Brighton Beach, Flatbush, East Flatbush, Canarsie, Brownsville, East New York, Borough Park, Fort Greene, Clinton Hill,
+  Prospect Heights, Cobble Hill, Carroll Gardens, Red Hook, Gowanus, DUMBO, Brooklyn Heights, Downtown Brooklyn, Greenwood Heights,
+  Kensington, Midwood, Sheepshead Bay, Gravesend, Dyker Heights, Flatlands, Bergen Beach, Marine Park, Windsor Terrace, Boerum Hill,
+  Prospect Lefferts Gardens, Cypress Hills, Ocean Hill]
+Queens: [Astoria, Astoria Heights, Long Island City, Sunnyside, Woodside, Jackson Heights, Elmhurst, Corona, Flushing, Forest Hills,
+  Kew Gardens, Jamaica, Richmond Hill, Ridgewood, Bayside, Far Rockaway, Rockaway Beach, Howard Beach, Ozone Park, Woodhaven,
+  Whitestone, College Point, Rego Park, Maspeth, Middle Village, Glendale, Fresh Meadows, Briarwood, Hollis, Queens Village,
+  St. Albans, Springfield Gardens, Rosedale, Laurelton, Cambria Heights, Murray Hill, Bay Terrace, Edgemere]
+Bronx: [Riverdale, Fordham, Kingsbridge, Mott Haven, Hunts Point, Morrisania, Tremont, Belmont, Parkchester, Throgs Neck, Pelham Bay,
+  Co-op City, Soundview, Highbridge, Concourse, Melrose, Longwood, Morris Park, Wakefield, Williamsbridge, Baychester, Bedford Park,
+  University Heights, Norwood, Castle Hill, Port Morris]
+Staten Island: [St. George, Tottenville, Stapleton, New Brighton, Great Kills, Port Richmond, Todt Hill, Tompkinsville, Rosebank,
+  Mariners Harbor, New Dorp, Eltingville, Bay Terrace]
