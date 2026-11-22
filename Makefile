@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup test test-live eval lint fmt check sidecar sidecar-stop
+.PHONY: help setup test test-live eval notebook notebook-check lint fmt check sidecar sidecar-stop
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -15,6 +15,12 @@ test-live:  ## Live tests (need Neo4j and the Geosupport sidecar; skip if unreac
 
 eval:  ## Q1 tool-level evals (need Neo4j and the sidecar; skip if unreachable)
 	uv run pytest tests/test_eval_q01.py -rs
+
+notebook:  ## Re-execute the notebooks in place (need Neo4j and the sidecar); commit the refreshed outputs
+	uv run jupyter nbconvert --to notebook --execute --inplace docs/notebooks/*.ipynb
+
+notebook-check:  ## Execute the notebooks into build/ to catch drift; the committed copies are untouched
+	uv run jupyter nbconvert --to notebook --execute --output-dir build/notebook-check docs/notebooks/*.ipynb
 
 lint:  ## Lint with ruff
 	uv run ruff check .
