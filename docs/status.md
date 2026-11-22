@@ -16,9 +16,10 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 - Agent tool and first Q1 evals (branch `agent-tool-q1-evals`, plan in `docs/plans/agent-tool-and-evals.md`):
   `watchline/agent/tools.py`, 16 tool-level eval cases (`make eval`). Reviewed, findings fixed, merged.
+- Notebook for the tool (branch `tool-notebook`): `docs/notebooks/building-profile-tool.ipynb`, `make notebook` / `make notebook-check`.
 
 ## Next
-- Refresh the explainer (code pins resolve now that `main` is pushed).
+- Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Wire the Deep Agent (`create_deep_agent`, haiku default), system prompt and ontology skills; add agent-level evals that
   check the model relays caveats and never says "the lot has N buildings".
 
@@ -28,7 +29,7 @@ Read this first in a fresh session. Update it at the end of every slice.
 - Agent built with LangChain Deep Agents. Runtime graph access uses the Python driver with curated,
   read-only tools. The Neo4j MCP server is for development only.
 - Web search comes after the graph side is solid; its results are context, never identity evidence.
-- Understanding step: explainer docs only (no quizzes or micro-worlds). Specs in `docs/understanding/`,
+- Understanding step: explainers for components with real flow, a notebook per simple tool (`docs/notebooks/`); no quizzes or micro-worlds. Specs in `docs/understanding/`,
   rendered pages published as artifacts.
 
 ## Open questions

@@ -19,10 +19,17 @@ A slice is one small, end-to-end piece of behavior (for example: "type an addres
 6. **Understand.** Update the explainer for any component whose behavior changed (see below).
 7. **Merge**, then push so code pins in the explainer resolve.
 
-## Understanding step: explainer docs
+## Understanding step: explainers for components, notebooks for tools
 
 Understanding is a bottleneck: the developer needs a working mental model of the key components, not
-line-by-line knowledge. We keep a small set of explainers for that.
+line-by-line knowledge. We keep a small set of explainers for that, and a notebook for each simple tool.
+
+- **Notebook per tool** (`docs/notebooks/<tool>.ipynb`): for a thin tool, a notebook that calls it on real
+  addresses and shows what the model sees, including the failure statuses and the caveats. Committed
+  executed, with the run date and data snapshot in the first cell. `make notebook` refreshes it in place;
+  `make notebook-check` executes it without touching the committed copy, to catch drift. Both need Neo4j and
+  the sidecar. Credentials come from `.env` through code and are never printed.
+- **Explainer per component** (below): for anything with real stages or flow.
 
 - One explainer per key component (agent flow, graph tools, address resolution, ontology and its traps),
   not one per change. Start with the first after the first working slice.
