@@ -1,5 +1,16 @@
 {
   "enabledPlugins": {
     "langchain-skills@langchain-skills": true
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Read(./ignore-this-directory/**)",
+      "Edit(./ignore-this-directory/**)",
+      "Edit(./docs/ontology.ttl)"
+    ]
   }
 }

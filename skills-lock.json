@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "neo4j-cypher-skill": {
+      "source": "neo4j-contrib/neo4j-skills",
+      "commit": "004c7823fc05d352647f2e9e5106d9ae2a4080e5",
+      "sourceType": "github",
+      "skillPath": "neo4j-cypher-skill/SKILL.md",
+      "computedHash": "ee660542a7e34b7cfcdcee445c179afcfaccb09568bfe0b553b84d614319c1f5"
+    }
+  }
+}

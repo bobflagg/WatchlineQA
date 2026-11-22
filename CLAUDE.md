@@ -29,6 +29,10 @@ LangChain, LangGraph or Deep Agents code, load `langchain-skills:ecosystem-prime
 (`deep-agents-core`, `deep-agents-orchestration`, `deep-agents-memory`). These help Claude Code write the
 agent. They are separate from the skills the agent itself loads at run time (the ontology rules).
 
+Before writing or changing any Cypher, load `neo4j-cypher-skill` (Cypher 25; our Neo4j is 2026.04, which
+supports Cypher 5 and 25). Check labels and properties against the live graph first, and use EXPLAIN on any
+new query. The agent's graph tools stay read-only.
+
 ## Ontology rules (apply to every answer)
 
 - Ownership links are **leads, not findings**: operational networks, owner portfolios, landlord-to-landlord
