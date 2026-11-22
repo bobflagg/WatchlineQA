@@ -64,3 +64,25 @@ three parameterized read queries). No agent wiring in this slice; the agent tool
 
 Agent and chat wiring, web search, deeds and ownership leads (separate slice, leads-not-findings rules apply),
 explainer update (done after the first working slice per `docs/process.md`).
+
+## Decisions made while building
+
+- Duplicate problems are counted separately (key: major category plus the duplicate flag). Summaries are per building,
+  with `lot_totals()` summing only same-type counts.
+- Source snapshots (PLUTO 26v1, HPD through 2026-05-29, Geosupport 25b) are constants taken from `q01.md`; the graph
+  does not carry them. Refresh them when the data is reloaded.
+- The Geosupport reason code is not captured by `Result`, so the variant caveat reports the return code (GRC) and the
+  returned address only.
+
+## Review follow-up (fresh-context review of 37de83c)
+
+Fixed: timeout now enforced with `neo4j.Query(timeout=...)`; early returns carry a reason caveat; variant caveat reports
+the returned address and GRC, inferred and neighborhood caveats separate; harassment wording; counts and
+characteristics labelled with unit and source; registered-but-no-building case; missing PLUTO count; addressed
+building missing; truncation caveat; tests strengthened and a live unregistered-lot test added.
+
+## EXPLAIN evidence (2026-11-22, anchor D)
+
+All five queries start with `NodeUniqueIndexSeek` and expand from there. No `AllNodesScan`, `NodeByLabelScan`,
+`CartesianProduct` or `Eager`. The three summary queries use `EagerAggregation` for `count(*)`, which is expected.
+Worst-case building (16,771 problems): about 0.5 s.

@@ -9,7 +9,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from neo4j import Driver, RoutingControl
+from neo4j import Driver, Query, RoutingControl
 
 from watchline.geosupport.resolution import Answer, Graph, Match, resolve_text
 
@@ -18,19 +18,40 @@ MAX_BUILDINGS = 200
 MAX_GROUPS = 5000
 HARASSMENT_FINDINGS = ("After Inquest", "After Trial")  # the only values that are a harassment finding
 
+# Source snapshots are taken from specs/questions/q01.md (checked 2026-11-10); the graph does not carry them.
+PLUTO = "PLUTO (release 26v1)"
+HPD = "HPD registrations (data through 2026-05-29)"
+GEOSUPPORT = "Geosupport (release 25b)"
+
 CAVEAT_CITED = ("Violations, complaint problems and litigation are what was cited, reported or brought, "
                 "not findings of fault. Counts are by class or type and are not a severity score.")
 CAVEAT_LOT_WIDE = "Residential units and assessed value are lot-wide: they belong to the lot, not to any building."
-CAVEAT_UNREGISTERED = ("No building recorded in the HPD registrations. This is not a statement that the lot "
-                       "has no buildings; violations, problems and litigation exist only for HPD-registered buildings.")
+CAVEAT_NO_BUILDING = ("No building recorded in the HPD registrations. This is not a statement that the lot has no "
+                      "buildings; violations, problems and litigation exist only for HPD-registered buildings.")
+CAVEAT_REGISTERED_NO_BUILDING = ("The lot is marked HPD-registered but no building is listed for it. Violations, "
+                                 "problems and litigation can only be read through listed buildings, so none are shown.")
 CAVEAT_COUNTS = ("Two building counts: PLUTO says {pluto}, HPD registrations list {listed}. They are different "
                  "sources and differ on many lots; neither alone is 'the number of buildings'.")
-CAVEAT_DUPLICATES = "Problem counts include rows flagged as duplicates; they are counted separately."
-CAVEAT_VARIANT = "The address matched by a variant of what was typed (returned address: {returned})."
+CAVEAT_PLUTO_COUNT_MISSING = "PLUTO has no building count recorded for this lot; HPD registrations list {listed}."
+CAVEAT_DUPLICATES = "Problem counts are split by the duplicate flag; rows flagged as duplicates are counted separately."
+CAVEAT_VARIANT = ("The address matched by a variant of what was typed. Typed: {typed}. Returned: {returned} "
+                  "(Geosupport return code {grc}).")
+CAVEAT_INFERRED = "The lot comes from a respelled address, not the one typed: the resolution is inferred. Spellings tried: {tried}."
 CAVEAT_HOOD = "The borough was inferred from the neighborhood '{hood}', not typed."
-CAVEAT_RELATED = "Other lots share the addressed building's BIN (for example a condominium): {lots}."
-CAVEAT_HARASSMENT = ("Only a finding of 'After Inquest' or 'After Trial' is a harassment finding; other cases "
-                     "were brought, not found.")
+CAVEAT_RELATED = ("Other lots share the addressed building's BIN (for example a condominium): {lots}. "
+                  "Building counts are not additive across these lots.")
+CAVEAT_HARASSMENT = ("Only a finding of 'After Inquest' or 'After Trial' is a harassment finding. 'No Harassment' is a "
+                     "recorded finding of none, and many cases have no finding recorded; those are not findings either way.")
+CAVEAT_NO_ADDRESSED = ("The typed address resolved to {bin}, which is not among the buildings listed for the lot, so no "
+                       "building is marked as the addressed one.")
+CAVEAT_NO_ADDRESSED_BIN = "Geosupport returned no building (BIN) for this address, so no building is marked as addressed."
+CAVEAT_TRUNCATED = "Results were truncated at a row limit; counts may be incomplete."
+
+CAVEAT_AMBIGUOUS = "The street is ambiguous. Similar street names are listed as candidates; no lot was chosen."
+CAVEAT_NOT_FOUND = ("No lot found (Geosupport return code {grc}). Spellings tried: {tried}. No nearby lot was guessed.")
+CAVEAT_UNAVAILABLE = "Geosupport could not be reached. This is an outage, not an answer about the address."
+CAVEAT_NOT_IN_GRAPH = ("Geosupport returned BBL {bbl}, but the graph holds no such lot, so no buildings, violations, "
+                       "problems or litigation could be read. This does not mean the lot has none.")
 
 
 class ProfileGraph(Protocol):
@@ -42,14 +63,14 @@ class ProfileGraph(Protocol):
 
 
 class Neo4jProfileGraph:
-    """Read-only, parameterized, row-limited, with a timeout. No free-form Cypher from callers."""
+    """Read-only, parameterized, row-limited, with a server-side timeout. No free-form Cypher from callers."""
 
     def __init__(self, driver: Driver, database: str):
         self._driver, self._db = driver, database
 
-    def _read(self, query: str, **params) -> list[dict]:
-        records = self._driver.execute_query(query, params, database_=self._db, routing_=RoutingControl.READ,
-                                             timeout=TIMEOUT_S).records
+    def _read(self, text: str, **params) -> list[dict]:
+        records = self._driver.execute_query(Query(text, timeout=TIMEOUT_S), params, database_=self._db,
+                                             routing_=RoutingControl.READ).records
         return [r.data() for r in records]
 
     def lot(self, bbl: str) -> dict | None:
@@ -82,6 +103,21 @@ class Neo4jProfileGraph:
 
 
 @dataclass(frozen=True)
+class Characteristic:
+    name: str
+    value: object
+    source: str            # where the value comes from, with its snapshot
+
+
+@dataclass(frozen=True)
+class Count:
+    name: str
+    value: int | None
+    unit: str              # what is being counted
+    source: str
+
+
+@dataclass(frozen=True)
 class BuildingSummary:
     bin: str
     address: str
@@ -96,6 +132,8 @@ class BuildingSummary:
 class Profile:
     resolution: Answer
     lot: dict | None = None                         # lot-wide values, as recorded
+    characteristics: tuple[Characteristic, ...] = ()
+    counts: tuple[Count, ...] = ()                  # parcels, buildings (two sources) and units, never merged
     buildings_listed: int | None = None             # BINs HPD lists (not PLUTO's count)
     buildings: tuple[BuildingSummary, ...] = ()
     caveats: tuple[str, ...] = field(default=())
@@ -117,23 +155,44 @@ def _group(rows: list[dict], key) -> dict[str, Counter]:
     return by_bin
 
 
+def _match_caveats(res: Answer) -> list[str]:
+    out = []
+    same_as_typed = " ".join((res.returned or "").upper().split()) == " ".join(res.input.upper().split())
+    if res.outcome is Match.VARIANT and not (res.borough_inferred_from and same_as_typed and not res.inferred):
+        out.append(CAVEAT_VARIANT.format(typed=res.input, returned=res.returned or "not reported", grc=res.grc))
+    if res.inferred:
+        out.append(CAVEAT_INFERRED.format(tried=", ".join(res.tried) or "none"))
+    if res.borough_inferred_from:
+        out.append(CAVEAT_HOOD.format(hood=res.borough_inferred_from))
+    return out
+
+
+def _unresolved_caveat(res: Answer) -> str | None:
+    match res.outcome:
+        case Match.AMBIGUOUS:
+            return CAVEAT_AMBIGUOUS
+        case Match.NOT_FOUND:
+            return CAVEAT_NOT_FOUND.format(grc=res.grc, tried=", ".join(res.tried) or "none")
+        case Match.UNAVAILABLE:
+            return CAVEAT_UNAVAILABLE
+    return CAVEAT_NOT_IN_GRAPH.format(bbl=res.bbl) if res.bbl and not res.in_graph else None
+
+
 def build_profile(resolution: Answer, pg: ProfileGraph) -> Profile:
     """Pure given the graph rows. The resolution decides whether there is anything to profile."""
-    caveats: list[str] = []
-    if resolution.outcome is Match.VARIANT and not resolution.borough_inferred_from:
-        caveats.append(CAVEAT_VARIANT.format(returned=resolution.tried[-1] if resolution.tried else resolution.input))
-    if resolution.borough_inferred_from:
-        caveats.append(CAVEAT_HOOD.format(hood=resolution.borough_inferred_from))
-    if resolution.outcome not in (Match.EXACT, Match.VARIANT) or not resolution.bbl or not resolution.in_graph:
-        return Profile(resolution, caveats=tuple(caveats))
+    caveats = _match_caveats(resolution)
+    unresolved = _unresolved_caveat(resolution)
+    lot = pg.lot(resolution.bbl) if unresolved is None and resolution.bbl else None
+    if unresolved is None and lot is None:
+        unresolved = CAVEAT_NOT_IN_GRAPH.format(bbl=resolution.bbl)
+    if unresolved:
+        return Profile(resolution, caveats=(*caveats, unresolved))
 
-    lot = pg.lot(resolution.bbl)
-    if lot is None:
-        return Profile(resolution, caveats=tuple(caveats))
     blds = pg.buildings(resolution.bbl)
-    viol = _group(pg.violations(resolution.bbl), lambda r: (r["violationClass"], r["status"]))
-    prob = _group(pg.problems(resolution.bbl), lambda r: (r["majorCategory"], bool(r["duplicate"])))
-    lit_rows = pg.litigation(resolution.bbl)
+    viol_rows, prob_rows, lit_rows = (pg.violations(resolution.bbl), pg.problems(resolution.bbl),
+                                      pg.litigation(resolution.bbl))
+    viol = _group(viol_rows, lambda r: (r["violationClass"], r["status"]))
+    prob = _group(prob_rows, lambda r: (r["majorCategory"], bool(r["duplicate"])))
     lit = _group(lit_rows, lambda r: (r["caseType"], r["caseStatus"]))
     harass: Counter = Counter()
     for r in lit_rows:
@@ -145,18 +204,39 @@ def build_profile(resolution: Answer, pg: ProfileGraph) -> Profile:
         violations=dict(viol.get(b["bin"], {})), problems=dict(prob.get(b["bin"], {})),
         litigation=dict(lit.get(b["bin"], {})), harassment_findings=harass.get(b["bin"], 0)) for b in blds)
 
+    characteristics = (
+        Characteristic("yearBuilt", lot["yearBuilt"], PLUTO),
+        Characteristic("buildingClass", lot["buildingClass"], PLUTO),
+        Characteristic("unitsRes", lot["unitsRes"], f"{PLUTO}, lot-wide"),
+        Characteristic("assessedTotal", lot["assessedTotal"], f"{PLUTO}, lot-wide, whole dollars"),
+    )
+    counts = (
+        Count("parcels", 1, "tax lot (BBL) the address resolved to", GEOSUPPORT),
+        Count("buildings (PLUTO)", lot["plutoNumBuildings"], "buildings as counted by PLUTO", PLUTO),
+        Count("buildings (HPD)", len(blds), "BINs listed in HPD registrations", HPD),
+        Count("residential units", lot["unitsRes"], "residential units, lot-wide", PLUTO),
+    )
+
     caveats += [CAVEAT_CITED, CAVEAT_LOT_WIDE]
+    pluto_n = lot["plutoNumBuildings"]
     if not blds:
-        caveats.append(CAVEAT_UNREGISTERED)
-    if lot["plutoNumBuildings"] != len(blds):
-        caveats.append(CAVEAT_COUNTS.format(pluto=lot["plutoNumBuildings"], listed=len(blds)))
+        caveats.append(CAVEAT_REGISTERED_NO_BUILDING if lot.get("hpdRegistered") else CAVEAT_NO_BUILDING)
+    elif pluto_n is None:
+        caveats.append(CAVEAT_PLUTO_COUNT_MISSING.format(listed=len(blds)))
+    elif pluto_n != len(blds):
+        caveats.append(CAVEAT_COUNTS.format(pluto=pluto_n, listed=len(blds)))
+    if blds and not any(s.addressed for s in summaries):
+        caveats.append(CAVEAT_NO_ADDRESSED.format(bin=resolution.bin) if resolution.bin else CAVEAT_NO_ADDRESSED_BIN)
     if any(d for s in summaries for (_, d) in s.problems):
         caveats.append(CAVEAT_DUPLICATES)
     if any(s.litigation for s in summaries):
         caveats.append(CAVEAT_HARASSMENT)
     if resolution.related_lots:
         caveats.append(CAVEAT_RELATED.format(lots=", ".join(resolution.related_lots)))
-    return Profile(resolution, lot=lot, buildings_listed=len(blds), buildings=summaries, caveats=tuple(caveats))
+    if len(blds) >= MAX_BUILDINGS or max(len(viol_rows), len(prob_rows), len(lit_rows)) >= MAX_GROUPS:
+        caveats.append(CAVEAT_TRUNCATED)
+    return Profile(resolution, lot=lot, characteristics=characteristics, counts=counts, buildings_listed=len(blds),
+                   buildings=summaries, caveats=tuple(caveats))
 
 
 def building_profile(client, graph: Graph, pg: ProfileGraph, text: str, **kw) -> Profile:

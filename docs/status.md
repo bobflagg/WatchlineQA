@@ -12,10 +12,10 @@ Read this first in a fresh session. Update it at the end of every slice.
 - Building profile (branch `building-profile`, plan in `docs/plans/building-profile.md`):
   `watchline/profile/profile.py`, `building_profile(client, graph, pg, text)`. Unit and live tests pass
   (anchors D, A, 17 Battery Place). Worst-case building (16,771 problems) answers in about 0.5 s.
-  Not yet: fresh-context review, explainer, merge. Unregistered-lot live test still to add.
+  Fresh-context review done and its findings fixed (see the plan). Not yet: explainer, merge.
 
 ## Next
-- Review the building-profile diff in a fresh context, then merge.
+- Merge the building-profile branch (review done), then refresh the explainer.
 - Wrap `building_profile` as an agent tool (read-only, row-limited) and add the first eval cases from Q1.
 
 ## Decisions
