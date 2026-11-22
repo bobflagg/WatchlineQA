@@ -25,8 +25,9 @@ journalists, tenant advocates, watchdog agencies, the public. See `docs/process.
 ## Agent-building skills
 
 The `langchain-skills` plugin is installed at project scope (`.claude/settings.json`). Before writing any
-LangChain, LangGraph or Deep Agents code, load `langchain-skills:ecosystem-primer`, then the specific skill
-(`deep-agents-core`, `deep-agents-orchestration`, `deep-agents-memory`). These help Claude Code write the
+LangChain, LangGraph or Deep Agents code, load `langchain-skills:langchain-build-agent`; for evals also
+`langchain-skills:langchain-eval-engineering` and `langchain-agent-experiments`. Check
+`~/.claude/plugins/marketplaces/langchain-skills/skills/` if a name fails. These help Claude Code write the
 agent. They are separate from the skills the agent itself loads at run time (the ontology rules).
 
 Before writing or changing any Cypher, load `neo4j-cypher-skill` (Cypher 25; our Neo4j is 2026.04, which
@@ -66,4 +67,5 @@ The graph label is `Lot` (ontology: TaxLot). Some properties are shorter: `units
 
 ## Mistakes to avoid
 
-- (none yet)
+- Do not guess expected values for evals or tests (an address's lot, outcome or shared BIN). Probe the live
+  graph and Geosupport first, then write the expectation.

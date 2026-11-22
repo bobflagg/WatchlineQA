@@ -1,0 +1,119 @@
+# First eval cases from specs/questions/q01.md, run through the agent tool (what the model sees).
+# Values were verified against the live graph and Geosupport on 2026-11-22; they are candidates until a snapshot is frozen.
+# expect keys: status, outcome, bbl, bins (exact set), addressed_bin, pluto_count, hpd_count, units, related_lots,
+#              candidates_include, caveats_contain (substrings), caveats_absent (substrings)
+
+- id: d-multi-building-exact
+  question: Q1.1 Q1.2 Q1.4
+  why: A tenant at any of three buildings resolves to one lot. List all three and mark the addressed one.
+  input: {address: "224 54 Street, Brooklyn"}
+  expect:
+    status: ok
+    outcome: exact
+    bbl: "3008210012"
+    bins: ["3324448", "3324450", "3324451"]
+    addressed_bin: "3324451"
+    pluto_count: 3
+    hpd_count: 3
+    units: 18
+    caveats_contain: ["lot-wide", "not findings of fault"]
+    caveats_absent: ["Two building counts", "variant"]
+
+- id: d-variant-spelling
+  question: Q1.3
+  why: A respelled street is a variant, and the answer reports typed and returned address.
+  input: {address: "224 54th St, Brooklyn"}
+  expect:
+    status: ok
+    outcome: variant
+    bbl: "3008210012"
+    caveats_contain: ["matched by a variant", "224 54th St", "224 54 STREET"]
+
+- id: a-single-building
+  question: Q1.1 Q1.2 Q1.4
+  why: Ordinary case, one building, 32 units lot-wide.
+  input: {address: "5413 7 Avenue, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008260002"
+    bins: ["3014788"]
+    pluto_count: 1
+    hpd_count: 1
+    units: 32
+    caveats_absent: ["Two building counts"]
+
+- id: battery-place-pluto-vs-hpd
+  question: Q1.2
+  why: PLUTO counts two buildings, HPD lists one. Both counts are reported, labelled by source.
+  input: {address: "17 Battery Place, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1000157501"
+    pluto_count: 2
+    hpd_count: 1
+    caveats_contain: ["Two building counts", "PLUTO says 2", "HPD registrations list 1"]
+
+- id: unregistered-lot-no-building
+  question: Q1.2
+  why: A lot with no HPD registration has a BBL and no BIN. Say "no building recorded", not "no buildings".
+  input: {address: "70 Broad Street, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1000110015"
+    bins: []
+    hpd_count: 0
+    caveats_contain: ["No building recorded in the HPD registrations", "not a statement that the lot has no buildings"]
+    caveats_absent: ["Two building counts"]
+
+- id: ambiguous-street-no-lot-chosen
+  question: Q1.3
+  why: Ambiguous matches return distinguishable candidates and never silently select one.
+  input: {address: "20 Smith, Brooklyn"}
+  expect:
+    status: ok
+    outcome: ambiguous
+    bbl: null
+    candidates_include: ["SMITH STREET"]
+    caveats_contain: ["ambiguous", "no lot was chosen"]
+
+- id: not-found-bad-street
+  question: Q1.3
+  why: An unrecognized street is not found; the answer gives the return code and does not guess a nearby lot.
+  input: {address: "1 Fake Streeet, Brooklyn"}
+  expect:
+    status: ok
+    outcome: not_found
+    bbl: null
+    caveats_contain: ["No lot found", "Spellings tried", "No nearby lot was guessed"]
+
+- id: not-found-house-number-out-of-range
+  question: Q1.3
+  input: {address: "99999 Main Street, Brooklyn"}
+  expect:
+    status: ok
+    outcome: not_found
+    bbl: null
+    caveats_contain: ["No nearby lot was guessed"]
+
+- id: no-borough-asks
+  question: Q1.3
+  why: Geosupport needs a borough or ZIP. Ask, never guess.
+  input: {address: "224 54 Street"}
+  expect:
+    status: needs_borough
+
+- id: not-an-address
+  question: Q1.3
+  input: {address: "the building next to the park"}
+  expect:
+    status: invalid_input
+
+- id: shared-bin-condo-lots
+  question: Q1.1
+  why: Other lots share the addressed building's BIN (for example a condominium). Report them; counts are not additive.
+  input: {address: "32-17 55th Street, Queens"}
+  expect:
+    status: ok
+    bbl: "4011570077"
+    related_lots: ["4011570076"]
+    caveats_contain: ["Other lots share", "not additive"]

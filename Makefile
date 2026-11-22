@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup test test-live lint fmt check sidecar sidecar-stop
+.PHONY: help setup test test-live eval lint fmt check sidecar sidecar-stop
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -12,6 +12,9 @@ test:  ## Fast tests (no Neo4j or sidecar needed)
 
 test-live:  ## Live tests (need Neo4j and the Geosupport sidecar; skip if unreachable)
 	uv run pytest -k live -rs
+
+eval:  ## Q1 tool-level evals (need Neo4j and the sidecar; skip if unreachable)
+	uv run pytest tests/test_eval_q01.py -rs
 
 lint:  ## Lint with ruff
 	uv run ruff check .
