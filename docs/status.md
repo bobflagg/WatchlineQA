@@ -15,10 +15,10 @@ Read this first in a fresh session. Update it at the end of every slice.
   Fresh-context review done and its findings fixed (see the plan). Not yet: explainer, merge.
 
 - Agent tool and first Q1 evals (branch `agent-tool-q1-evals`, plan in `docs/plans/agent-tool-and-evals.md`):
-  `watchline/agent/tools.py`, 11 tool-level eval cases (`make eval`). Not yet: fresh-context review, merge.
+  `watchline/agent/tools.py`, 16 tool-level eval cases (`make eval`). Reviewed, findings fixed, merged.
 
 ## Next
-- Review and merge `agent-tool-q1-evals`; push `main` so explainer code pins resolve; then the explainer.
+- Refresh the explainer (code pins resolve now that `main` is pushed).
 - Wire the Deep Agent (`create_deep_agent`, haiku default), system prompt and ontology skills; add agent-level evals that
   check the model relays caveats and never says "the lot has N buildings".
 

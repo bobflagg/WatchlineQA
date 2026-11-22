@@ -1,6 +1,7 @@
 # First eval cases from specs/questions/q01.md, run through the agent tool (what the model sees).
 # Values were verified against the live graph and Geosupport on 2026-11-22; they are candidates until a snapshot is frozen.
-# expect keys: status, outcome, bbl, bins (exact set), addressed_bin, pluto_count, hpd_count, units, related_lots,
+# input keys: address, borough, zip_code
+# expect keys: year_built, building_class, assessed_total, inferred, min_candidates, harassment_by_bin, status, outcome, bbl, bins (exact set), addressed_bin, pluto_count, hpd_count, units, related_lots,
 #              candidates_include, caveats_contain (substrings), caveats_absent (substrings)
 
 - id: d-multi-building-exact
@@ -16,6 +17,9 @@
     pluto_count: 3
     hpd_count: 3
     units: 18
+    year_built: 1911
+    building_class: C1
+    assessed_total: 814500
     caveats_contain: ["lot-wide", "not findings of fault"]
     caveats_absent: ["Two building counts", "variant"]
 
@@ -40,6 +44,9 @@
     pluto_count: 1
     hpd_count: 1
     units: 32
+    year_built: 1911
+    building_class: C1
+    assessed_total: 868950
     caveats_absent: ["Two building counts"]
 
 - id: battery-place-pluto-vs-hpd
@@ -74,6 +81,7 @@
     outcome: ambiguous
     bbl: null
     candidates_include: ["SMITH STREET"]
+    min_candidates: 2
     caveats_contain: ["ambiguous", "no lot was chosen"]
 
 - id: not-found-bad-street
@@ -117,3 +125,43 @@
     bbl: "4011570077"
     related_lots: ["4011570076"]
     caveats_contain: ["Other lots share", "not additive"]
+
+- id: d-other-building-typed-218
+  question: Q1.2
+  why: Typing 218 resolves to the same lot, lists all three buildings, and marks 218 (not 224) as addressed.
+  input: {address: "218 54 Street, Brooklyn"}
+  expect:
+    status: ok
+    outcome: exact
+    bbl: "3008210012"
+    bins: ["3324448", "3324450", "3324451"]
+    addressed_bin: "3324448"
+
+- id: d-zip-only-no-borough
+  question: Q1.1
+  why: A ZIP stands in for the borough, and an integer ZIP from the model is accepted.
+  input: {address: "220 54 Street", zip_code: 11220}
+  expect:
+    status: ok
+    bbl: "3008210012"
+    addressed_bin: "3324450"
+
+- id: d-spelled-out-ordinal-is-inferred
+  question: Q1.3
+  why: The street was respelled before Geosupport matched it, so the resolution is inferred and says so.
+  input: {address: "224 Fifty-fourth Street, Brooklyn"}
+  expect:
+    status: ok
+    outcome: variant
+    bbl: "3008210012"
+    inferred: true
+    caveats_contain: ["inferred", "Spellings tried"]
+
+- id: litigation-with-harassment-findings
+  question: Q1 (summaries)
+  why: A building with cases decided "After Inquest" reports that count under its full name, never a bare total.
+  input: {address: "21-08 Nameoke Avenue, Queens"}
+  expect:
+    status: ok
+    bbl: "4155250040"
+    caveats_contain: ["Only a finding of 'After Inquest' or 'After Trial' is a harassment finding"]

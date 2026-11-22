@@ -26,3 +26,24 @@ Approved plan, as built. Branch `agent-tool-q1-evals`.
 
 ## Not in this slice
 `create_deep_agent`, system prompt, ontology skills, agent-level (LLM-judged) evals, chat UI, web search.
+
+## Review follow-up (fresh-context review of c5f9f34)
+
+Fixed:
+- Any exception becomes `status: error` (catch-all; `ReleaseMismatch`, bad rows, serialization). `invalid_input` can only come from
+  address resolution. An unavailable Geosupport is `status: error`, not `ok`.
+- `lot_totals` renamed `totals_across_all_listed_buildings`; the cap caveat says the totals cover all buildings and will not
+  equal the rows shown; `buildings_listed_is_lower_bound` flags the graph's 200-row read limit.
+- `harassment_findings` renamed `harassment_findings_after_inquest_or_trial`, so a bare 0 cannot read as "no harassment".
+- `zip_code` accepts an integer; the description now covers each status and neighborhoods.
+- `check_ontology` is real: totals must equal the same-group sums of the building rows, every count row has a class or type key,
+  lot-wide keys appear only under `lot`, counts name unit and source. Unit tests prove it rejects each violation.
+- New cases: year built, class and assessed value (D, A); typing 218 and 220 (ZIP only, integer ZIP); inferred
+  "Fifty-fourth"; a building with harassment findings (also checked against a direct graph count); at least two ambiguous candidates.
+
+Not done:
+- Matching caveats by prose substring is still brittle (nit). Fixing it needs structured caveat codes in `profile.py`; do that
+  when the agent-level evals need them.
+- `q01.md` (a symlink to another project, not edited here) says anchor D is a variant; live Geosupport returns exact for
+  "224 54 Street" and variant only for spellings like "224 54th St". The eval records the live behaviour.
+- No outage case against the live services (it would need the sidecar stopped); covered by unit tests instead.
