@@ -82,6 +82,7 @@ class Answer:
     tried: tuple[str, ...] = ()             # every spelling sent to Geosupport
     inferred: bool = False                  # the lot came from a respelled address, not the one typed
     borough_inferred_from: str | None = None  # resolve_text: the neighborhood the borough was taken from (never exact)
+    returned: str | None = None             # house and street as Geosupport returned them (what a variant matched)
 
 
 def resolve_address(client: Client, graph: Graph, house: str, street: str, *,
@@ -95,7 +96,8 @@ def resolve_address(client: Client, graph: Graph, house: str, street: str, *,
             related = tuple(graph.other_lots_on_bin(result.bin, result.bbl))
     return Answer(input=f"{house} {street}", outcome=outcome, bbl=result.bbl, bin=result.bin, in_graph=in_graph,
                   related_lots=related, candidates=result.candidates, grc=result.grc, message=result.message,
-                  tried=tuple(tried), inferred=result.inferred)
+                  tried=tuple(tried), inferred=result.inferred,
+                  returned=f"{result.house} {result.street}" if result.house and result.street else None)
 
 
 # ---- an address typed as one string ------------------------------------------------------------------------------

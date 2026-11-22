@@ -9,10 +9,14 @@ Read this first in a fresh session. Update it at the end of every slice.
 - Skills installed: pipeline-explainer, neo4j-cypher-skill, langchain-skills plugin.
 - Permission deny rules for `.env`, `ignore-this-directory/` and the ontology (`.claude/settings.json`).
 
+- Building profile (branch `building-profile`, plan in `docs/plans/building-profile.md`):
+  `watchline/profile/profile.py`, `building_profile(client, graph, pg, text)`. Unit and live tests pass
+  (anchors D, A, 17 Battery Place). Worst-case building (16,771 problems) answers in about 0.5 s.
+  Fresh-context review done and its findings fixed (see the plan). Not yet: explainer, merge.
+
 ## Next
-- First slice: address to building profile. Type an address, resolve it to a BBL, return the lot, its
-  buildings, and summaries of violations, complaints and litigation, with caveats attached.
-  Start by planning it (plan mode) and saving the plan to `docs/plans/building-profile.md`.
+- Merge the building-profile branch (review done), then refresh the explainer.
+- Wrap `building_profile` as an agent tool (read-only, row-limited) and add the first eval cases from Q1.
 
 ## Decisions
 - Agent built with LangChain Deep Agents. Runtime graph access uses the Python driver with curated,
