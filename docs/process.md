@@ -51,7 +51,9 @@ line-by-line knowledge. We keep a small set of explainers for that, and a notebo
 - Runtime Neo4j access uses the Python driver through curated, parameterized, read-only tools with
   row limits and timeouts. Each tool returns evidence plus the caveats that apply.
 - The Neo4j MCP server is for development and exploration, and possibly a guarded fallback later.
-- Ontology rules live in one place and feed both CLAUDE.md (dev time) and the agent's skills (run time).
+- Ontology rules live in one place, `watchline/agent/prompts/ontology_rules.md`, and feed both CLAUDE.md (dev time, by `@` import) and
+  the agent's system prompt (run time).
+- Model-calling evals are separate from `make check` (`make eval-agent`): they cost money and vary run to run.
 - Web search comes after the graph side is solid. Web results are context, never identity evidence.
 
 ## Deliberately skipped

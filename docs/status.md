@@ -16,12 +16,15 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 - Agent tool and first Q1 evals (branch `agent-tool-q1-evals`, plan in `docs/plans/agent-tool-and-evals.md`):
   `watchline/agent/tools.py`, 16 tool-level eval cases (`make eval`). Reviewed, findings fixed, merged.
-- Notebook for the tool (branch `tool-notebook`): `docs/notebooks/building-profile-tool.ipynb`, `make notebook` / `make notebook-check`.
+- Notebook for the tool: `docs/notebooks/building-profile-tool.ipynb`, `make notebook` / `make notebook-check`.
+
+- Agent and chat (branch `agent-and-chat`, plan in `docs/plans/agent-and-chat.md`): Deep Agent with `building_profile`, system
+  prompt with the ontology rules (one source: `watchline/agent/prompts/ontology_rules.md`, imported by CLAUDE.md), `make chat`, and
+  10 agent-level evals (`make eval-agent`; 10 of 10 on three runs, Haiku agent and judge). Not yet: review, merge.
 
 ## Next
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
-- Wire the Deep Agent (`create_deep_agent`, haiku default), system prompt and ontology skills; add agent-level evals that
-  check the model relays caveats and never says "the lot has N buildings".
+- Review and merge `agent-and-chat`, then pick the next competency question and its tool.
 
 ## Decisions
 - Agent model: `claude-haiku-5-5` by default (env var `AGENT_MODEL`); revisit after agent-level evals.
@@ -33,7 +36,7 @@ Read this first in a fresh session. Update it at the end of every slice.
   rendered pages published as artifacts.
 
 ## Open questions
-- Terminal interface first, web chat later?
+- Web chat after the terminal one: when?
 - Which competency questions come first after the building profile.
 
 ## Not yet done
