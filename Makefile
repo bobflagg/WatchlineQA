@@ -22,10 +22,10 @@ eval-agent:  ## Agent-level evals: the real model answers, a judge grades (need 
 chat:  ## Terminal chat with the agent (needs Neo4j, the sidecar and ANTHROPIC_API_KEY)
 	uv run python -m watchline.agent.chat
 
-notebook:  ## Re-execute the notebooks in place (need Neo4j and the sidecar); commit the refreshed outputs
+notebook:  ## Re-execute the notebooks in place (need Neo4j, the sidecar and ANTHROPIC_API_KEY; the agent notebook calls the model); commit the refreshed outputs
 	uv run jupyter nbconvert --to notebook --execute --inplace docs/notebooks/*.ipynb
 
-notebook-check:  ## Execute the notebooks into build/ to catch drift; the committed copies are untouched
+notebook-check:  ## Execute the notebooks into build/ to catch drift (same needs as `notebook`); the committed copies are untouched
 	uv run jupyter nbconvert --to notebook --execute --output-dir build/notebook-check docs/notebooks/*.ipynb
 
 lint:  ## Lint with ruff

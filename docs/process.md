@@ -28,7 +28,8 @@ line-by-line knowledge. We keep a small set of explainers for that, and a notebo
   addresses and shows what the model sees, including the failure statuses and the caveats. Committed
   executed, with the run date and data snapshot in the first cell. `make notebook` refreshes it in place;
   `make notebook-check` executes it without touching the committed copy, to catch drift. Both need Neo4j and
-  the sidecar. Credentials come from `.env` through code and are never printed.
+  the sidecar, and the agent notebook (`watchline-agent-chat.ipynb`, which drives the chat's own functions) also
+  calls the model, so it needs `ANTHROPIC_API_KEY` and its wording changes on each run. Credentials come from `.env` through code and are never printed.
 - **Explainer per component** (below): for anything with real stages or flow.
 
 - One explainer per key component (agent flow, graph tools, address resolution, ontology and its traps),
