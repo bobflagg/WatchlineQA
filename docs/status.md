@@ -14,11 +14,17 @@ Read this first in a fresh session. Update it at the end of every slice.
   (anchors D, A, 17 Battery Place). Worst-case building (16,771 problems) answers in about 0.5 s.
   Fresh-context review done and its findings fixed (see the plan). Not yet: explainer, merge.
 
+- Agent tool and first Q1 evals (branch `agent-tool-q1-evals`, plan in `docs/plans/agent-tool-and-evals.md`):
+  `watchline/agent/tools.py`, 16 tool-level eval cases (`make eval`). Reviewed, findings fixed, merged.
+
 ## Next
-- Merge the building-profile branch (review done), then refresh the explainer.
-- Wrap `building_profile` as an agent tool (read-only, row-limited) and add the first eval cases from Q1.
+- Refresh the explainer (code pins resolve now that `main` is pushed).
+- Wire the Deep Agent (`create_deep_agent`, haiku default), system prompt and ontology skills; add agent-level evals that
+  check the model relays caveats and never says "the lot has N buildings".
 
 ## Decisions
+- Agent model: `claude-haiku-5-5` by default (env var `AGENT_MODEL`); revisit after agent-level evals.
+- Evals start at tool level (deterministic); agent-level evals come with the agent.
 - Agent built with LangChain Deep Agents. Runtime graph access uses the Python driver with curated,
   read-only tools. The Neo4j MCP server is for development only.
 - Web search comes after the graph side is solid; its results are context, never identity evidence.
@@ -26,7 +32,6 @@ Read this first in a fresh session. Update it at the end of every slice.
   rendered pages published as artifacts.
 
 ## Open questions
-- Which Claude model the agent should use.
 - Terminal interface first, web chat later?
 - Which competency questions come first after the building profile.
 
