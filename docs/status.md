@@ -20,11 +20,11 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 - Agent and chat (branch `agent-and-chat`, plan in `docs/plans/agent-and-chat.md`): Deep Agent with `building_profile`, system
   prompt with the ontology rules (one source: `watchline/agent/prompts/ontology_rules.md`, imported by CLAUDE.md), `make chat`, and
-  10 agent-level evals (`make eval-agent`; 10 of 10 on three runs, Haiku agent and judge). Not yet: review, merge.
+  10 agent-level evals (`make eval-agent`; 10 of 10 on three runs, Haiku agent and judge). Reviewed and fixed; merged.
 
 ## Next
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
-- Review and merge `agent-and-chat`, then pick the next competency question and its tool.
+- Pick the next competency question and its tool.
 
 ## Decisions
 - Agent model: `claude-haiku-5-5` by default (env var `AGENT_MODEL`); revisit after agent-level evals.

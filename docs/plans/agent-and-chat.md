@@ -52,6 +52,26 @@ Two earlier runs failed for harness reasons, not model reasons, and are not coun
   fresh process.
 - Only three runs of ten cases: this shows the prompt works on these cases, not a stable rate. Add cases as questions are added.
 
+## Fresh-context review (2026-11-22) and what changed
+No high-severity findings. Fixed:
+- `build_agent` refuses a non-Anthropic model (the lockdown is a harness profile registered for `anthropic` only; another provider
+  would have silently got the file, shell and subagent tools back). Comment added that the registry is process-wide.
+- `load_dotenv()` moved from import time into the eval fixture, and `tests/conftest.py` turns LangSmith tracing off, so `make check`
+  neither reads `.env` nor sends traces.
+- `chat.py`: a failed turn prints only the error type and the conversation continues; Ctrl-C exits 130; startup checks the Neo4j
+  variables, Neo4j connectivity and the sidecar and exits 2 with one line (`StartupError`).
+- Evals: `must_not_assert` now allows a match only in a hedged sentence ("does not mean", "can't say"), not any sentence with a
+  "not"; sentence splitting no longer breaks on "St."; the slumlord check uses it; the `d-multi-building` regex allows "three buildings
+  listed by HPD"; `no-borough` requires the tool call; judge records limit raised to 80k characters; the verdict parser accepts a
+  PASS/FAIL line within the first three lines; calibration loads rubric items from the YAML and also checks four clearly good answers pass.
+- Prompt: said to give "all" buildings although the tool caps the list (now: check `buildings_listed_is_lower_bound` and the
+  caveats); said to profile the lot for `exact`/`variant` even when `lot` is null (now: no profile, use the caveats); now says how to
+  use `totals_across_all_listed_buildings`.
+- Test of a removed built-in tool now asserts an error message, not just the absence of "Wrote".
+After the fixes: `make eval-agent` 10 of 10 cases and the calibration test (4 bad fail, 4 good pass) on one run (the prompt changed, so
+earlier runs do not count for it).
+Left as is: the judge is still the same model as the agent, and the judge gets no temperature (this model rejects it).
+
 ## Not in this slice
 Web search, more tools and competency questions, a web UI, deployment, tracing, Deep Agents skills, cross-session memory, explainers.
 Caveat codes (so evals need not match prose) are still undone.

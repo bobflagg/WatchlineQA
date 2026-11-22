@@ -50,8 +50,13 @@ def ask(agent, text: str, config: dict, on_tool_call=None) -> Turn:
     return turn
 
 
+class StartupError(Exception):
+    """Something the environment must provide is missing or unreachable. The message is safe to print."""
+
+
 def connect():
-    """Real clients from the environment. Returns (client, graph, profile_graph, close)."""
+    """Real clients from the environment. Returns (client, graph, profile_graph, close). Raises StartupError."""
+    import httpx
     from neo4j import GraphDatabase
 
     from watchline.geosupport.geosupport import Client
@@ -59,9 +64,41 @@ def connect():
     from watchline.profile.profile import Neo4jProfileGraph
 
     load_dotenv(find_dotenv(usecwd=True))
+    missing = [k for k in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD", "NEO4J_DATABASE") if not os.environ.get(k)]
+    if missing:
+        raise StartupError(f"{', '.join(missing)} not set (put them in .env).")
     db = os.environ["NEO4J_DATABASE"]
     driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]))
-    return Client(), Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), driver.close
+    try:
+        driver.verify_connectivity()
+    except Exception as exc:
+        driver.close()
+        raise StartupError(f"Neo4j is not reachable or refused the credentials ({type(exc).__name__}).") from None
+    client = Client()
+    try:
+        client.health()
+    except httpx.HTTPError:
+        driver.close()
+        raise StartupError(f"The Geosupport sidecar is not reachable at {client.url} (start it with `make sidecar`).") from None
+    return client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), driver.close
+
+
+def converse(agent, config: dict, read=input, write=print) -> None:
+    """The chat loop. A failed turn is reported by its error type and the conversation goes on; EOF ends it."""
+    while True:
+        try:
+            text = read("you> ").strip()
+        except EOFError:
+            write()
+            return
+        if not text:
+            continue
+        try:
+            turn = ask(agent, text, config, on_tool_call=lambda n, a: write(f"  -> {n}({json.dumps(a)})"))
+        except Exception as exc:    # an API or graph failure ends the turn, not the session; the error text is not shown
+            print(f"\n[That question failed: {type(exc).__name__}. Nothing was answered; try again.]\n", file=sys.stderr)
+            continue
+        write(f"\n{turn.answer}\n")
 
 
 def main() -> int:
@@ -71,21 +108,19 @@ def main() -> int:
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print("ANTHROPIC_API_KEY is not set (put it in .env).", file=sys.stderr)
         return 2
-    client, graph, pg, close = connect()
+    try:
+        client, graph, pg, close = connect()
+    except StartupError as exc:
+        print(f"Cannot start: {exc}", file=sys.stderr)
+        return 2
     agent = build_agent(client, graph, pg, checkpointer=InMemorySaver())
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
     print("Watchline. Ask about a New York City address (for example: 224 54 Street, Brooklyn). Ctrl-D to quit.\n")
     try:
-        while True:
-            try:
-                text = input("you> ").strip()
-            except EOFError:
-                print()
-                break
-            if not text:
-                continue
-            turn = ask(agent, text, config, on_tool_call=lambda n, a: print(f"  -> {n}({json.dumps(a)})"))
-            print(f"\n{turn.answer}\n")
+        converse(agent, config)
+    except KeyboardInterrupt:
+        print()
+        return 130
     finally:
         close()
     return 0

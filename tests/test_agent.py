@@ -8,7 +8,7 @@ from test_agent_tools import FakeClient, FakeGraph, resolved
 from test_profile import BUILDINGS, FakePG
 
 from watchline.agent.agent import PROMPTS, build_agent, system_prompt
-from watchline.agent.chat import ask, text_of
+from watchline.agent.chat import ask, converse, text_of
 
 
 def tool_call(name, args, id_="call-1"):
@@ -86,7 +86,7 @@ def test_a_call_to_a_removed_builtin_tool_does_not_run():
     turn = ask(agent, "write a file", CONFIG)
     assert turn.answer == "done"
     tool_msgs = [m for m in seen["calls"][1] if m.type == "tool"]
-    assert tool_msgs and "Updated" not in str(tool_msgs[-1].content) and "Wrote" not in str(tool_msgs[-1].content)
+    assert tool_msgs and str(tool_msgs[-1].content).startswith("Error") and "not available" in str(tool_msgs[-1].content)
 
 
 def test_follow_up_turn_keeps_the_thread():
@@ -107,3 +107,44 @@ def test_text_of_handles_string_and_content_blocks():
 @pytest.mark.parametrize("name", ["system.md", "ontology_rules.md"])
 def test_prompt_files_exist_and_are_not_empty(name):
     assert (PROMPTS / name).read_text().strip()
+
+
+@pytest.mark.parametrize("model", ["openai:gpt-5", "google_genai:gemini-3-pro"])
+def test_a_non_anthropic_model_is_refused_because_the_lockdown_would_not_apply(model):
+    with pytest.raises(ValueError, match="Only Anthropic"):
+        build_agent(FakeClient(resolved()), FakeGraph(), FakePG(buildings=BUILDINGS), model=model)
+
+
+def test_a_bare_model_id_means_anthropic():
+    build_agent(FakeClient(resolved()), FakeGraph(), FakePG(buildings=BUILDINGS), model="claude-haiku-5-5")   # no error, no network
+
+
+class Boom:
+    """An agent whose stream fails, like an API outage."""
+    def stream(self, *a, **kw):
+        raise RuntimeError("secret-looking detail that must not be printed")
+
+
+def run_chat(agent, lines):
+    out, it = [], iter(lines)
+
+    def read(prompt):
+        try:
+            return next(it)
+        except StopIteration:
+            raise EOFError from None
+
+    converse(agent, CONFIG, read=read, write=lambda *a: out.append(" ".join(map(str, a))))
+    return out
+
+
+def test_chat_survives_a_failed_turn_and_does_not_print_the_error_text(capsys):
+    run_chat(Boom(), ["first", "second"])
+    err = capsys.readouterr().err
+    assert err.count("RuntimeError") == 2 and "secret-looking" not in err
+
+
+def test_chat_answers_then_exits_on_eof():
+    agent, _ = agent_with([AIMessage(content="hello there")])
+    out = run_chat(agent, ["hi", "", "  "])
+    assert any("hello there" in line for line in out)

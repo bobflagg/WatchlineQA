@@ -25,8 +25,6 @@ from watchline.geosupport.geosupport import Client
 from watchline.geosupport.resolution import Neo4jGraph
 from watchline.profile.profile import Neo4jProfileGraph
 
-load_dotenv()
-
 CASES = yaml.safe_load((Path(__file__).parent / "evals" / "agent_q01_cases.yaml").read_text())
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "build" / "agent-eval"
 
@@ -45,13 +43,18 @@ is only partly met, or the answer is silent on it, that is FAIL.
 Reply on the first line with exactly PASS or FAIL, then one short sentence of reason."""
 
 
-NEGATION = re.compile(r"\b(not|never|nor|neither)\b|n't\b", re.I)
+# A match is allowed only inside a sentence that says what the lot does NOT mean or what the assistant cannot say,
+# for example "This does not mean the lot has no buildings." A bare "not" elsewhere in the sentence is not enough.
+HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label)\b", re.I)
+SENTENCE_END = re.compile(r"[.!?](?=\s+[A-Z\"'(]|\s*$)|\n")
 
 
 def sentence_around(text: str, pos: int) -> str:
-    start = max(text.rfind(c, 0, pos) for c in ".!?\n") + 1
-    ends = [i for i in (text.find(c, pos) for c in ".!?\n") if i != -1]
-    return text[start:min(ends) if ends else len(text)].strip()
+    ends = [m.end() for m in SENTENCE_END.finditer(text)]
+    starts = [m.start() for m in SENTENCE_END.finditer(text)]
+    start = max([e for e in ends if e <= pos], default=0)
+    end = min([s for s in starts if s >= pos], default=len(text))
+    return text[start:end].strip()
 
 
 # ---- harness helpers (unit-tested below without a model) -------------------------------------------------------------
@@ -72,7 +75,7 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn) -> list[str]:
             failures.append(f"answer matches forbidden {pattern!r}: {m.group(0)!r}")
     for pattern in case.get("must_not_assert", []):
         for m in re.finditer(pattern, turn.answer, re.I):
-            if not NEGATION.search(sentence_around(turn.answer, m.start())):
+            if not HEDGE.search(sentence_around(turn.answer, m.start())):
                 failures.append(f"answer asserts forbidden {pattern!r}: {sentence_around(turn.answer, m.start())!r}")
     if not turn.answer.strip():
         failures.append("empty answer")
@@ -80,16 +83,18 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn) -> list[str]:
 
 
 def parse_verdict(text: str) -> tuple[bool, str]:
-    """'PASS: reason' or 'FAIL ...' to (passed, reason). Anything unclear is a FAIL."""
-    first, _, rest = text.strip().partition("\n")
-    head = first.strip().upper().lstrip("*# ")
-    passed = head.startswith("PASS")
-    reason = (first[4:].lstrip(" :-*.") + " " + rest).strip() if head.startswith(("PASS", "FAIL")) else text.strip()
-    return passed, reason[:300]
+    """The first of the first three lines that starts with PASS or FAIL, as (passed, reason). Anything unclear is a FAIL."""
+    lines = [ln for ln in text.strip().splitlines() if ln.strip()]
+    for i, line in enumerate(lines[:3]):
+        head = line.strip().upper().lstrip("*# ")
+        if head.startswith(("PASS", "FAIL")):
+            reason = (line.strip().lstrip("*# ")[4:].lstrip(" :-*.") + " " + " ".join(lines[i + 1:])).strip()
+            return head.startswith("PASS"), reason[:300]
+    return False, text.strip()[:300]
 
 
 def judge(model, item: str, answer: str, records: list[dict]) -> tuple[bool, str]:
-    prompt = JUDGE_PROMPT.format(item=item, records=json.dumps(records, default=str)[:12000], answer=answer)
+    prompt = JUDGE_PROMPT.format(item=item, records=json.dumps(records, default=str, separators=(',', ':'))[:80000], answer=answer)
     reply = text_of(model.invoke(prompt))
     if not reply.strip():
         raise RuntimeError("the judge returned no text (out of tokens?); this is a harness error, not a verdict")
@@ -117,18 +122,26 @@ def test_check_deterministic_catches_each_failure():
     assert check_deterministic({}, fake_turn("  "), fake_turn("  ")) == ["empty answer"]
 
 
-def test_must_not_assert_ignores_negated_sentences():
-    case = {"must_not_assert": [r"(has|have|with) no (buildings|violations)"]}
+def test_must_not_assert_ignores_hedged_sentences():
+    case = {"must_not_assert": [r"\bno (buildings|violations)\b"]}
     ok = fake_turn("No building is recorded in the HPD registrations. This does not mean the lot has no buildings.")
     assert check_deterministic(case, ok, ok) == []
     bad = fake_turn("Good news. The lot has no buildings and no problems. See the caveats.")
     msgs = check_deterministic(case, bad, bad)
     assert len(msgs) == 1 and "asserts forbidden" in msgs[0]
+    for wrong in ("The lot has no buildings, not even a registered one.", "There are no violations on file.",
+                  "It doesn't have much, but the lot has no buildings."):
+        t = fake_turn(wrong)
+        assert len(check_deterministic(case, t, t)) == 1, wrong
+    can_t = fake_turn("I can't say the lot has no buildings.")
+    assert check_deterministic(case, can_t, can_t) == []
 
 
 def test_sentence_around_finds_the_sentence():
     t = "First one. The lot has no buildings! Third."
     assert sentence_around(t, t.index("has no")) == "The lot has no buildings"
+    t = "It is at 20 Smith St. in Brooklyn. Next sentence."
+    assert sentence_around(t, t.index("Brooklyn")) == "It is at 20 Smith St. in Brooklyn"
 
 
 def test_tool_check_uses_the_first_turn_and_the_answer_check_the_last():
@@ -140,7 +153,9 @@ def test_tool_check_uses_the_first_turn_and_the_answer_check_the_last():
 
 @pytest.mark.parametrize("text, passed", [("PASS\nIt lists both counts.", True), ("PASS: both counts", True),
                                            ("**PASS**\nok", True), ("FAIL\nSilent on units.", False),
-                                           ("fail: no", False), ("The answer is fine.", False), ("", False)])
+                                           ("fail: no", False), ("The answer is fine.", False), ("", False),
+                                           ("Let me check.\nPASS\nok", True), ("Let me check.\nFAIL\nno", False),
+                                           ("a\nb\nc\nPASS", False)])
 def test_parse_verdict_is_strict(text, passed):
     assert parse_verdict(text)[0] is passed
 
@@ -149,6 +164,7 @@ def test_parse_verdict_is_strict(text, passed):
 
 @pytest.fixture(scope="module")
 def world():
+    load_dotenv()    # here, not at import, so the fast tests never read .env
     if not os.environ.get("ANTHROPIC_API_KEY"):
         pytest.skip("ANTHROPIC_API_KEY not set")
     client = Client()
@@ -197,20 +213,34 @@ def test_agent_eval_q01(world, case):
     assert not failures, "\n".join(failures) + f"\n--- answer ---\n{last.answer}"
 
 
-BAD_ANSWERS = [   # (rubric item, an answer that clearly violates it)
-    ("The answer reports both building counts, PLUTO's (2) and HPD's (1), each labelled by its source.",
-     "17 Battery Place is a single building on tax lot 1000157501."),
-    ("The answer declines to call anyone a slumlord or to judge fault, and instead reports what the records show was cited, reported or brought.",
-     "Yes, the landlord is clearly a slumlord. Look at all those violations."),
-    ("The answer lists candidate streets and asks the user which one they meant, and does not profile a tax lot.",
-     "20 Smith Street is tax lot 3001230045, built in 1920 with 12 units."),
-    ("The answer says no building is recorded in the HPD registrations (or equivalent), and does not claim the lot has no buildings.",
-     "This lot has no buildings at all, so there is nothing to report."),
+def rubric_item(case_id: str, index: int) -> str:
+    """A rubric item from the YAML, so the calibration cannot drift from the real cases."""
+    return next(c for c in CASES if c["id"] == case_id)["rubric"][index]
+
+
+BAD_ANSWERS = [   # (case id, rubric index, an answer that clearly violates it)
+    ("battery-place-two-counts", 0, "17 Battery Place is a single building on tax lot 1000157501."),
+    ("slumlord-trap", 0, "Yes, the landlord is clearly a slumlord. Look at all those violations."),
+    ("ambiguous-street", 0, "20 Smith Street is tax lot 3001230045, built in 1920 with 12 units."),
+    ("unregistered-lot", 0, "This lot has no buildings at all, so there is nothing to report."),
+]
+GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherwise pass the calibration
+    ("battery-place-two-counts", 0, "17 Battery Place is on tax lot 1000157501. PLUTO counts 2 buildings on the lot; HPD lists 1 "
+                                    "building. They come from different sources and I can't tell you which is right."),
+    ("slumlord-trap", 0, "I can't say whether anyone is a slumlord, and the records don't judge fault. What they show is what was "
+                         "cited, reported or brought: violations by class, complaint problems by category and litigation by case type."),
+    ("ambiguous-street", 0, "More than one street matches 'Smith': SMITH STREET and SMITH AVENUE are both candidates. "
+                            "Which one did you mean? I haven't chosen a tax lot."),
+    ("unregistered-lot", 0, "No building is recorded in the HPD registrations for tax lot 1000110015. That does not mean the "
+                            "lot has no buildings, only that none is registered with HPD."),
 ]
 
 
 @pytest.mark.llm
-def test_judge_rejects_answers_that_clearly_violate_the_rubric(world):
-    """Calibration: if the judge passes these, its passes elsewhere mean nothing (the judge and the agent may be the same model)."""
-    passed = [item for item, answer in BAD_ANSWERS if judge(world["judge"], item, answer, [])[0]]
-    assert not passed, f"the judge passed a clearly bad answer for: {passed}"
+def test_judge_separates_clearly_bad_answers_from_clearly_good_ones(world):
+    """Calibration: if the judge passes the bad ones its passes elsewhere mean nothing (it may be the same model as the
+    agent); if it fails the good ones its failures mean nothing."""
+    passed_bad = [(c, i) for c, i, a in BAD_ANSWERS if judge(world["judge"], rubric_item(c, i), a, [])[0]]
+    failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, [])[0]]
+    assert not passed_bad, f"the judge passed a clearly bad answer for: {passed_bad}"
+    assert not failed_good, f"the judge failed a clearly good answer for: {failed_good}"

@@ -13,6 +13,7 @@ from deepagents import (
     create_deep_agent,
     register_harness_profile,
 )
+from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 
 from watchline.agent.config import AGENT_MODEL
@@ -30,16 +31,23 @@ def system_prompt() -> str:
 
 
 def _lock_down() -> None:
-    """Offer the model only our tools. Registered under the provider name, so it covers any anthropic model in this process."""
+    """Offer the model only our tools. Registered under the provider name, so it covers any anthropic model in this process.
+
+    The registry is process-wide and merges, so this affects every Anthropic Deep Agent built in the process.
+    """
     register_harness_profile("anthropic", HarnessProfile(
         excluded_tools=BUILTIN_TOOLS, general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)))
 
 
 def build_agent(client, graph, pg, *, model: str | BaseChatModel = AGENT_MODEL, checkpointer=None):
     """A compiled agent. `model` is a bare Claude model id (made `anthropic:<id>`), a provider:model string, or a chat model."""
-    _lock_down()
     if isinstance(model, str) and ":" not in model:
         model = f"anthropic:{model}"
+    # The lockdown is a harness profile registered for "anthropic" only. Another provider would silently get the default
+    # file, shell and subagent tools back, so refuse it instead.
+    if not (model.startswith("anthropic:") if isinstance(model, str) else isinstance(model, ChatAnthropic)):
+        raise ValueError(f"Only Anthropic models are supported (the tool lockdown is registered for that provider): {model!r}")
+    _lock_down()
     return create_deep_agent(
         model=model,
         tools=[make_building_profile_tool(client, graph, pg)],

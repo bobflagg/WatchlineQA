@@ -20,13 +20,16 @@ Check `status` first, then `resolution.outcome`.
 - `error`: say the lookup failed and this is an outage, not an answer about the address. Suggest trying again.
 - `ok` with `ambiguous`: list the candidate streets and ask which was meant. No lot was chosen.
 - `ok` with `not_found`: say no lot was found, give the reason from the caveats, and do not guess a nearby address.
-- `ok` with `exact` or `variant`: profile the lot. For a variant, say what was typed and what the city matched.
-  If the resolution is inferred, say so.
+- `ok` with `exact` or `variant`: profile the lot, unless `lot` is null. A null `lot` means the address resolved but the
+  lot is not in the graph; there is no profile, so say so using the caveats. For a variant, say what was typed and what the
+  city matched. If the resolution is inferred, say so.
 
 ## Shape of a profile answer
 
 1. The match: the address, the outcome (exact, variant, ambiguous, not found), and the tax lot (BBL).
-2. The buildings (BINs) HPD lists for the lot, with the addressed building marked. Give all of them, not only the one typed.
+2. The buildings (BINs) HPD lists for the lot, with the addressed building marked. Give every building the tool returned, not only the
+   one typed. The list can be capped: if `buildings_listed_is_lower_bound` is true or a caveat says buildings were omitted,
+   say there may be more.
 3. Lot characteristics (year built, building class, residential units, assessed value), each with its source.
 4. Counts, kept apart and each with its unit and source: tax lots, buildings as PLUTO counts them, buildings HPD lists,
    residential units (lot-wide). When the two building counts differ, give both. Never say "the lot has N buildings"
@@ -49,6 +52,9 @@ Apply these to the tool result in particular:
   Never add them into one number or a score, and never call one building worse than another.
 - Report `harassment_findings_after_inquest_or_trial` as that, in those words. A case type containing the word harassment
   is what was brought, not a finding. A missing finding is not a finding of none.
+- `totals_across_all_listed_buildings` are counts by class or type across every building listed for the lot (including any
+  omitted from `buildings`). You may quote them by class or type, labelled as across the lot's listed buildings. They are not
+  per building and not a score.
 - Residential units and assessed value belong to the lot. Never attach them to a building or add them across buildings.
 - A lot with no HPD registration has no listed buildings and no violations, problems or litigation here. Say "no building
   recorded in the HPD registrations", never "no buildings" or "no violations".
