@@ -142,13 +142,14 @@ class StartupError(Exception):
 
 
 def connect():
-    """Real clients from the environment. Returns (client, graph, profile_graph, close). Raises StartupError."""
+    """Real clients from the environment. Returns (client, graph, profile_graph, registration_graph, close). Raises StartupError."""
     import httpx
     from neo4j import GraphDatabase
 
     from watchline.geosupport.geosupport import Client
     from watchline.geosupport.resolution import Neo4jGraph
     from watchline.profile.profile import Neo4jProfileGraph
+    from watchline.registration.registration import Neo4jRegistrationGraph
 
     load_dotenv(find_dotenv(usecwd=True))
     missing = [k for k in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD", "NEO4J_DATABASE") if not os.environ.get(k)]
@@ -167,7 +168,7 @@ def connect():
     except httpx.HTTPError:
         driver.close()
         raise StartupError(f"The Geosupport sidecar is not reachable at {client.url} (start it with `make sidecar`).") from None
-    return client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), driver.close
+    return client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), Neo4jRegistrationGraph(driver, db), driver.close
 
 
 def converse(agent, config: dict, read=input, write=print) -> None:
@@ -199,11 +200,11 @@ def main() -> int:
         print("ANTHROPIC_API_KEY is not set (put it in .env).", file=sys.stderr)
         return 2
     try:
-        client, graph, pg, close = connect()
+        client, graph, pg, rg, close = connect()
     except StartupError as exc:
         print(f"Cannot start: {exc}", file=sys.stderr)
         return 2
-    agent = build_agent(client, graph, pg, checkpointer=memory_checkpointer())
+    agent = build_agent(client, graph, pg, rg, checkpointer=memory_checkpointer())
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
     print("Watchline. Ask about a New York City address (for example: 224 54 Street, Brooklyn). Ctrl-D to quit.\n")
     try:

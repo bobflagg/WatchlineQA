@@ -31,7 +31,16 @@ Read this first in a fresh session. Update it at the end of every slice.
 - Streamlit page (branch `streamlit-page`, plan in `docs/plans/streamlit-page.md`): `watchline/ui/` (`render.py`, `app.py`, `fixtures.py`), `make ui`,
   `?fixtures=1` previews every kind without the model. Generic renderer only; smoke tests in `tests/test_ui.py`. Logo in the sidebar (rounded, pulled up with CSS). Checked on live data by hand; merged.
 
+- Q2 registered owner (branch `q2-registered-owner`, plan in `docs/plans/q2-registered-owner.md`, with live probe results):
+  `watchline/registration/registration.py`, `registered_owners(client, graph, rg, text)`. Returns each HPD registration per building
+  of the addressed lot, with `lastRegistered` and `registrationEnd` (from the building-registration relationship) and the owner contacts as
+  recorded. `tests/test_registration.py`: 18 fast tests pass; 7 live tests are skipped without Neo4j and the sidecar. Module only.
+  Not yet: agent tool and wiring, the `registration` answer kind and its caveats, agent evals, UI fixture, review, merge.
+
 ## Next
+- Finish the Q2 slice (see the plan): `make_registered_owner_tool`, the `registration` kind and section, caveat codes
+  (`registrant_not_title`, `registration_period`, `owner_not_other_roles`, `no_registration_found`), prompt lines, `q02_cases.yaml`
+  and agent evals, one UI fixture, `make test-live` and `make eval`, fresh-context review, merge.
 - Streamlit follow-ups: navy/gold brand banner, sample questions in the sidebar, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Pick the next competency question and its tool.

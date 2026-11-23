@@ -215,3 +215,69 @@ def test_tool_output_carries_caveat_codes_and_the_sources_read():
 def test_an_error_result_carries_a_coded_caveat():
     out = make_tool(FakeClient(error=KeyError("yearBuilt"))).invoke({"address": "1 Main St", "borough": "Manhattan"})
     assert out["status"] == "error" and out["caveats"][0]["code"] == "lookup_failed" and out["sources"] == []
+
+
+# ---- registered_owner ----------------------------------------------------------------------------------------
+
+def _reg_rg(rows=None, owners=None):
+    from test_registration import FakeRG, owner, row
+    return FakeRG(rows=[row("1", 100), row("2", 200, address="3 MAIN ST")] if rows is None else rows,
+                  owners=[owner(100), owner(100, "JointOwner", "A B")] if owners is None else owners)
+
+
+def make_reg_tool(client, rg=None):
+    return T.make_registered_owner_tool(client, FakeGraph(), rg or _reg_rg())
+
+
+def test_registered_owner_tool_name_and_description_for_the_model():
+    tool = make_reg_tool(FakeClient(resolved()))
+    assert tool.name == "registered_owner"
+    assert "registered owner" in tool.description and "not who holds title" in tool.description
+    assert set(tool.args) == {"address", "borough", "zip_code"}
+
+
+def test_registered_owner_returns_every_registration_and_owner_as_recorded():
+    out = make_reg_tool(FakeClient(resolved())).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    json.dumps(out)
+    assert out["status"] == "ok" and out["resolution"]["bbl"] == "1000010001" and "buildings" not in out
+    first, second = out["registration_buildings"]
+    assert first["addressed"] and not second["addressed"]
+    assert first["registrations"] == [{"registrationId": 100, "lastRegistered": "2025-09-30", "registrationEnd": "2026-09-01",
+                                       "owners": [{"contactType": "CorporateOwner", "name": "ACME LLC"},
+                                                  {"contactType": "JointOwner", "name": "A B"}]}]
+    assert second["registrations"][0]["owners"] == []                    # none recorded is an empty list, nothing inferred
+    assert {"registrant_not_title", "registration_period", "owner_not_other_roles"} <= {c["code"] for c in out["caveats"]}
+    assert out["sources"] == [P_GEOSUPPORT, P_HPD]
+
+
+def test_registered_owner_unresolved_has_no_lot_and_no_hpd_source():
+    from watchline.geosupport.geosupport import Outcome as O
+    nf = Result(outcome=O.STREET_NOT_RECOGNIZED, grc="11", typed="1 Main St")
+    out = make_reg_tool(FakeClient(nf)).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    assert out["lot"] is None and out["registration_buildings"] == [] and out["caveats"] and out["sources"] == [P_GEOSUPPORT]
+
+
+def test_registered_owner_statuses_are_answers_not_exceptions():
+    tool = make_reg_tool(FakeClient(resolved()))
+    assert tool.invoke({"address": "1 Main St"})["status"] == "needs_borough"
+    assert tool.invoke({"address": "next to the park", "borough": "Queens"})["status"] == "invalid_input"
+    unavailable = Result(outcome=Outcome.UNAVAILABLE, message="connection refused", typed="1 Main St")
+    assert make_reg_tool(FakeClient(unavailable)).invoke({"address": "1 Main St", "borough": "Manhattan"})["status"] == "error"
+
+
+@pytest.mark.parametrize("error", [ServiceUnavailable("down"), RuntimeError("anything")])
+def test_registered_owner_failures_name_only_the_error_type(error):
+    class Boom:
+        def lot(self, bbl): raise error
+    out = make_reg_tool(FakeClient(resolved()), Boom()).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    assert out["status"] == "error" and type(error).__name__ in out["message"] and "do not guess" in out["message"]
+
+
+def test_registered_owner_buildings_capped_keeps_the_addressed_one():
+    from test_registration import row
+    rows = [row(str(i), 1000 + i, address=f"{i} MAIN ST") for i in range(2, 40)] + [row("1", 100)]
+    from watchline.registration.registration import build_registrations
+    out = T.registrations_to_dict(build_registrations(answer(), _reg_rg(rows=rows, owners=[])), max_buildings=5)
+    assert len(out["registration_buildings"]) == 5 and out["registration_buildings"][0]["bin"] == "1"
+    assert out["buildings_listed"] == 39
+    assert any(c["code"] == "buildings_capped" and "5 of 39" in c["text"] for c in out["caveats"])

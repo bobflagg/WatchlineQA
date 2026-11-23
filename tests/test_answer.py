@@ -174,3 +174,37 @@ def test_ordinals_and_the_number_of_candidate_streets_are_not_invented_numbers()
          "buildings": [{"address": "224 54TH STREET"}]}
     assert ungrounded_numbers("Three streets match; 224 54th Street was not chosen.", [r], "224 54 Street") == []
     assert ungrounded_numbers("Four streets match.", [r], "224 54 Street") == ["four"]
+
+
+# ---- registrations ------------------------------------------------------------------------------------------
+
+@pytest.fixture
+def reg_result():
+    from test_agent_tools import _reg_rg
+    from test_profile import answer
+
+    from watchline.registration.registration import build_registrations
+    return T.registrations_to_dict(build_registrations(answer(), _reg_rg()))
+
+
+def test_registrations_evidence_points_at_one_building_or_the_whole_list(reg_result):
+    a = assemble(model(fact("Registered by ACME LLC.", ("registrations", "1")), fact("Two buildings.", ("registrations", None)),
+                       kind="registration"), [reg_result])
+    one, whole = a.facts[0].evidence[0], a.facts[1].evidence[0]
+    assert one.data["bin"] == "1" and one.data["registrations"][0]["registrationId"] == 100
+    assert [b["bin"] for b in whole.data] == ["1", "2"]
+    assert not a.facts[0].unresolved and "registrant_not_title" in a.caveat_codes
+    assert "registrations BIN 1" in render_markdown(a)
+
+
+def test_profile_buildings_and_registrations_do_not_cross(reg_result, result):
+    a = assemble(model(fact("x", ("buildings", "1"))), [reg_result])          # a registration result has no profile buildings
+    assert a.facts[0].unresolved
+    b = assemble(model(fact("x", ("registrations", "1"))), [result])          # a profile has no registrations
+    assert b.facts[0].unresolved
+
+
+def test_numbers_guard_accepts_registration_ids_and_dates_from_the_tool(reg_result):
+    text = "Registration 100 was last registered 2025-09-30 and ends 2026-09-01."
+    assert ungrounded_numbers(text, [reg_result]) == []
+    assert "101" in ungrounded_numbers("Registration 101 was filed.", [reg_result])

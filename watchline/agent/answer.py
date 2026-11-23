@@ -11,8 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-Kind = Literal["profile", "clarification", "not_found", "refusal", "error"]
-Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals"]
+Kind = Literal["profile", "registration", "clarification", "not_found", "refusal", "error"]
+Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------
@@ -20,8 +20,8 @@ Section = Literal["lookup", "resolution", "characteristics", "counts", "building
 class EvidenceRef(BaseModel):
     section: Section = Field(description="Which part of the tool result the statement rests on.")
     bin: str | None = Field(default=None, description=(
-        "The building's BIN, to point at one building under section 'buildings'. Without it, 'buildings' means the whole list "
-        "(use that to say no building is listed)."))
+        "The building's BIN, to point at one building under section 'buildings' or 'registrations'. Without it, the section "
+        "means the whole list (use that to say no building or no registration is listed)."))
     bbl: str | None = Field(default=None, description=(
         "The tax lot (BBL) the data is about. Give it when the conversation has looked up more than one lot."))
 
@@ -34,7 +34,7 @@ class ModelFact(BaseModel):
 class ModelAnswer(BaseModel):
     """The answer to the user. Caveats and sources are attached automatically from the tool results; do not write them."""
     kind: Kind = Field(description=(
-        "profile: a lot was found and profiled. clarification: you need the borough or ZIP, a house number and street, or a choice "
+        "profile: a lot was found and profiled. registration: HPD registrations and registered owners were looked up for a lot. clarification: you need the borough or ZIP, a house number and street, or a choice "
         "among candidate streets. not_found: no lot matched. refusal: you were asked to judge fault or for something outside the "
         "records. error: the lookup failed."))
     summary: str = Field(description="One to three plain sentences that answer the question asked. No caveats; they are attached.")
@@ -100,6 +100,15 @@ def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evi
         if ref.section == "lookup":
             if out.get("status"):
                 return Evidence(section="lookup", bbl=_bbl(out), data={"status": out["status"], "message": out.get("message")}), i
+        elif ref.section == "registrations":
+            blist = out.get("registration_buildings")
+            if blist is None or not out.get("resolution"):
+                continue
+            if ref.bin is None:
+                return Evidence(section="registrations", bbl=_bbl(out), data=blist), i
+            for b in blist:
+                if b.get("bin") == ref.bin:
+                    return Evidence(section="registrations", bin=ref.bin, bbl=_bbl(out), data=b), i
         elif ref.section == "buildings":
             if ref.bin is None:
                 if "buildings" in out and out.get("resolution"):
@@ -157,7 +166,7 @@ def assemble(model: ModelAnswer, tool_results: list[dict], earlier: list[dict] =
 
 
 def _tag(ev: Evidence | EvidenceRef) -> str:
-    return f"{ev.section} BIN {ev.bin}" if ev.bin and ev.section == "buildings" else ev.section
+    return f"{ev.section} BIN {ev.bin}" if ev.bin and ev.section in ("buildings", "registrations") else ev.section
 
 
 def render_markdown(a: Answer) -> str:
@@ -178,7 +187,8 @@ def render_markdown(a: Answer) -> str:
 
 # ---- a guard against numbers the records never gave ---------------------------------------------------------------------
 
-_DATA_KEYS = ("resolution", "lot", "characteristics", "counts", "buildings", "buildings_listed", "totals_across_all_listed_buildings")
+_DATA_KEYS = ("resolution", "lot", "characteristics", "counts", "buildings", "buildings_listed", "totals_across_all_listed_buildings",
+              "registration_buildings")
 _WORDS = {w: str(n) for n, w in enumerate(
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen "
     "nineteen twenty".split())}

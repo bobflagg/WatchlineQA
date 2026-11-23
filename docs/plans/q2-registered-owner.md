@@ -2,7 +2,7 @@
 
 Intent: Q2 (`specs/questions/q02.md`, Q2.1 and Q2.2). Type an address, get each HPD registration on the
 addressed lot's buildings: registration id, last-registered and end dates, and the owner contacts as recorded.
-Status: planned, not started. Branch: `q2-registered-owner`.
+Status: module and fast tests done (live tests written); agent wiring in progress. Branch: `q2-registered-owner`.
 
 ## Checked live (2026-11-23)
 
@@ -57,7 +57,6 @@ New package `watchline/registration/` with `registered_owners(client, graph, rg,
    - Owner contacts: all three owner types, names exactly as recorded, exact duplicates (same type and name) collapsed,
      blank name kept with name absent. No owners means empty list; nothing inferred.
    - Dates: null stays absent. (No pair has disagreeing rows; see probe results.)
-     value, note it and drop this branch).
    - Whether a registration is current is not computed in the data. Add `ended_before_snapshot` only if the spec's "agent states
      it against 2026-05-29" is better done in code; default: put the snapshot date in the caveat and let the model compare.
 4. Caveats (new codes, as `Caveat` constants): `registrant_not_title` (registrant, not proof of title), `registration_period`

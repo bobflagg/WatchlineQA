@@ -20,8 +20,8 @@ if st.query_params.get("fixtures"):
 @st.cache_resource
 def _agent():
     from watchline.agent.agent import build_agent, memory_checkpointer
-    client, graph, pg, _close = connect()
-    return build_agent(client, graph, pg, checkpointer=memory_checkpointer())
+    client, graph, pg, rg, _close = connect()
+    return build_agent(client, graph, pg, rg, checkpointer=memory_checkpointer())
 
 
 if "thread_id" not in st.session_state:
