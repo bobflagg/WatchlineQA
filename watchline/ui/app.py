@@ -1,6 +1,6 @@
 """Bare-bones chat page: `make ui`. Fixtures can be previewed with `?fixtures=1` (no model, graph or sidecar needed).
 
-A sample question picked in the sidebar is queued in session state and run on the next pass, the same way as typed input."""
+A sample query picked in the sidebar (first the competency question, then one of its queries) is queued in session state and run on the next pass, the same way as typed input."""
 import uuid
 from pathlib import Path
 
@@ -9,7 +9,7 @@ import streamlit as st
 from watchline.agent.chat import StartupError, ask, connect
 from watchline.ui.fixtures import FIXTURES
 from watchline.ui.render import render_answer
-from watchline.ui.samples import PLACEHOLDER, SAMPLE_QUESTIONS
+from watchline.ui.samples import SAMPLE_QUESTIONS
 
 st.set_page_config(page_title="Watchline NYC", layout="wide")
 
@@ -31,8 +31,13 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.history = []          # [(role, text | (Answer, unverified))]
 
+def _pick_group():
+    """A new competency question was chosen: forget the query chosen under the previous one."""
+    st.session_state.sample = None
+
+
 def _pick_sample():
-    """Queue the chosen question, then clear the pulldown so the same question can be picked again."""
+    """Queue the chosen query, then clear the pulldown so the same query can be picked again."""
     st.session_state.pending = st.session_state.sample
     st.session_state.sample = None
 
@@ -42,8 +47,10 @@ with st.sidebar:
     with st.container(key="logo"):
         st.image(str(Path(__file__).parent / "assets" / "logo.png"),
                  alt="Watchline NYC: accountability infrastructure for NYC housing", width="stretch")
-    st.selectbox(PLACEHOLDER, [q for qs in SAMPLE_QUESTIONS.values() for q in qs], index=None, key="sample",
-                 placeholder="Pick a question to run", on_change=_pick_sample, label_visibility="collapsed")
+    group = st.selectbox("Competency question", list(SAMPLE_QUESTIONS), index=None, key="sample_group",
+                         placeholder="Choose a question type", on_change=_pick_group, label_visibility="collapsed")
+    st.selectbox("Sample queries", SAMPLE_QUESTIONS.get(group, ()), index=None, key="sample", disabled=group is None,
+                 placeholder="Pick a query to run", on_change=_pick_sample, label_visibility="collapsed")
     if st.button("New chat", width="stretch"):
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.history = []

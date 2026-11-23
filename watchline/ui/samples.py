@@ -1,4 +1,5 @@
-"""Sample questions for the sidebar pulldown. Each runs in the chat as if typed. Addresses are ones the tools have been checked on."""
+"""Sample queries for the sidebar pulldowns: the keys are the competency questions (first pulldown), the values the queries
+under each (second pulldown). Each query runs in the chat as if typed. Addresses are ones the tools have been checked on."""
 
 SAMPLE_QUESTIONS: dict[str, tuple[str, ...]] = {
     "Q1: building profile": (
@@ -13,5 +14,3 @@ SAMPLE_QUESTIONS: dict[str, tuple[str, ...]] = {
         "Who owns 70 Broad Street, Manhattan?",
     ),
 }
-
-PLACEHOLDER = "Sample questions"
