@@ -13,9 +13,13 @@ from deepagents import (
     create_deep_agent,
     register_harness_profile,
 )
+from langchain.agents.structured_output import ProviderStrategy
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
+from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact
 from watchline.agent.config import AGENT_MODEL
 from watchline.agent.tools import make_building_profile_tool
 
@@ -28,6 +32,13 @@ def system_prompt() -> str:
     """system.md with the ontology rules (the single source also imported by CLAUDE.md) filled in."""
     rules = (PROMPTS / "ontology_rules.md").read_text().strip()
     return (PROMPTS / "system.md").read_text().replace("{ontology_rules}", rules)
+
+
+def memory_checkpointer() -> InMemorySaver:
+    """An in-memory conversation store that may hold the structured answer. Without the allowlist, LangGraph warns that it will
+    block deserializing our types in a future version."""
+    allowed = [("watchline.agent.answer", t.__name__) for t in (ModelAnswer, ModelFact, EvidenceRef)]
+    return InMemorySaver(serde=JsonPlusSerializer(allowed_msgpack_modules=allowed))
 
 
 def _lock_down() -> None:
@@ -53,6 +64,7 @@ def build_agent(client, graph, pg, *, model: str | BaseChatModel = AGENT_MODEL, 
         tools=[make_building_profile_tool(client, graph, pg)],
         system_prompt=system_prompt(),
         permissions=[FilesystemPermission(operations=["read", "write"], paths=["/**"], mode="deny")],
+        response_format=ProviderStrategy(ModelAnswer),     # the model's final message is a ModelAnswer; chat.ask assembles the rest
         checkpointer=checkpointer,
         name="watchline",
     )
