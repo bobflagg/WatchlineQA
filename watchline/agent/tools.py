@@ -9,13 +9,23 @@ from typing import Any
 from langchain.tools import tool
 
 from watchline.geosupport.resolution import BoroughRequired, Graph, Match
-from watchline.profile.profile import MAX_BUILDINGS, Profile, ProfileGraph, building_profile
+from watchline.profile.profile import (
+    GEOSUPPORT,
+    HPD,
+    MAX_BUILDINGS,
+    PLUTO,
+    CaveatTemplate,
+    Profile,
+    ProfileGraph,
+    building_profile,
+)
 
 MAX_BUILDINGS_OUT = 25
-CAVEAT_BUILDINGS_CAPPED = ("Showing {shown} of {total} buildings listed for the lot; the rest are omitted from this output. "
-                           "'totals_across_all_listed_buildings' still covers all {total}, so it will not equal the sum of the rows shown.")
-ERROR_MESSAGE = ("The lookup failed ({kind}). This is an outage or a fault, not an answer about the address; "
-                 "do not guess.")
+CAVEAT_BUILDINGS_CAPPED = CaveatTemplate("buildings_capped",
+                                         ("Showing {shown} of {total} buildings listed for the lot; the rest are omitted from this output. "
+                                         "'totals_across_all_listed_buildings' still covers all {total}, so it will not equal the sum of the rows shown."))
+ERROR_CAVEAT = CaveatTemplate("lookup_failed", "The lookup failed ({kind}). This is an outage or a fault, not an answer about the address; "
+                              "do not guess.")
 
 
 def _rows(counts: dict, names: tuple[str, ...]) -> list[dict]:
@@ -45,7 +55,8 @@ def profile_to_dict(p: Profile, max_buildings: int = MAX_BUILDINGS_OUT) -> dict[
         "buildings_listed_is_lower_bound": (p.buildings_listed or 0) >= MAX_BUILDINGS,   # the graph read stopped at its row limit
         "buildings": [],
         "totals_across_all_listed_buildings": {},
-        "caveats": list(p.caveats),
+        "caveats": [c.as_dict() for c in p.caveats],
+        "sources": [GEOSUPPORT, *([PLUTO, HPD] if p.lot is not None else [])],   # the snapshots this answer was read from
     }
     if p.lot is None:
         return out
@@ -61,7 +72,7 @@ def profile_to_dict(p: Profile, max_buildings: int = MAX_BUILDINGS_OUT) -> dict[
                                          "problems": _rows(totals["problems"], PROBLEM_KEYS),
                                          "litigation": _rows(totals["litigation"], LITIGATION_KEYS)}
     if len(p.buildings) > len(shown):
-        out["caveats"].append(CAVEAT_BUILDINGS_CAPPED.format(shown=len(shown), total=len(p.buildings)))
+        out["caveats"].append(CAVEAT_BUILDINGS_CAPPED.format(shown=len(shown), total=len(p.buildings)).as_dict())
     return out
 
 
@@ -95,7 +106,8 @@ def make_building_profile_tool(client, graph: Graph, pg: ProfileGraph):
                 return {"status": "invalid_input", "message": str(e)}
             return profile_to_dict(p)
         except Exception as e:  # noqa: BLE001  outages, ReleaseMismatch, bad rows: the model gets an answer, never a stack trace
-            return {"status": "error", "message": ERROR_MESSAGE.format(kind=type(e).__name__)}
+            caveat = ERROR_CAVEAT.format(kind=type(e).__name__)
+            return {"status": "error", "message": caveat.text, "caveats": [caveat.as_dict()], "sources": []}
 
     building_profile_tool.name = "building_profile"
     return building_profile_tool

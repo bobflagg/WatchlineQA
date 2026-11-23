@@ -9,6 +9,9 @@ from watchline.agent import tools as T
 from watchline.agent.config import AGENT_MODEL
 from watchline.geosupport.geosupport import Outcome, ReleaseMismatch, Result
 from watchline.geosupport.resolution import Match
+from watchline.profile.profile import GEOSUPPORT as P_GEOSUPPORT
+from watchline.profile.profile import HPD as P_HPD
+from watchline.profile.profile import PLUTO as P_PLUTO
 from watchline.profile.profile import build_profile
 
 
@@ -67,8 +70,8 @@ def test_buildings_capped_and_addressed_building_always_shown():
     out = T.profile_to_dict(full_profile(many), max_buildings=5)
     assert len(out["buildings"]) == 5 and out["buildings"][0]["bin"] == "1" and out["buildings"][0]["addressed"]
     assert out["buildings_listed"] == 39 and out["buildings_listed_is_lower_bound"] is False
-    assert T.CAVEAT_BUILDINGS_CAPPED.format(shown=5, total=39) in out["caveats"]
-    assert "will not equal the sum of the rows shown" in " ".join(out["caveats"])
+    assert T.CAVEAT_BUILDINGS_CAPPED.format(shown=5, total=39).as_dict() in out["caveats"]
+    assert "will not equal the sum of the rows shown" in " ".join(c["text"] for c in out["caveats"])
 
 
 def test_totals_cover_all_listed_buildings_not_just_those_shown():
@@ -84,7 +87,7 @@ def test_listed_count_flags_the_graph_row_limit():
     from watchline.profile.profile import MAX_BUILDINGS
     full = [dict(bin=str(i), address=f"{i} MAIN ST") for i in range(MAX_BUILDINGS)]
     out = T.profile_to_dict(build_profile(answer(bin="0"), FakePG(buildings=full)))
-    assert out["buildings_listed_is_lower_bound"] is True and any("truncated" in c for c in out["caveats"])
+    assert out["buildings_listed_is_lower_bound"] is True and any(c["code"] == "truncated" for c in out["caveats"])
 
 
 def test_harassment_count_is_labelled_and_counts_only_findings():
@@ -144,7 +147,7 @@ def test_unavailable_geosupport_is_an_error_status_not_ok():
     unavailable = Result(outcome=Outcome.UNAVAILABLE, message="connection refused", typed="1 Main St")
     out = make_tool(FakeClient(unavailable)).invoke({"address": "1 Main St", "borough": "Manhattan"})
     assert out["status"] == "error" and out["resolution"]["outcome"] == "unavailable"
-    assert any("outage" in c for c in out["caveats"])
+    assert any("outage" in c["text"] for c in out["caveats"])
 
 
 @pytest.mark.parametrize("error", [ReleaseMismatch("sidecar runs 24d, project pins 25b"), KeyError("yearBuilt"),
@@ -191,3 +194,24 @@ def test_ontology_check_rejects_violations(mutate):
     mutate(out)
     with pytest.raises(AssertionError):
         check_ontology(out)
+
+
+def test_caveat_codes_are_unique_and_stable_in_form():
+    from watchline.profile import profile as P
+    consts = [v for k, v in vars(P).items() if k.startswith("CAVEAT_")] + [T.CAVEAT_BUILDINGS_CAPPED, T.ERROR_CAVEAT]
+    codes = [c.code for c in consts]
+    assert len(codes) == len(set(codes)) and all(c.isidentifier() and c == c.lower() for c in codes)
+
+
+def test_tool_output_carries_caveat_codes_and_the_sources_read():
+    out = T.profile_to_dict(full_profile())
+    assert {"cited_not_fault", "lot_wide"} <= {c["code"] for c in out["caveats"]}
+    assert all(set(c) == {"code", "text"} for c in out["caveats"])
+    assert out["sources"] == [P_GEOSUPPORT, P_PLUTO, P_HPD]
+    unresolved = T.profile_to_dict(build_profile(answer(outcome=Match.NOT_FOUND, bbl=None, in_graph=None, grc="11"), FakePG()))
+    assert unresolved["sources"] == [P_GEOSUPPORT] and unresolved["caveats"][-1]["code"] == "not_found"
+
+
+def test_an_error_result_carries_a_coded_caveat():
+    out = make_tool(FakeClient(error=KeyError("yearBuilt"))).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    assert out["status"] == "error" and out["caveats"][0]["code"] == "lookup_failed" and out["sources"] == []
