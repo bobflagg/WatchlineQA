@@ -85,8 +85,8 @@ def make_building_profile_tool(client, graph: Graph, pg: ProfileGraph):
         characteristics, and counts of violations, complaint problems and litigation per building, with caveats.
 
         Call this first for any question that starts from a street address. The result is source-reported data:
-        violations, problems and litigation are what was cited, reported or brought, not findings of fault. Always
-        pass the returned caveats on to the user. Check status first: ok means a lookup was made (read
+        violations, problems and litigation are what was cited, reported or brought, not findings of fault. The
+        returned caveats are attached to your answer for you; do not restate them. Check status first: ok means a lookup was made (read
         resolution.outcome for exact, variant, ambiguous or not_found); needs_borough means ask the user for the
         borough or ZIP; invalid_input means the text was not an address; error means an outage or fault, not an
         answer about the address.

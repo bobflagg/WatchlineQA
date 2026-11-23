@@ -22,6 +22,8 @@ class EvidenceRef(BaseModel):
     bin: str | None = Field(default=None, description=(
         "The building's BIN, to point at one building under section 'buildings'. Without it, 'buildings' means the whole list "
         "(use that to say no building is listed)."))
+    bbl: str | None = Field(default=None, description=(
+        "The tax lot (BBL) the data is about. Give it when the conversation has looked up more than one lot."))
 
 
 class ModelFact(BaseModel):
@@ -44,6 +46,7 @@ class ModelAnswer(BaseModel):
 class Evidence(BaseModel):
     section: Section
     bin: str | None = None
+    bbl: str | None = None          # the lot of the tool result this came from, so a reader can see which lot it is about
     data: Any                       # the tool's own data for that section, copied by code
 
 
@@ -79,29 +82,36 @@ _SECTION_KEY = {"resolution": "resolution", "characteristics": "characteristics"
                 "totals": "totals_across_all_listed_buildings"}
 
 
-def _resolve(ref: EvidenceRef, results: list[dict]) -> tuple[Evidence, int] | None:
+def _bbl(out: dict) -> str | None:
+    return (out.get("resolution") or {}).get("bbl")
+
+
+def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evidence, int] | None:
     """The tool data a reference points at, and the index of the result it came from, or None.
 
-    The latest result that has it wins; a BIN picks the result that lists it. `buildings` without a BIN is the whole list, which may
-    be empty (that is how an absence is evidenced). `lookup` is the tool's own status and message, for answers that ask a question.
+    The latest result that has it wins (results before `floor` are not searched); a BIN picks the result that lists it, and a BBL
+    picks the result about that lot. `buildings` without a BIN is the whole list, which may be empty (that is how an absence is
+    evidenced). `lookup` is the tool's own status and message, for answers that ask a question.
     """
-    for i in reversed(range(len(results))):
+    for i in reversed(range(floor, len(results))):
         out = results[i]
+        if ref.bbl is not None and _bbl(out) != ref.bbl:
+            continue
         if ref.section == "lookup":
             if out.get("status"):
-                return Evidence(section="lookup", data={"status": out["status"], "message": out.get("message")}), i
+                return Evidence(section="lookup", bbl=_bbl(out), data={"status": out["status"], "message": out.get("message")}), i
         elif ref.section == "buildings":
             if ref.bin is None:
                 if "buildings" in out and out.get("resolution"):
-                    return Evidence(section="buildings", data=out["buildings"]), i
+                    return Evidence(section="buildings", bbl=_bbl(out), data=out["buildings"]), i
             else:
                 for b in out.get("buildings") or []:
                     if b.get("bin") == ref.bin:
-                        return Evidence(section="buildings", bin=ref.bin, data=b), i
+                        return Evidence(section="buildings", bin=ref.bin, bbl=_bbl(out), data=b), i
         else:
             data = out.get(_SECTION_KEY[ref.section])
             if data:                                    # None, [] and {} mean the tool had nothing for this section
-                return Evidence(section=ref.section, data=data), i
+                return Evidence(section=ref.section, bbl=_bbl(out), data=data), i
     return None
 
 
@@ -109,15 +119,23 @@ def assemble(model: ModelAnswer, tool_results: list[dict], earlier: list[dict] =
     """Pure: the model's answer plus the tool results in, the full Answer out. Caveats and sources come only from the tools.
 
     `tool_results` are this turn's. `earlier` are results from earlier turns of the same conversation: a follow-up may rest on
-    them, so evidence can point at them, and a result that evidence points at contributes its caveats and sources too.
+    them, so evidence can point at them, and a result that evidence points at contributes its caveats and sources too. A follow-up
+    that makes no lookup rests on the latest earlier result whether or not its facts cite anything. If this turn's lookup failed
+    (needs a borough, invalid input, error), its references never fall through to an earlier lot.
     """
     results = [*earlier, *tool_results]
-    used = set(range(len(earlier), len(results)))        # this turn's results always count
+    n_earlier = len(earlier)
+    used = set(range(n_earlier, len(results)))           # this turn's results always count
+    if not tool_results and earlier:
+        used.add(n_earlier - 1)
+    floor = 0
+    if any(r.get("status") not in ("ok", None) for r in tool_results):
+        floor = n_earlier                                 # a failed lookup this turn: do not answer from an earlier lot
     facts = []
     for f in model.facts:
         resolved, unresolved = [], []
         for ref in f.evidence:
-            hit = _resolve(ref, results)
+            hit = _resolve(ref, results, floor)
             if hit:
                 resolved.append(hit[0])
                 used.add(hit[1])
@@ -160,21 +178,68 @@ def render_markdown(a: Answer) -> str:
 
 # ---- a guard against numbers the records never gave ---------------------------------------------------------------------
 
+_DATA_KEYS = ("resolution", "lot", "characteristics", "counts", "buildings", "buildings_listed", "totals_across_all_listed_buildings")
+_WORDS = {w: str(n) for n, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen "
+    "nineteen twenty".split())}
+_WORDS.update({"thirty": "30", "forty": "40", "fifty": "50", "sixty": "60", "seventy": "70", "eighty": "80", "ninety": "90"})
+_WORD_NUMBER = re.compile(r"\b(" + "|".join(w for w in _WORDS if w != "one") + r")\b", re.I)   # "one" is too common in prose
+_CODE = re.compile(r"\b(?:\d{4}-\d{2}-\d{2}|\d+[A-Za-z]\w*)\b")      # 2026-05-29, 26v1, 25b: compared whole, against the sources
 _NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
-def _numbers(text: str) -> set[str]:
+def _plain(n: str) -> str:
+    n = n.replace(",", "").rstrip(".")
+    return n[:-2] if n.endswith(".0") else n
+
+
+def _without_prose(x):
+    """x with every 'source' string removed (they name releases, not data), at any depth."""
+    if isinstance(x, dict):
+        return {k: _without_prose(v) for k, v in x.items() if k != "source"}
+    if isinstance(x, list):
+        return [_without_prose(v) for v in x]
+    return x
+
+
+def _data_only(x):
+    """A tool result without its prose (caveats, sources, message): numbers in those do not make a number grounded."""
+    if isinstance(x, dict) and ("status" in x or any(k in x for k in _DATA_KEYS)):
+        return _without_prose({k: x[k] for k in _DATA_KEYS if k in x})
+    return _without_prose(x)
+
+
+def _bbl_parts(text: str) -> set[str]:
     out = set()
-    for m in _NUMBER.findall(text):
-        out.add(m.replace(",", "").rstrip("."))
+    for bbl in re.findall(r"\b\d{10}\b", text):
+        out |= {bbl[0], str(int(bbl[1:6])), str(int(bbl[6:]))}      # borough, block, lot
     return out
 
 
+def _numbers(text: str) -> set[str]:
+    return {_plain(m) for m in _NUMBER.findall(text)}
+
+
 def ungrounded_numbers(text: str, tool_results: list[dict], question: str = "") -> list[str]:
-    """Numbers in `text` that appear nowhere in the tool results or the user's question.
+    """Numbers (digits, or a number word such as "six") in `text` that appear nowhere in the tool *data* or the user's question.
 
     The rules say never add counts into one number. A sum the tool did not provide is, by construction, a number the records do not
-    contain, so it shows up here. It cannot catch a sum that happens to equal a recorded number; the judge is the other guard.
+    contain, so it shows up here. Only data fields ground a number, not caveat or source text, so "release 25b" does not make 25
+    acceptable. Codes such as 26v1 and 2026-05-29 are compared whole against the sources. It cannot catch a sum that happens to
+    equal a recorded number; the judge is the other guard.
     """
-    grounded = _numbers(json.dumps(tool_results, default=str)) | _numbers(question)
-    return sorted(n for n in _numbers(text) if n not in grounded)
+    data = json.dumps([_data_only(r) for r in tool_results], default=str)
+    sources = " ".join(s for r in tool_results if isinstance(r, dict) for s in r.get("sources") or [])
+    grounded = {_plain(n) for n in _numbers(data) | _numbers(question) | _bbl_parts(data + " " + question)}
+    codes = {c.lower() for c in _CODE.findall(sources) + _CODE.findall(data) + _CODE.findall(question)}
+    stray = []
+    for code in _CODE.findall(text):
+        if code.lower() not in codes:
+            stray.append(code)
+    rest = _CODE.sub(" ", text)
+    for n in sorted(_numbers(rest) - grounded):
+        stray.append(n)
+    for w in _WORD_NUMBER.findall(rest):
+        if _WORDS[w.lower()] not in grounded and w.lower() not in stray:
+            stray.append(w.lower())
+    return sorted(stray)

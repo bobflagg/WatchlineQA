@@ -168,13 +168,13 @@ def test_caveats_and_sources_come_from_the_tool_not_from_what_the_model_wrote():
     assert "not findings of fault" not in turn.model_text
 
 
-def test_a_final_message_that_is_not_the_structure_gives_no_structured_answer_and_chat_says_so(capsys):
+def test_a_final_message_that_is_not_the_structure_gives_no_structured_answer_and_chat_says_so():
     agent, _ = agent_with([AIMessage(content="just some prose")])
     turn = ask(agent, "hi", CONFIG)
     assert turn.structured is None and turn.answer == "just some prose" and turn.model_text == "just some prose"
     agent, _ = agent_with([AIMessage(content="just some prose")])
-    out = run_chat(agent, ["hi"])
-    assert any("just some prose" in line for line in out) and "no caveats or sources are attached" in capsys.readouterr().err
+    out = " ".join(run_chat(agent, ["hi"]))
+    assert "just some prose" in out and "no caveats or sources are attached" in out
 
 
 def test_a_follow_up_with_no_new_lookup_cites_the_earlier_turns_result():
@@ -207,6 +207,9 @@ def test_a_clean_answer_is_not_retried_and_a_bad_second_answer_is_kept_without_a
     agent, seen = agent_with([lookup(), final("There are 77."), final("There are 78.")])
     turn = ask(agent, "tell me about 1 Main St, Manhattan", CONFIG)
     assert turn.corrected == ["77"] and turn.structured.summary == "There are 78." and len(seen["calls"]) == 3
+    assert turn.unverified == ["78"]                                    # still not in the records: the chat says so
+    assert "not in the records" in " ".join(run_chat(agent_with([lookup(), final("There are 77."), final("There are 78.")])[0],
+                                                     ["tell me about 1 Main St, Manhattan"]))
 
 
 def test_numbers_the_user_typed_count_as_given_and_a_correction_does_not_launder_later_numbers():
@@ -214,3 +217,16 @@ def test_numbers_the_user_typed_count_as_given_and_a_correction_does_not_launder
     assert ask(agent, "what about 218?", CONFIG).corrected == []
     turn = ask(agent, "and another", CONFIG)
     assert turn.corrected == ["5"]            # the user's earlier 218 is given; the correction message naming "5" is not trusted
+
+
+def test_a_failed_correction_keeps_the_first_answer_and_marks_its_numbers_unverified():
+    agent, _ = agent_with([lookup(), final("There are 77 complaints.")])          # no script left for the correction call
+    turn = ask(agent, "tell me about 1 Main St, Manhattan", CONFIG)
+    assert turn.structured.summary == "There are 77 complaints." and turn.unverified == ["77"] and turn.corrected == []
+
+
+def test_without_a_checkpointer_there_is_no_history_so_no_correction_is_attempted():
+    model, seen = scripted([lookup(), final("There are 77 complaints.")])
+    agent = build_agent(FakeClient(resolved()), FakeGraph(), FakePG(buildings=BUILDINGS), model=model)
+    turn = ask(agent, "tell me about 1 Main St, Manhattan", CONFIG)
+    assert turn.unverified == ["77"] and len(seen["calls"]) == 2

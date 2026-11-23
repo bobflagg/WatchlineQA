@@ -62,7 +62,8 @@ def test_a_follow_up_can_cite_an_earlier_turns_result_and_inherits_its_caveats(r
     unrelated = {**result, "caveats": [{"code": "unrelated", "text": "Not cited."}], "buildings": [{"bin": "77"}]}
     a = assemble(model(fact("Building 1 again.", ("buildings", "1"))), [], earlier=[unrelated, earlier])
     assert a.facts[0].unresolved == [] and a.caveat_codes == {"earlier_only"} and a.sources == ["PLUTO (earlier)"]
-    assert assemble(model(), [], earlier=[earlier]).caveats == []        # nothing cited, nothing from this turn: no caveats
+    a = assemble(model(), [], earlier=[unrelated, earlier])               # no lookup this turn and nothing cited: it rests on the latest
+    assert a.caveat_codes == {"earlier_only"}
 
 
 def test_a_bin_given_on_another_section_is_harmless(result):
@@ -127,3 +128,42 @@ def test_numbers_from_the_question_and_with_commas_and_money_are_grounded(result
     result = {**result, "lot": {"assessedTotal": 814500}}
     assert ungrounded_numbers("Assessed at $814,500 for 1 Main St.", [result], "tell me about 1 Main St") == []
     assert ungrounded_numbers("There are 77 Main St buildings.", [result], "tell me about 1 Main St") == ["77"]
+
+
+def test_numbers_in_caveats_and_sources_do_not_ground_a_number(result):
+    # the sources say "release 25b" and "26v1"; the caveat text mentions "25 of ..." style numbers. None of that is data.
+    assert "25" in ungrounded_numbers("There are 25 complaints in all.", [{**result, "sources": ["Geosupport (release 25b)"]}])
+    assert ungrounded_numbers("Counts come from PLUTO release 26v1.", [{**result, "sources": ["PLUTO (release 26v1)"]}]) == []
+    assert ungrounded_numbers("Counts come from PLUTO release 27v2.", [{**result, "sources": ["PLUTO (release 26v1)"]}]) == ["27v2"]
+    assert ungrounded_numbers("Data through 2026-05-29.", [{**result, "sources": ["HPD (data through 2026-05-29)"]}]) == []
+
+
+def test_number_words_are_checked_too():
+    r = {"counts": [{"value": 2}], "buildings": [{"bin": "9"}]}
+    assert ungrounded_numbers("Two buildings.", [r]) == []
+    assert ungrounded_numbers("Twenty complaints, six violations.", [r]) == ["six", "twenty"]
+    assert ungrounded_numbers("There are six violations.", [r]) == ["six"]
+    assert ungrounded_numbers("One of the buildings.", [r]) == []                # "one" is ordinary prose
+
+
+def test_money_floats_and_the_parts_of_a_bbl_are_grounded():
+    r = {"lot": {"assessedTotal": 814500.0}, "resolution": {"bbl": "3008210012"}}
+    assert ungrounded_numbers("Assessed at $814,500, block 821, lot 12, borough 3.", [r]) == []
+
+
+def test_evidence_can_be_pinned_to_a_lot_and_a_failed_lookup_does_not_fall_through(result):
+    other = {**result, "resolution": {**result["resolution"], "bbl": "2000000002"}}
+    mine = {**result, "resolution": {**result["resolution"], "bbl": "1000000001"}}
+    pinned = ModelAnswer(kind="profile", summary="s", facts=[ModelFact(statement="f", evidence=[
+        EvidenceRef(section="resolution", bbl="1000000001")])])
+    a = assemble(pinned, [], earlier=[mine, other])                       # the latest result is `other`, but the ref says which lot
+    assert a.facts[0].evidence[0].bbl == "1000000001"
+    failed = {"status": "needs_borough", "message": "Ask."}
+    unpinned = model(fact("From the old lot?", ("resolution", None)))
+    assert assemble(unpinned, [failed], earlier=[mine]).facts[0].unresolved                # not answered from an earlier lot
+    assert assemble(unpinned, [], earlier=[mine]).facts[0].unresolved == []                # a follow-up with no lookup may
+
+
+def test_codes_are_compared_without_regard_to_case_and_follow_ups_may_cite_the_sources():
+    r = {"buildings": [{"bin": "1", "address": "224 54TH STREET"}], "sources": ["PLUTO (release 26v1)"]}
+    assert ungrounded_numbers("It is at 224 54th Street (PLUTO 26V1).", [r]) == []
