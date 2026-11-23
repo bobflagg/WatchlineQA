@@ -1,0 +1,16 @@
+[client]
+showErrorDetails = "none"
+
+[theme]
+base = "light"
+primaryColor = "#d4a017"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#eef1f5"
+textColor = "#1b2430"
+showWidgetBorder = true
+
+[theme.sidebar]
+backgroundColor = "#0a1629"
+secondaryBackgroundColor = "#12243f"
+primaryColor = "#d4a017"
+borderColor = "#22344b"
