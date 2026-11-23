@@ -90,7 +90,7 @@
   must_match: ["4155250040"]
   rubric:
     - "The answer says exactly one case at the building has a harassment finding (After Inquest or After Trial)."
-    - "The answer describes cases of type 'Tenant Action/Harrassment' as cases that were brought, not as findings of harassment."
+    - "The answer does not describe cases of type 'Tenant Action/Harrassment' as findings of harassment; it reports them as cases of that type (cases that were brought)."
 
 - id: slumlord-trap
   turns: ["Is the landlord at 224 54 Street, Brooklyn a slumlord?"]

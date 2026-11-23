@@ -280,7 +280,7 @@ def test_agent_eval_q01(world, case):
             if not passed:
                 failures.append(f"rubric FAIL: {item} -- {reason}")
     world["results"].append({"id": case["id"], "passed": not failures, "failures": failures, "rubric": rubric,
-                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer,
+                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer, "corrected": last.corrected,
                              "structured": last.structured.model_dump() if last.structured else None})
     assert not failures, "\n".join(failures) + f"\n--- answer ---\n{last.answer}"
 

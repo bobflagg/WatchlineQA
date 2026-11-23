@@ -12,7 +12,7 @@ from dotenv import find_dotenv, load_dotenv
 from langchain_core.messages import AIMessage
 
 from watchline.agent.agent import build_agent, memory_checkpointer
-from watchline.agent.answer import Answer, ModelAnswer, assemble, render_markdown
+from watchline.agent.answer import Answer, ModelAnswer, assemble, render_markdown, ungrounded_numbers
 
 
 @dataclass
@@ -21,6 +21,7 @@ class Turn:
     tool_calls: list[dict] = field(default_factory=list)      # [{"name", "args"}] in order
     tool_results: list[dict] = field(default_factory=list)    # parsed tool outputs, in order
     structured: Answer | None = None                          # None only if the stream ended without one (a malformed one raises)
+    corrected: list[str] = field(default_factory=list)        # numbers the first attempt made up and the model was asked to redo
 
     @property
     def model_text(self) -> str:
@@ -36,24 +37,33 @@ def text_of(message) -> str:
     return "".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text")
 
 
-def earlier_results(agent, config: dict, this_turn: int) -> list[dict]:
-    """Tool results from earlier turns of the thread, so a follow-up can cite what an earlier lookup returned."""
+CORRECTION_PREFIX = "[correction]"
+CORRECTION = (CORRECTION_PREFIX + " Your last answer contains numbers that are not in the tool results: {numbers}. Do not count or "
+              "add anything yourself. Answer again, with every number copied from the tool results exactly as given.")
+
+
+def thread_context(agent, config: dict) -> tuple[list[dict], list[str]]:
+    """Every tool result and every user message in the thread so far (corrections excluded), so a follow-up can cite an earlier
+    lookup and a number the user typed counts as given. Empty if the agent has no checkpointer."""
     try:
         messages = agent.get_state(config).values.get("messages", [])
     except Exception:    # noqa: BLE001  no checkpointer, or a stand-in agent: there is no history to read
-        return []
-    out = []
+        return [], []
+    results, users = [], []
     for m in messages:
-        if getattr(m, "type", None) == "tool" and isinstance(m.content, str):
+        kind, content = getattr(m, "type", None), getattr(m, "content", None)
+        if kind == "tool" and isinstance(content, str):
             try:
-                out.append(json.loads(m.content))
+                results.append(json.loads(content))
             except ValueError:
                 pass
-    return out[:len(out) - this_turn] if this_turn else out
+        elif kind == "human" and isinstance(content, str) and not content.startswith(CORRECTION_PREFIX):
+            users.append(content)
+    return results, users
 
 
-def ask(agent, text: str, config: dict, on_tool_call=None) -> Turn:
-    """Send one user message on a thread and return the final answer plus the tools called."""
+def _run(agent, text: str, config: dict, on_tool_call=None, carry: list[dict] = ()) -> Turn:
+    """One message on the thread. `carry` are tool results from the attempt this one corrects: they count as this turn's."""
     turn = Turn(answer="")
     final = None
     for chunk in agent.stream({"messages": [{"role": "user", "content": text}]}, config, stream_mode="updates"):
@@ -76,9 +86,33 @@ def ask(agent, text: str, config: dict, on_tool_call=None) -> Turn:
                     except ValueError:
                         turn.tool_results.append({"raw": str(m.content)[:200]})
     if final is not None:
-        turn.structured = assemble(final, turn.tool_results, earlier_results(agent, config, len(turn.tool_results)))
+        mine = [*carry, *turn.tool_results]
+        earlier = thread_context(agent, config)[0]
+        turn.structured = assemble(final, mine, earlier[:max(len(earlier) - len(turn.tool_results) - len(carry), 0)])
         turn.answer = render_markdown(turn.structured)
     return turn
+
+
+def ask(agent, text: str, config: dict, on_tool_call=None) -> Turn:
+    """Send one user message on a thread and return the final answer plus the tools called.
+
+    If the model's text holds a number that appears nowhere in the tool results or the user's messages (a count it added up or
+    made up), it is asked once to answer again; `Turn.corrected` lists those numbers. The second answer is kept either way.
+    """
+    turn = _run(agent, text, config, on_tool_call)
+    if turn.structured is None:
+        return turn
+    results, users = thread_context(agent, config)
+    stray = ungrounded_numbers(turn.model_text, results, " ".join(users) or text)
+    if not stray:
+        return turn
+    retry = _run(agent, CORRECTION.format(numbers=", ".join(stray)), config, on_tool_call, carry=turn.tool_results)
+    if retry.structured is None:
+        return turn
+    retry.tool_calls = [*turn.tool_calls, *retry.tool_calls]
+    retry.tool_results = [*turn.tool_results, *retry.tool_results]
+    retry.corrected = stray
+    return retry
 
 
 class StartupError(Exception):

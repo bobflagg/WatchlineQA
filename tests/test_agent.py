@@ -185,3 +185,32 @@ def test_a_follow_up_with_no_new_lookup_cites_the_earlier_turns_result():
     turn = ask(agent, "and the other building?", CONFIG)
     assert turn.tool_calls == [] and turn.structured.facts[0].unresolved == []
     assert turn.structured.facts[0].evidence[0].data["bin"] == "2" and "cited_not_fault" in turn.structured.caveat_codes
+
+
+def lookup():
+    return tool_call("building_profile", {"address": "1 Main St", "borough": "Manhattan"})
+
+
+def test_a_number_the_records_never_gave_is_corrected_once_and_the_second_answer_keeps_the_caveats():
+    agent, seen = agent_with([lookup(), final("There are 77 complaints in all."), final("Heat and hot water: 3 duplicate rows.")])
+    turn = ask(agent, "tell me about 1 Main St, Manhattan", CONFIG)
+    assert turn.corrected == ["77"] and turn.structured.summary == "Heat and hot water: 3 duplicate rows."
+    assert "cited_not_fault" in turn.structured.caveat_codes and turn.structured.sources     # carried from the first attempt
+    assert [c["name"] for c in turn.tool_calls] == ["building_profile"] and len(turn.tool_results) == 1
+    correction = [m for m in seen["calls"][-1] if m.type == "human"][-1]
+    assert correction.content.startswith("[correction]") and "77" in correction.content
+
+
+def test_a_clean_answer_is_not_retried_and_a_bad_second_answer_is_kept_without_a_third_try():
+    agent, seen = agent_with([lookup(), final("One lot.")])
+    assert ask(agent, "tell me about 1 Main St, Manhattan", CONFIG).corrected == [] and len(seen["calls"]) == 2
+    agent, seen = agent_with([lookup(), final("There are 77."), final("There are 78.")])
+    turn = ask(agent, "tell me about 1 Main St, Manhattan", CONFIG)
+    assert turn.corrected == ["77"] and turn.structured.summary == "There are 78." and len(seen["calls"]) == 3
+
+
+def test_numbers_the_user_typed_count_as_given_and_a_correction_does_not_launder_later_numbers():
+    agent, _ = agent_with([final("You asked about 218."), final("Now 5 appears from nowhere."), final("Still 5.")])
+    assert ask(agent, "what about 218?", CONFIG).corrected == []
+    turn = ask(agent, "and another", CONFIG)
+    assert turn.corrected == ["5"]            # the user's earlier 218 is given; the correction message naming "5" is not trusted
