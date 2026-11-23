@@ -82,11 +82,12 @@ def test_changing_the_question_type_clears_the_chosen_query(monkeypatch):
     assert list(at.sidebar.selectbox(key="sample").options) == list(SAMPLE_QUESTIONS["Q2: registered owner"])
 
 
-def test_sidebar_footer_has_author_email_and_repo_link():
+def test_sidebar_footer_has_author_email_and_repo_link_with_icons():
     at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
     at.run()
     assert not at.exception
-    footer = " ".join(c.value for c in at.sidebar.caption)
-    lines = [line.strip() for line in footer.splitlines()]
-    assert lines == ["[Bob Flagg](mailto:calcworks@gmail.com)", "[Source on GitHub](https://github.com/bobflagg/WatchlineQA)"]
+    footer = next(h.value for h in at.sidebar.get("html") if "wl-footer" in h.value and "<a " in h.value)
+    assert footer.count("<a ") == 2 and footer.count("<svg") == 2        # two lines, an icon on each
+    assert 'href="mailto:calcworks@gmail.com"' in footer and "<span>Bob Flagg</span>" in footer
+    assert 'href="https://github.com/bobflagg/WatchlineQA"' in footer and "<span>Source on GitHub</span>" in footer
     assert "Robert" not in footer
