@@ -22,6 +22,9 @@ Read this first in a fresh session. Update it at the end of every slice.
   prompt with the ontology rules (one source: `watchline/agent/prompts/ontology_rules.md`, imported by CLAUDE.md), `make chat`, and
   10 agent-level evals (`make eval-agent`; 10 of 10 on three runs, Haiku agent and judge). Reviewed and fixed; merged.
 
+- Agent notebook (branch `agent-notebook`): `docs/notebooks/watchline-agent-chat.ipynb` drives the chat's functions through nine
+  scenarios. Reading it found one slip the evals miss (the model summed problem counts into one number); add an eval case for it.
+
 ## Next
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Pick the next competency question and its tool.
