@@ -92,7 +92,7 @@ def check(out: dict, expect: dict):
         assert set(expect["related_lots"]) <= set(res["related_lots"])
     for name in expect.get("candidates_include", []):
         assert any(name in c for c in res["candidates"])
-    caveats = " ".join(out.get("caveats", [])) + " " + out.get("message", "")
+    caveats = " ".join(c["text"] for c in out.get("caveats", [])) + " " + out.get("message", "")
     for s in expect.get("caveats_contain", []):
         assert s in caveats, f"missing caveat text {s!r} in {caveats!r}"
     for s in expect.get("caveats_absent", []):
@@ -120,7 +120,7 @@ def check_ontology(out: dict):
     assert [c["name"] for c in out.get("counts", [])] in ([], ["parcels", "buildings (PLUTO)", "buildings (HPD)", "residential units"])
     if out.get("lot") is None:
         return
-    assert any("not findings of fault" in c for c in out["caveats"])
+    assert any("not findings of fault" in c["text"] for c in out["caveats"])
     # every count row is a (class or type) group: it has a key besides n, and no row is a bare number
     for b in out["buildings"]:
         for g in GROUPS:

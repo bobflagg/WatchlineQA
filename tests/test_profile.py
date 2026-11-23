@@ -87,7 +87,7 @@ def test_addressed_building_flagged_and_counts_by_type():
 
 
 def test_harassment_caveat_does_not_call_no_harassment_unfound():
-    assert "No Harassment" in P.CAVEAT_HARASSMENT and "not found" not in P.CAVEAT_HARASSMENT
+    assert "No Harassment" in P.CAVEAT_HARASSMENT.text and "not found" not in P.CAVEAT_HARASSMENT.text
 
 
 def test_lot_wide_values_stay_on_lot_and_are_labelled():
@@ -113,14 +113,14 @@ def test_counts_are_separate_and_name_unit_and_source():
 def test_no_hpd_buildings_unregistered_vs_registered():
     unreg = build_profile(answer(bin=None), FakePG(lot={**LOT, "hpdRegistered": False}, buildings=[]))
     assert unreg.buildings == () and P.CAVEAT_NO_BUILDING in unreg.caveats
-    assert not any(c.startswith("Two building counts") for c in unreg.caveats)   # not both
+    assert not any(c.text.startswith("Two building counts") for c in unreg.caveats)   # not both
     reg = build_profile(answer(bin=None), FakePG(buildings=[]))
     assert P.CAVEAT_REGISTERED_NO_BUILDING in reg.caveats and P.CAVEAT_NO_BUILDING not in reg.caveats
 
 
 def test_missing_pluto_count_is_not_printed_as_none():
     p = build_profile(answer(), FakePG(lot={**LOT, "plutoNumBuildings": None}, buildings=BUILDINGS))
-    assert not any("None" in c for c in p.caveats)
+    assert not any("None" in c.text for c in p.caveats)
     assert P.CAVEAT_PLUTO_COUNT_MISSING.format(listed=2) in p.caveats
 
 
@@ -147,7 +147,7 @@ def test_inferred_and_neighborhood_caveats():
 
 def test_related_lots_caveat_says_not_additive():
     p = build_profile(answer(related_lots=("1000010002",)), FakePG(buildings=BUILDINGS))
-    caveat = next(c for c in p.caveats if "1000010002" in c)
+    caveat = next(c.text for c in p.caveats if "1000010002" in c.text)
     assert "not additive" in caveat
 
 
@@ -206,7 +206,7 @@ def test_live_multi_building_lot_anchor_d(live):
     assert {b.bin for b in p.buildings} == {"3324448", "3324450", "3324451"}
     assert [b.bin for b in p.buildings if b.addressed] == ["3324451"]
     assert p.lot["unitsRes"] == 18 and p.lot["plutoNumBuildings"] == 3 and p.buildings_listed == 3
-    assert p.resolution.outcome is Match.EXACT and not any("variant" in c for c in p.caveats)
+    assert p.resolution.outcome is Match.EXACT and not any("variant" in c.text for c in p.caveats)
     # summaries read from the graph: 218/220 54 St (3324450) has one closed violation in each of classes A, B, C
     by_bin = {b.bin: b for b in p.buildings}
     assert by_bin["3324450"].violations == {("A", "Close"): 1, ("B", "Close"): 1, ("C", "Close"): 1}

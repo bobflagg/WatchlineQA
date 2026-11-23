@@ -51,6 +51,10 @@ The graph label is `Lot` (ontology: TaxLot). Some properties are shorter: `units
 ## Conventions
 
 - Graph tools are read-only, parameterized, row-limited, with timeouts, and return evidence plus caveats.
+- Every answer is structured data, not free text: a summary, the facts with their evidence, the caveats that
+  apply (lead vs. finding), the sources, and a `kind` tag (for example profile, list, comparison, network)
+  that tells a renderer what shape it is getting. Caveats are fields, so no display can drop them. Each
+  answer also has a plain-markdown rendering so the terminal chat works. Layout and styling wait for the UI.
 - No free-form Cypher from the model in the main path.
 - Write the simplest thing that passes the tests and answers the question. Small commits.
 - If Claude makes the same mistake twice, add a line to "Mistakes to avoid" below.

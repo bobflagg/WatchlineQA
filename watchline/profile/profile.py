@@ -23,35 +23,74 @@ PLUTO = "PLUTO (release 26v1)"
 HPD = "HPD registrations (data through 2026-05-29)"
 GEOSUPPORT = "Geosupport (release 25b)"
 
-CAVEAT_CITED = ("Violations, complaint problems and litigation are what was cited, reported or brought, "
-                "not findings of fault. Counts are by class or type and are not a severity score.")
-CAVEAT_LOT_WIDE = "Residential units and assessed value are lot-wide: they belong to the lot, not to any building."
-CAVEAT_NO_BUILDING = ("No building recorded in the HPD registrations. This is not a statement that the lot has no "
-                      "buildings; violations, problems and litigation exist only for HPD-registered buildings.")
-CAVEAT_REGISTERED_NO_BUILDING = ("The lot is marked HPD-registered but no building is listed for it. Violations, "
-                                 "problems and litigation can only be read through listed buildings, so none are shown.")
-CAVEAT_COUNTS = ("Two building counts: PLUTO says {pluto}, HPD registrations list {listed}. They are different "
-                 "sources and differ on many lots; neither alone is 'the number of buildings'.")
-CAVEAT_PLUTO_COUNT_MISSING = "PLUTO has no building count recorded for this lot; HPD registrations list {listed}."
-CAVEAT_DUPLICATES = "Problem counts are split by the duplicate flag; rows flagged as duplicates are counted separately."
-CAVEAT_VARIANT = ("The address matched by a variant of what was typed. Typed: {typed}. Returned: {returned} "
-                  "(Geosupport return code {grc}).")
-CAVEAT_INFERRED = "The lot comes from a respelled address, not the one typed: the resolution is inferred. Spellings tried: {tried}."
-CAVEAT_HOOD = "The borough was inferred from the neighborhood '{hood}', not typed."
-CAVEAT_RELATED = ("Other lots share the addressed building's BIN (for example a condominium): {lots}. "
-                  "Building counts are not additive across these lots.")
-CAVEAT_HARASSMENT = ("Only a finding of 'After Inquest' or 'After Trial' is a harassment finding. 'No Harassment' is a "
-                     "recorded finding of none, and many cases have no finding recorded; those are not findings either way.")
-CAVEAT_NO_ADDRESSED = ("The typed address resolved to {bin}, which is not among the buildings listed for the lot, so no "
-                       "building is marked as the addressed one.")
-CAVEAT_NO_ADDRESSED_BIN = "Geosupport returned no building (BIN) for this address, so no building is marked as addressed."
-CAVEAT_TRUNCATED = "Results were truncated at a row limit; counts may be incomplete."
+@dataclass(frozen=True)
+class Caveat:
+    """A statement that travels with an answer. `code` is stable (evals and renderers key on it); `text` is for people."""
+    code: str
+    text: str
 
-CAVEAT_AMBIGUOUS = "The street is ambiguous. Similar street names are listed as candidates; no lot was chosen."
-CAVEAT_NOT_FOUND = ("No lot found (Geosupport return code {grc}). Spellings tried: {tried}. No nearby lot was guessed.")
-CAVEAT_UNAVAILABLE = "Geosupport could not be reached. This is an outage, not an answer about the address."
-CAVEAT_NOT_IN_GRAPH = ("Geosupport returned BBL {bbl}, but the graph holds no such lot, so no buildings, violations, "
-                       "problems or litigation could be read. This does not mean the lot has none.")
+    def as_dict(self) -> dict[str, str]:
+        return {"code": self.code, "text": self.text}
+
+
+@dataclass(frozen=True)
+class CaveatTemplate:
+    """A caveat with blanks. `format` fills them and returns a Caveat with the same code."""
+    code: str
+    text: str
+
+    def format(self, **kw) -> Caveat:
+        return Caveat(self.code, self.text.format(**kw))
+
+
+CAVEAT_CITED = Caveat("cited_not_fault",
+                      ("Violations, complaint problems and litigation are what was cited, reported or brought, "
+                      "not findings of fault. Counts are by class or type and are not a severity score."))
+CAVEAT_LOT_WIDE = Caveat("lot_wide",
+                         ("Residential units and assessed value are lot-wide: they belong to the lot, not to any building."))
+CAVEAT_NO_BUILDING = Caveat("no_hpd_building",
+                            ("No building recorded in the HPD registrations. This is not a statement that the lot has no "
+                            "buildings; violations, problems and litigation exist only for HPD-registered buildings."))
+CAVEAT_REGISTERED_NO_BUILDING = Caveat("registered_no_building",
+                                       ("The lot is marked HPD-registered but no building is listed for it. Violations, "
+                                       "problems and litigation can only be read through listed buildings, so none are shown."))
+CAVEAT_COUNTS = CaveatTemplate("building_counts_differ",
+                               ("Two building counts: PLUTO says {pluto}, HPD registrations list {listed}. They are different "
+                               "sources and differ on many lots; neither alone is 'the number of buildings'."))
+CAVEAT_PLUTO_COUNT_MISSING = CaveatTemplate("pluto_count_missing",
+                                            ("PLUTO has no building count recorded for this lot; HPD registrations list {listed}."))
+CAVEAT_DUPLICATES = Caveat("duplicate_flag_split",
+                           ("Problem counts are split by the duplicate flag; rows flagged as duplicates are counted separately."))
+CAVEAT_VARIANT = CaveatTemplate("variant_match",
+                                ("The address matched by a variant of what was typed. Typed: {typed}. Returned: {returned} "
+                                "(Geosupport return code {grc})."))
+CAVEAT_INFERRED = CaveatTemplate("inferred_resolution",
+                                 ("The lot comes from a respelled address, not the one typed: the resolution is inferred. Spellings tried: {tried}."))
+CAVEAT_HOOD = CaveatTemplate("borough_inferred",
+                             ("The borough was inferred from the neighborhood '{hood}', not typed."))
+CAVEAT_RELATED = CaveatTemplate("related_lots_share_bin",
+                                ("Other lots share the addressed building's BIN (for example a condominium): {lots}. "
+                                "Building counts are not additive across these lots."))
+CAVEAT_HARASSMENT = Caveat("harassment_finding_definition",
+                           ("Only a finding of 'After Inquest' or 'After Trial' is a harassment finding. 'No Harassment' is a "
+                           "recorded finding of none, and many cases have no finding recorded; those are not findings either way."))
+CAVEAT_NO_ADDRESSED = CaveatTemplate("no_addressed_building",
+                                     ("The typed address resolved to {bin}, which is not among the buildings listed for the lot, so no "
+                                     "building is marked as the addressed one."))
+CAVEAT_NO_ADDRESSED_BIN = Caveat("no_addressed_bin",
+                                 ("Geosupport returned no building (BIN) for this address, so no building is marked as addressed."))
+CAVEAT_TRUNCATED = Caveat("truncated",
+                          ("Results were truncated at a row limit; counts may be incomplete."))
+
+CAVEAT_AMBIGUOUS = Caveat("ambiguous_street",
+                          ("The street is ambiguous. Similar street names are listed as candidates; no lot was chosen."))
+CAVEAT_NOT_FOUND = CaveatTemplate("not_found",
+                                  ("No lot found (Geosupport return code {grc}). Spellings tried: {tried}. No nearby lot was guessed."))
+CAVEAT_UNAVAILABLE = Caveat("geosupport_unavailable",
+                            ("Geosupport could not be reached. This is an outage, not an answer about the address."))
+CAVEAT_NOT_IN_GRAPH = CaveatTemplate("not_in_graph",
+                                     ("Geosupport returned BBL {bbl}, but the graph holds no such lot, so no buildings, violations, "
+                                     "problems or litigation could be read. This does not mean the lot has none."))
 
 
 class ProfileGraph(Protocol):
@@ -136,7 +175,7 @@ class Profile:
     counts: tuple[Count, ...] = ()                  # parcels, buildings (two sources) and units, never merged
     buildings_listed: int | None = None             # BINs HPD lists (not PLUTO's count)
     buildings: tuple[BuildingSummary, ...] = ()
-    caveats: tuple[str, ...] = field(default=())
+    caveats: tuple[Caveat, ...] = field(default=())
 
     def lot_totals(self) -> dict[str, dict]:
         """Same-type sums across buildings. Counts by class or type only, never one combined number."""
@@ -155,7 +194,7 @@ def _group(rows: list[dict], key) -> dict[str, Counter]:
     return by_bin
 
 
-def _match_caveats(res: Answer) -> list[str]:
+def _match_caveats(res: Answer) -> list[Caveat]:
     out = []
     same_as_typed = " ".join((res.returned or "").upper().split()) == " ".join(res.input.upper().split())
     if res.outcome is Match.VARIANT and not (res.borough_inferred_from and same_as_typed and not res.inferred):
@@ -167,7 +206,7 @@ def _match_caveats(res: Answer) -> list[str]:
     return out
 
 
-def _unresolved_caveat(res: Answer) -> str | None:
+def _unresolved_caveat(res: Answer) -> Caveat | None:
     match res.outcome:
         case Match.AMBIGUOUS:
             return CAVEAT_AMBIGUOUS

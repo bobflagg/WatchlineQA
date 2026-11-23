@@ -22,8 +22,11 @@ Read this first in a fresh session. Update it at the end of every slice.
   prompt with the ontology rules (one source: `watchline/agent/prompts/ontology_rules.md`, imported by CLAUDE.md), `make chat`, and
   10 agent-level evals (`make eval-agent`; 10 of 10 on three runs, Haiku agent and judge). Reviewed and fixed; merged.
 
-- Agent notebook (branch `agent-notebook`): `docs/notebooks/watchline-agent-chat.ipynb` drives the chat's functions through nine
-  scenarios. Reading it found one slip the evals miss (the model summed problem counts into one number); add an eval case for it.
+- Agent notebook: `docs/notebooks/watchline-agent-chat.ipynb` drives the chat's functions through ten scenarios (merged).
+
+- Structured answers (branch `structured-answers`, plan in `docs/plans/structured-answers.md`): `watchline/agent/answer.py` (kind, summary,
+  facts with evidence; code attaches caveats and sources), caveat codes, a numbers guard with one retry, 12 agent evals incl. `sum-trap`.
+  Not yet: review, merge. The notebooks are re-executed for the new shapes.
 
 ## Next
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
@@ -37,6 +40,10 @@ Read this first in a fresh session. Update it at the end of every slice.
 - Web search comes after the graph side is solid; its results are context, never identity evidence.
 - Understanding step: explainers for components with real flow, a notebook per simple tool (`docs/notebooks/`); no quizzes or micro-worlds. Specs in `docs/understanding/`,
   rendered pages published as artifacts.
+
+- Answers use a structured contract (summary, facts with evidence, caveats, sources, `kind`) with a
+  markdown fallback. A bare-bones Streamlit page comes after the first slice or two, to test the contract
+  against real data. Polished per-kind renderers wait for the UI.
 
 ## Open questions
 - Web chat after the terminal one: when?
