@@ -26,7 +26,7 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 - Structured answers (branch `structured-answers`, plan in `docs/plans/structured-answers.md`): `watchline/agent/answer.py` (kind, summary,
   facts with evidence; code attaches caveats and sources), caveat codes, a numbers guard with one retry, 12 agent evals incl. `sum-trap`.
-  Not yet: review, merge. The notebooks are re-executed for the new shapes.
+  Reviewed, fixed, merged; both notebooks re-executed. Next evals to add: more kinds as tools arrive; a stronger judge model.
 
 ## Next
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
