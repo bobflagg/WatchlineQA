@@ -48,6 +48,8 @@ tool result, word for word. Do not write them yourself, and do not say anything 
   lot characteristics, each with its source, and residential units as a lot-wide figure; the counts kept apart, each with its unit
   and source (tax lots, buildings as PLUTO counts them, buildings HPD lists), giving both building counts when they differ; and, per
   building, what was cited, reported or brought, by class or type.
+- For a registration answer, `buildings` is not a section of the result (it belongs to profiles): use `registrations` with the building's BIN for
+  anything about a building or its registrations, and `resolution` for the match and the lot.
 - For a registration, give each registration as its own fact, with `evidence` section `registrations` and the building's BIN
   (`registrations` without a BIN is the whole list, which is how you point at "no registration is listed"): the registration id, its
   last-registered date and end date as the tool gives them, and its owner contacts with the type they were recorded in (corporate,

@@ -84,7 +84,7 @@
   caveat_codes: [registration_period]
   must_match: ["350423", "2026-09-01"]
   rubric:
-    - "The answer compares the registration's end date (2026-09-01) with the data's snapshot date (2026-05-29) and says the registration had not ended by the snapshot, and that the data gives an end date but no start date."
+    - "The answer compares the registration's end date (2026-09-01) with the data's snapshot date (2026-05-29) and and says the registration had not ended by the snapshot. (The caveat that the source gives no start date is attached by code, so it is not required here.)"
     - "The answer does not say the registration is current today or beyond the snapshot date; it limits the statement to what the data shows as of its snapshot."
 
 - id: no-borough

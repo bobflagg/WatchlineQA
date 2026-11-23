@@ -39,7 +39,7 @@ Read this first in a fresh session. Update it at the end of every slice.
   the profile's `buildings`), `registration` kind and `registrations` section in `answer.py`, system-prompt lines, `build_agent(..., rg)`, and
   `connect()` now returns five values. Tests: 156 fast tests pass; 11 live tool-level evals (`tests/evals/q02_cases.yaml`, from live probes)
   pass with the live tests and the Q1 evals (`make test-live`, `make eval`). One UI fixture (`?fixtures=1`, `registration`); generic renderer.
-  Agent-level Q2 evals written (`tests/evals/agent_q02_cases.yaml`, `tests/test_agent_eval_q02.py`: 10 cases and a judge calibration; the fast harness tests pass, the model-calling ones have not been run). Not yet: running `make eval-agent` (Q1 and Q2, three runs), `make chat` by hand on anchors A and D and an ended
+  Agent-level Q2 evals written (`tests/evals/agent_q02_cases.yaml`, `tests/test_agent_eval_q02.py`: 10 cases and a judge calibration). First run of `make eval-agent` (2026-11-23, Haiku agent and judge, one run): Q1 11 of 11, Q2 8 of 10, both calibrations pass. The two Q2 failures were a prompt gap (the model cited the profile section `buildings` on a registration answer; the prompt now says to use `registrations`) and a rubric that asked the model to repeat a code-attached caveat (dropped); both cases pass on rerun. The other cases have not been rerun since the prompt change. Not yet: a full rerun (three runs), `make chat` by hand on anchors A and D and an ended
   registration, fresh-context review, merge.
 
 ## Next
