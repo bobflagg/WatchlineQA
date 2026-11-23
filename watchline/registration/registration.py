@@ -52,6 +52,9 @@ CAVEAT_BLANK_NAME = Caveat("owner_name_blank",
 class RegisteredOwner:
     contactType: str
     name: str | None            # exactly as recorded; None when the record has no name
+    mailingAddress: str | None = None   # business street line, as recorded (Q3 compares it with a grantee's)
+    addressLine2: str | None = None
+    zip: str | None = None
 
 
 @dataclass(frozen=True)
@@ -117,8 +120,9 @@ class Neo4jRegistrationGraph:
         return self._read("CYPHER 25 MATCH (:Lot {bbl: $bbl})-[:HAS_BUILDING]->(:Building)-[:HAS_REGISTRATION]->"
                           "(r:Registration)-[:HAS_CONTACT]->(c:Contact WHERE c.contactType IN $types) "
                           "RETURN DISTINCT r.registrationId AS registrationId, c.contactType AS contactType, "
-                          "coalesce(c.corporationName, c.personName) AS name "
-                          "ORDER BY registrationId, contactType, name LIMIT $limit", bbl=bbl, types=list(OWNER_TYPES), limit=MAX_ROWS)
+                          "coalesce(c.corporationName, c.personName) AS name, c.mailingAddress AS mailingAddress, "
+                          "c.addressLine2 AS addressLine2, c.zip AS zip "
+                          "ORDER BY registrationId, contactType, name, mailingAddress LIMIT $limit", bbl=bbl, types=list(OWNER_TYPES), limit=MAX_ROWS)
 
 
 def build_registrations(resolution: Answer, rg: RegistrationGraph) -> Registrations:
@@ -134,7 +138,8 @@ def build_registrations(resolution: Answer, rg: RegistrationGraph) -> Registrati
     rows, owner_rows = rg.registrations(resolution.bbl), rg.owners(resolution.bbl)
     owners_by_reg: dict[int, list[RegisteredOwner]] = {}
     for o in owner_rows:
-        item = RegisteredOwner(o["contactType"], o["name"] or None)
+        item = RegisteredOwner(o["contactType"], o["name"] or None, o.get("mailingAddress") or None,
+                               o.get("addressLine2") or None, o.get("zip") or None)
         bucket = owners_by_reg.setdefault(o["registrationId"], [])
         if item not in bucket:                      # exact duplicates are one contact
             bucket.append(item)
