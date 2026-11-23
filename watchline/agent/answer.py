@@ -216,8 +216,16 @@ def _bbl_parts(text: str) -> set[str]:
     return out
 
 
+_ORDINAL = re.compile(r"(?<=\d)(?:st|nd|rd|th)\b", re.I)      # 54th is 54
+
+
 def _numbers(text: str) -> set[str]:
     return {_plain(m) for m in _NUMBER.findall(text)}
+
+
+def _candidate_counts(results: list[dict]) -> set[str]:
+    """How many candidate streets an ambiguous lookup listed: counting them is not inventing a number."""
+    return {str(len(c)) for r in results if isinstance(r, dict) for c in [(r.get("resolution") or {}).get("candidates")] if c}
 
 
 def ungrounded_numbers(text: str, tool_results: list[dict], question: str = "") -> list[str]:
@@ -228,9 +236,11 @@ def ungrounded_numbers(text: str, tool_results: list[dict], question: str = "") 
     acceptable. Codes such as 26v1 and 2026-05-29 are compared whole against the sources. It cannot catch a sum that happens to
     equal a recorded number; the judge is the other guard.
     """
-    data = json.dumps([_data_only(r) for r in tool_results], default=str)
+    data = _ORDINAL.sub("", json.dumps([_data_only(r) for r in tool_results], default=str))
+    text, question = _ORDINAL.sub("", text), _ORDINAL.sub("", question)
     sources = " ".join(s for r in tool_results if isinstance(r, dict) for s in r.get("sources") or [])
     grounded = {_plain(n) for n in _numbers(data) | _numbers(question) | _bbl_parts(data + " " + question)}
+    grounded |= _candidate_counts(tool_results)
     codes = {c.lower() for c in _CODE.findall(sources) + _CODE.findall(data) + _CODE.findall(question)}
     stray = []
     for code in _CODE.findall(text):

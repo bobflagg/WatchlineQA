@@ -167,3 +167,10 @@ def test_evidence_can_be_pinned_to_a_lot_and_a_failed_lookup_does_not_fall_throu
 def test_codes_are_compared_without_regard_to_case_and_follow_ups_may_cite_the_sources():
     r = {"buildings": [{"bin": "1", "address": "224 54TH STREET"}], "sources": ["PLUTO (release 26v1)"]}
     assert ungrounded_numbers("It is at 224 54th Street (PLUTO 26V1).", [r]) == []
+
+
+def test_ordinals_and_the_number_of_candidate_streets_are_not_invented_numbers():
+    r = {"status": "ok", "resolution": {"candidates": ["SMITH STREET", "SMITHS LANE", "SMITH JR MEM WAY"]},
+         "buildings": [{"address": "224 54TH STREET"}]}
+    assert ungrounded_numbers("Three streets match; 224 54th Street was not chosen.", [r], "224 54 Street") == []
+    assert ungrounded_numbers("Four streets match.", [r], "224 54 Street") == ["four"]

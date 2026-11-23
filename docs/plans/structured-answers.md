@@ -53,6 +53,25 @@ Earlier failures worth keeping: the unregistered-lot answer said "no violations,
 forbidden claim in other words), fixed in the prompt with the exact phrasing to avoid; the model once answered a clarification fact with
 evidence of a section the tool never returned, which added the `lookup` section.
 
+## Fresh-context review (2026-11-22) and what changed
+No lockdown, `make check` or duplicate-caveat problems. Fixed:
+- **Numbers guard was too easy to satisfy.** It grounded numbers in the whole tool JSON, including `sources` ("release 25b" made 25
+  acceptable), caveat text and every earlier lookup in the thread. It now grounds only in data fields (source strings removed), compares
+  codes such as `26v1` and `2026-05-29` whole against the sources (case-insensitive), accepts the borough, block and lot parts of a BBL,
+  normalises `814500.0` and ordinals (`54th`), accepts the count of candidate streets, and checks number words (two to twenty and the
+  tens; not "one"). It grounds against this turn's results plus the data the facts cite, not the whole thread.
+- **A follow-up with no lookup lost its caveats and could be answered from the wrong lot.** With no lookup this turn, the answer now
+  carries the latest earlier result's caveats and sources as well as any it cites; evidence records the `bbl` it came from and a
+  reference may pin one; a failed lookup this turn (needs borough, invalid input, error) no longer falls through to an earlier lot.
+- **The correction.** Matched to messages by id, not by counting; if the retried answer still has numbers the records lack they are
+  listed in `Turn.unverified` and the chat says so; a failed retry keeps the first answer; no retry without thread history.
+- The tool docstring told the model to pass caveats on while the prompt said not to restate them; removed. The prompt maps a null `lot`
+  to `not_found`. The unregistered-lot regex also catches a sentence that starts "No violations ...". The unstructured-reply notice now
+  prints in order with the answer.
+- Left: "$1.2 million"-style rounding is flagged (a harmless retry), and a wrong number that equals a recorded one gets past the guard.
+  The last eval run showed the second case: the model wrote "3 complaint problems" for a building with ten (3 is a recorded heat count)
+  and the judge failed it. That is why the judge stays.
+
 ## Still open
 - The model sums on its own about one answer in seven for this lot. The retry fixes the answer, not the habit.
 - The judge is the same model as the agent. Three runs of twelve cases are a sanity check, not a rate.
