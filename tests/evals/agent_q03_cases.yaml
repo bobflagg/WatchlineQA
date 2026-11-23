@@ -1,0 +1,90 @@
+# Agent-level Q3 evals (deed grantee against HPD owner): the real model answers a person's message through the deed_vs_owner tool.
+# Same structure and keys as agent_q01_cases.yaml and agent_q02_cases.yaml (read their headers); every case here uses tool_name deed_vs_owner.
+# Expected values come from the live probes in docs/plans/q3-deed-vs-owner.md and tests/evals/q03_cases.yaml (2026-11-23), not the spec.
+# The text checks read only what the model wrote. Caveat text is attached by code and never searched.
+# Standing risks these cases test: a name match called "the same party" or "the owner", a $0 deed called a sale, a spelling difference
+# resolved by the model, tied deeds reduced to one, a missing deed read as "never sold", a multi-lot deed read as specific to the lot.
+
+- id: a-exact-match-is-not-same-party
+  turns: ["Who is the grantee on the most recent deed for 5413 7 Avenue, Brooklyn, and is that the HPD registered owner?"]
+  tool: "5413 7"
+  tool_name: deed_vs_owner
+  kind: ownership_comparison
+  caveat_codes: [name_match_not_identity, deed_not_sale, most_recent_by_recorded, snapshots_differ]
+  must_match: ["5413 PLAZA LLC", "2025032100031001", "2025-04-02"]
+  must_not_assert: ["\\bowned by\\b", "\\bthe owner of the (building|property|lot)\\b", "(?<!not )\\b(is|are) the same (party|owner|entity|company)\\b"]
+  rubric:
+    - "The answer names 5413 PLAZA LLC as the grantee on the most recent deed and as the HPD registered owner, and reports that the names agree as recorded (an exact match after normalizing case and spacing), as a comparison of recorded names rather than a finding that they are the same party or that the company owns the building."
+    - "The answer reports the name agreement and the address agreement as separate results (the street addresses recorded for the grantee and the registered owner are the same)."
+
+- id: g-spelling-difference-not-resolved
+  turns: ["Does the deed grantee at 548 52 Street, Brooklyn match the HPD registered owner?"]
+  tool: "548 52"
+  tool_name: deed_vs_owner
+  kind: ownership_comparison
+  caveat_codes: [name_match_not_identity, most_recent_by_recorded]
+  must_match: ["2018092900072001", "AADVA REALTY LLC", "K S TURNPIKE LLC", "KS Turnpike LLC"]
+  must_not_assert: ["\\bowned by\\b", "(?<!not )\\b(is|are) the same (party|owner|entity|company)\\b"]
+  rubric:
+    - "The answer lists both grantees on the deed (AADVA REALTY LLC and K S TURNPIKE LLC) and the HPD registered owner (KS Turnpike LLC), and reports that neither grantee's name matches the registered owner's name as recorded."
+    - "The answer does not decide that K S TURNPIKE LLC and KS Turnpike LLC are the same company. It may note that they differ only by spacing, but reports the difference as recorded."
+
+- id: zero-amount-is-not-a-sale
+  turns: ["Was 5413 7 Avenue, Brooklyn sold in its most recent deed, and for how much?"]
+  tool: "5413 7"
+  tool_name: deed_vs_owner
+  kind: ownership_comparison
+  caveat_codes: [deed_not_sale]
+  must_not_assert: ["\\bwas sold\\b", "\\bsold for\\b", "\\bfree sale\\b", "\\bgiven away\\b", "\\bfor free\\b"]
+  rubric:
+    - "The answer says the most recent deed (recorded 2025-04-02) records an amount of 0 and does not call it a sale, a free sale or a gift: it says a deed records a transfer of title and that an amount of 0 is not a price."
+
+- id: tied-deeds-all-listed
+  turns: ["Who is the grantee on the latest deed for 10 Hanover Square, Manhattan?"]
+  tool: "10 Hanover"
+  tool_name: deed_vs_owner
+  kind: ownership_comparison
+  caveat_codes: [tied_deeds, most_recent_by_recorded]
+  must_match: ["2011041800215001", "2011041800215003", "UNITED DOMINION REALTY", "UDR 10 HANOVER LLC"]
+  rubric:
+    - "The answer reports that two deeds (2011041800215001 and 2011041800215003) were recorded on the latest date, 2011-06-15, lists both with their grantees, and does not pick one of them as the deed."
+
+- id: who-owns-not-from-the-deed
+  turns: ["Going by the latest deed, who owns the building at 548 52 Street, Brooklyn?"]
+  tool: "548 52"
+  tool_name: deed_vs_owner
+  kind: ownership_comparison
+  must_match: ["K S TURNPIKE LLC"]
+  must_not_assert: ["\\bowned by\\b", "\\bthe owner of the (building|property|lot)\\b", "\\bthe (current |present )?owner is\\b"]
+  rubric:
+    - "The answer reports who received title on the latest recorded deed (two grantees) and who is the HPD registered owner as separate records, and does not state that anyone owns the building. It may say the records do not settle ownership."
+
+- id: no-deed-is-not-never-sold
+  turns: ["Who is the deed grantee at 15 Stone Street, Manhattan?"]
+  tool: "15 Stone"
+  tool_name: deed_vs_owner
+  kind: ownership_comparison
+  caveat_codes: [no_deed_found]
+  must_match: ["15 STONE LLC"]
+  must_not_assert: ["\\bnever (changed hands|been sold|sold)\\b", "\\bhas not been sold\\b", "\\bowned by\\b"]
+  rubric:
+    - "The answer says no deed is recorded for this lot in the data, does not say the lot never changed hands, and does not name a grantee. It may name 15 STONE LLC only as the HPD registered owner, not as a grantee or the deed owner."
+
+- id: multi-lot-deed-not-lot-specific
+  turns: ["What is the most recent deed for 224 54 Street, Brooklyn?"]
+  tool: "224 54"
+  tool_name: deed_vs_owner
+  kind: ownership_comparison
+  caveat_codes: [multi_lot_deed, tied_deeds]
+  must_match: ["2017061600025001", "2017061600025002"]
+  rubric:
+    - "The answer lists both deeds recorded on 2017-06-28 and says that they also name other tax lots (16 others), so neither is specific to this lot, and that the amount 45839605 on one of them is the deed's amount as recorded and is not this lot's price."
+
+- id: follow-up-from-a-profile
+  turns: ["Give me a profile of 5413 7 Avenue, Brooklyn.", "Who is the grantee on its most recent deed?"]
+  tool: "5413 7"
+  last_tool: deed_vs_owner
+  kind: ownership_comparison
+  must_match: ["5413 PLAZA LLC"]
+  rubric:
+    - "The answer reports 5413 PLAZA LLC as the grantee on the most recent deed for the lot that was profiled, 5413 7 Avenue, and does not say anything about violations, complaints or litigation."

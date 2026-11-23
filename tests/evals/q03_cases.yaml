@@ -1,0 +1,107 @@
+# Q3 eval cases (deed grantee against HPD owner), run through the deed_vs_owner tool (what the model sees).
+# Values were probed against the live graph and Geosupport on 2026-11-23, not taken from the spec; candidates until a snapshot is frozen.
+# input keys: address, borough, zip_code
+# expect keys: status, outcome, bbl,
+#   deeds ({document id: [recordedDate, docDate, amount, otherLots, [grantee names]]}, exact set),
+#   owners (exact list of [type, name]), no_deeds,
+#   pairs (exact list of [document id, grantee, owner, name outcome, name rule, address outcome]),
+#   all_name_outcomes (every pair has this name outcome),
+#   caveat_codes (all present), caveat_codes_absent, caveats_contain / caveats_absent (substrings)
+
+- id: a-exact-name-same-address
+  question: Q3.1 Q3.2 Q3.4 Q3.5
+  why: The latest deed is a $0 transfer, not a sale. Name agreement is exact and address agreement is same, as two separate fields.
+  input: {address: "5413 7 Avenue, Brooklyn"}
+  expect:
+    status: ok
+    outcome: exact
+    bbl: "3008260002"
+    deeds:
+      "2025032100031001": ["2025-04-02", "2025-03-14", 0, 0, ["5413 PLAZA LLC"]]
+    owners: [["CorporateOwner", "5413 PLAZA LLC"]]
+    pairs:
+      - ["2025032100031001", "5413 PLAZA LLC", "5413 PLAZA LLC", exact_normalized, N1, same]
+    caveat_codes: [name_match_not_identity, most_recent_by_recorded, snapshots_differ, deed_not_sale, shared_address_not_evidence, registrant_not_title]
+    caveat_codes_absent: [tied_deeds, multi_lot_deed, no_deed_found]
+    caveats_contain: ["not a finding", "latest recorded date", "2026-05-31", "2026-05-29"]
+
+- id: g-one-space-is-a-difference
+  question: Q3.2 Q3.4
+  why: Two grantees; "K S TURNPIKE LLC" against "KS Turnpike LLC" differs by one space, which is a difference under N1 and N2.
+  input: {address: "548 52 Street, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008080025"
+    deeds:
+      "2018092900072001": ["2018-10-18", "2018-09-26", 4000000, 0, ["AADVA REALTY LLC", "K S TURNPIKE LLC"]]
+    owners: [["CorporateOwner", "KS Turnpike LLC"]]
+    pairs:
+      - ["2018092900072001", "AADVA REALTY LLC", "KS Turnpike LLC", different, null, differs]
+      - ["2018092900072001", "K S TURNPIKE LLC", "KS Turnpike LLC", different, null, differs]
+    caveat_codes: [name_match_not_identity]
+    caveat_codes_absent: [deed_not_sale, shared_address_not_evidence]
+
+- id: hanover-tied-deeds
+  question: Q3.1 Q3.2
+  why: Two deeds share the latest recorded date. Both are returned and none is chosen. Name agreement and address agreement disagree for one pair.
+  input: {address: "10 Hanover Square, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1000310001"
+    deeds:
+      "2011041800215001": ["2011-06-15", "2011-04-01", 0, 0, ["UNITED DOMINION REALTY, L.P."]]
+      "2011041800215003": ["2011-06-15", "2011-04-01", 0, 0, ["UDR 10 HANOVER LLC"]]
+    owners: [["CorporateOwner", "UDR 10 HANOVER LLC"]]
+    pairs:
+      - ["2011041800215001", "UNITED DOMINION REALTY, L.P.", "UDR 10 HANOVER LLC", different, null, differs]
+      - ["2011041800215003", "UDR 10 HANOVER LLC", "UDR 10 HANOVER LLC", exact_normalized, N1, differs]
+    caveat_codes: [tied_deeds, deed_not_sale]
+    caveat_codes_absent: [shared_address_not_evidence]
+
+- id: sunset-multi-lot-deeds
+  question: Q3.1
+  why: The deeds name 16 other lots, so they are not specific to this lot. Every pair keeps the recorded spellings; none is merged or chosen.
+  input: {address: "224 54 Street, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008210012"
+    deeds:
+      "2017061600025001": ["2017-06-28", "2017-06-13", 0, 16, ["CLL2 LLC", "NEIGHBORHOOD STABILIZATION ASSOCIATES I, L.P.", "SUNSET IV EQUITIES LLC"]]
+      "2017061600025002": ["2017-06-28", "2017-06-13", 45839605, 16, ["HP SUNSET PARK I HOUSING DEV FUND COMPANY, INC", "SUNSET PARK OWNER I LLC"]]
+    all_name_outcomes: different
+    caveat_codes: [multi_lot_deed, tied_deeds, deed_not_sale]
+
+- id: no-deed-recorded
+  question: Q3.1
+  why: A registered lot with no deed in the snapshot. The answer says so and does not say the lot never changed hands; the owner is still listed.
+  input: {address: "15 Stone Street, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1000117501"
+    no_deeds: true
+    owners: [["CorporateOwner", "15 STONE LLC"]]
+    pairs: []
+    caveat_codes: [no_deed_found]
+    caveat_codes_absent: [name_match_not_identity, most_recent_by_recorded]
+    caveats_contain: ["does not mean the lot never changed hands"]
+
+- id: deed-but-no-hpd-building
+  question: Q3.1 Q3.3
+  why: The lot has a deed but no HPD building, so there is no registered owner to compare. Nothing is inferred.
+  input: {address: "259 22 Street, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008970014"
+    deeds:
+      "2024091700040001": ["2024-10-01", "2024-09-11", 12000000, 0, ["259 22ND STREET LLC"]]
+    owners: []
+    pairs: []
+    caveat_codes: [no_hpd_building, most_recent_by_recorded]
+    caveat_codes_absent: [name_match_not_identity, deed_not_sale]
+
+- id: needs-borough
+  question: Q3
+  why: A bare street address asks for the borough instead of guessing.
+  input: {address: "1 Main St"}
+  expect:
+    status: needs_borough
