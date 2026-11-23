@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup test test-live eval eval-agent chat notebook notebook-check lint fmt check sidecar sidecar-stop
+.PHONY: help setup test test-live eval eval-agent chat ui notebook notebook-check lint fmt check sidecar sidecar-stop
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -21,6 +21,9 @@ eval-agent:  ## Agent-level evals: the real model answers, a judge grades (need 
 
 chat:  ## Terminal chat with the agent (needs Neo4j, the sidecar and ANTHROPIC_API_KEY)
 	uv run python -m watchline.agent.chat
+
+ui:  ## Streamlit page (needs Neo4j, the sidecar and ANTHROPIC_API_KEY; add ?fixtures=1 to the URL to preview without them)
+	uv run streamlit run watchline/ui/app.py
 
 notebook:  ## Re-execute the notebooks in place (need Neo4j, the sidecar and ANTHROPIC_API_KEY; the agent notebook calls the model); commit the refreshed outputs
 	uv run jupyter nbconvert --to notebook --execute --inplace docs/notebooks/*.ipynb

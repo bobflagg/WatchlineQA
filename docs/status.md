@@ -28,6 +28,9 @@ Read this first in a fresh session. Update it at the end of every slice.
   facts with evidence; code attaches caveats and sources), caveat codes, a numbers guard with one retry, 12 agent evals incl. `sum-trap`.
   Reviewed, fixed, merged; both notebooks re-executed. Next evals to add: more kinds as tools arrive; a stronger judge model.
 
+- Streamlit page (branch `streamlit-page`, plan in `docs/plans/streamlit-page.md`): `watchline/ui/` (`render.py`, `app.py`, `fixtures.py`), `make ui`,
+  `?fixtures=1` previews every kind without the model. Generic renderer only; smoke tests in `tests/test_ui.py`. Not yet: looked at live data in a browser.
+
 ## Next
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Pick the next competency question and its tool.
