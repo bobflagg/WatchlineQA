@@ -13,8 +13,8 @@ test:  ## Fast tests (no Neo4j or sidecar needed)
 test-live:  ## Live tests (need Neo4j and the Geosupport sidecar; skip if unreachable)
 	uv run pytest -k live -m "not llm" -rs
 
-eval:  ## Q1 tool-level evals (need Neo4j and the sidecar; skip if unreachable)
-	uv run pytest tests/test_eval_q01.py -rs
+eval:  ## Q1 and Q2 tool-level evals (need Neo4j and the sidecar; skip if unreachable)
+	uv run pytest tests/test_eval_q01.py tests/test_eval_q02.py -rs
 
 eval-agent:  ## Agent-level evals: the real model answers, a judge grades (need Neo4j, the sidecar and ANTHROPIC_API_KEY; costs money)
 	uv run pytest -m llm -rs -v
