@@ -46,10 +46,10 @@ Read this first in a fresh session. Update it at the end of every slice.
   `watchline/deeds/` (`deed_vs_owner`, N1/N2/A1 comparison), `deed_vs_owner` tool, `ownership_comparison` kind with `deeds`, `owners` and `comparison`
   sections, system-prompt lines, UI fixture and Q3 samples. 217 fast tests, the live tests and 34 tool-level evals (`make eval`, 7 for Q3) pass.
   Agent-level Q3 evals are written (`tests/evals/agent_q03_cases.yaml`, `tests/test_agent_eval_q03.py`). The LLM judge is now off by default for
-  all agent evals (cost); `EVAL_JUDGE=1 make eval-agent` adds it. Not done: a judge-graded run, `make chat` and `make ui` by hand, the fresh-context review.
+  all agent evals (cost); `EVAL_JUDGE=1 make eval-agent` adds it. First agent-level run (2026-11-23, Haiku agent, judge off, one run): 7 of 8 pass; `follow-up-from-a-profile` did not complete (Anthropic "credit balance too low" error, not an answer failure) and needs a rerun. Not done: a judge-graded run, `make chat` and `make ui` by hand, the fresh-context review.
 
 ## Next
-- Q3 follow-ups: record the deterministic agent-eval result, run `make chat` on anchors A and G, `/code-review`, then commit and merge.
+- Q3 follow-ups: rerun `follow-up-from-a-profile`, run `make chat` on anchors A and G, `/code-review`, then commit and merge.
 - Q2 follow-ups left from the merge: the review, a three-run `make eval-agent`, the `make chat` hand check, worst-case timing.
 - Streamlit follow-ups: navy/gold brand banner, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
