@@ -33,7 +33,7 @@ Status: planned, not started. Branch: `q2-registered-owner`.
 - Exact duplicate owner contacts: 2 groups (max 2). Blank-name owner contacts: 390 (206 individual, 183 corporate, 1 joint),
   one per registration; spec says 422, not reproduced.
 - Name rule confirmed: `coalesce(corporationName, personName)`.
-- Still to do: EXPLAIN the two queries once written.
+- EXPLAIN done on both queries (2026-11-23): NodeUniqueIndexSeek on the lot, then Expand; no scans, Cartesian products or Eager.
 
 ## What already exists (reuse)
 
