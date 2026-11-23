@@ -31,7 +31,7 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.history = []          # [(role, text | (Answer, unverified))]
 
-AUTHOR, AUTHOR_EMAIL = "Robert Flagg", "calcworks@gmail.com"
+AUTHOR, AUTHOR_EMAIL = "Bob Flagg", "calcworks@gmail.com"
 REPO_URL = "https://github.com/bobflagg/WatchlineQA"
 
 
@@ -59,8 +59,11 @@ with st.sidebar:
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.history = []
         st.rerun()
-    st.divider()
-    st.caption(f"{AUTHOR}  \n[{AUTHOR_EMAIL}](mailto:{AUTHOR_EMAIL})  \n[Source on GitHub]({REPO_URL})")
+    # Pinned to the bottom of the sidebar. Fixed, so it stays put however tall the pulldowns are; a collapsed sidebar is
+    # translated away and takes it along.
+    st.html("<style>.st-key-footer { position: fixed; bottom: 1rem; left: 1rem; max-width: 14rem; }</style>")
+    with st.container(key="footer"):
+        st.caption(f"[{AUTHOR}](mailto:{AUTHOR_EMAIL})  \n[Source on GitHub]({REPO_URL})")
 
 for role, item in st.session_state.history:
     with st.chat_message(role):

@@ -87,5 +87,6 @@ def test_sidebar_footer_has_author_email_and_repo_link():
     at.run()
     assert not at.exception
     footer = " ".join(c.value for c in at.sidebar.caption)
-    assert "Robert Flagg" in footer and "mailto:calcworks@gmail.com" in footer
-    assert "https://github.com/bobflagg/WatchlineQA" in footer
+    lines = [line.strip() for line in footer.splitlines()]
+    assert lines == ["[Bob Flagg](mailto:calcworks@gmail.com)", "[Source on GitHub](https://github.com/bobflagg/WatchlineQA)"]
+    assert "Robert" not in footer
