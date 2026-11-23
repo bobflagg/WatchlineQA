@@ -1,4 +1,6 @@
-"""Bare-bones chat page: `make ui`. Fixtures can be previewed with `?fixtures=1` (no model, graph or sidecar needed)."""
+"""Bare-bones chat page: `make ui`. Fixtures can be previewed with `?fixtures=1` (no model, graph or sidecar needed).
+
+A sample question picked in the sidebar is queued in session state and run on the next pass, the same way as typed input."""
 import uuid
 from pathlib import Path
 
@@ -7,6 +9,7 @@ import streamlit as st
 from watchline.agent.chat import StartupError, ask, connect
 from watchline.ui.fixtures import FIXTURES
 from watchline.ui.render import render_answer
+from watchline.ui.samples import PLACEHOLDER, SAMPLE_QUESTIONS
 
 st.set_page_config(page_title="Watchline NYC", layout="wide")
 
@@ -28,11 +31,19 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.history = []          # [(role, text | (Answer, unverified))]
 
+def _pick_sample():
+    """Queue the chosen question, then clear the pulldown so the same question can be picked again."""
+    st.session_state.pending = st.session_state.sample
+    st.session_state.sample = None
+
+
 with st.sidebar:
     st.html("<style>.st-key-logo { margin-top: -3.5rem; } .st-key-logo img { border-radius: 12px; }</style>")
     with st.container(key="logo"):
         st.image(str(Path(__file__).parent / "assets" / "logo.png"),
                  alt="Watchline NYC: accountability infrastructure for NYC housing", width="stretch")
+    st.selectbox(PLACEHOLDER, [q for qs in SAMPLE_QUESTIONS.values() for q in qs], index=None, key="sample",
+                 placeholder="Pick a question to run", on_change=_pick_sample, label_visibility="collapsed")
     if st.button("New chat", width="stretch"):
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.history = []
@@ -45,7 +56,8 @@ for role, item in st.session_state.history:
         else:
             render_answer(*item)
 
-if prompt := st.chat_input("Ask about a New York City address"):
+typed = st.chat_input("Ask about a New York City address")
+if prompt := st.session_state.pop("pending", None) or typed:
     st.session_state.history.append(("user", prompt))
     with st.chat_message("user"):
         st.markdown(prompt)

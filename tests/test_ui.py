@@ -40,3 +40,27 @@ def test_registration_fixture_shows_its_caveats_and_the_building_tag():
     for c in FIXTURES["registration"].caveats:
         assert c.text in text
     assert "registrations BIN 3000001" in text
+
+
+def test_a_sample_question_runs_in_the_chat(monkeypatch):
+    from types import SimpleNamespace
+
+    from watchline.agent import agent as agent_module
+    from watchline.agent import chat
+    from watchline.ui.samples import SAMPLE_QUESTIONS
+    asked = []
+    monkeypatch.setattr(chat, "connect", lambda: (None, None, None, None, lambda: None))
+    monkeypatch.setattr(agent_module, "build_agent", lambda *a, **k: object())
+    monkeypatch.setattr(chat, "ask", lambda agent, text, config: asked.append(text) or SimpleNamespace(
+        structured=None, answer="An answer.", unverified=[]))
+    question = SAMPLE_QUESTIONS["Q2: registered owner"][0]
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    assert not at.exception and asked == []
+    at.sidebar.selectbox(key="sample").select(question).run()
+    assert not at.exception
+    assert asked == [question]
+    assert [m.value for m in at.chat_message[0].markdown] == [question]
+    assert at.sidebar.selectbox(key="sample").value is None       # cleared, so the same question can be chosen again
+    at.sidebar.selectbox(key="sample").select(question).run()
+    assert asked == [question, question]

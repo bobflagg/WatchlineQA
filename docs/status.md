@@ -30,6 +30,7 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 - Streamlit page (branch `streamlit-page`, plan in `docs/plans/streamlit-page.md`): `watchline/ui/` (`render.py`, `app.py`, `fixtures.py`), `make ui`,
   `?fixtures=1` previews every kind without the model. Generic renderer only; smoke tests in `tests/test_ui.py`. Logo in the sidebar (rounded, pulled up with CSS). Checked on live data by hand; merged.
+  Sample-questions pulldown in the sidebar (`watchline/ui/samples.py`, Q1 and Q2 questions; a pick runs in the chat); not yet looked at in a browser.
 
 - Q2 registered owner (branch `q2-registered-owner`, plan in `docs/plans/q2-registered-owner.md`, with live probe results):
   `watchline/registration/registration.py`, `registered_owners(client, graph, rg, text)`: every HPD registration per building of the
@@ -44,7 +45,7 @@ Read this first in a fresh session. Update it at the end of every slice.
 ## Next
 - Finish the Q2 slice (see the plan): agent-level evals with the judge (and Q1 still passing), `make chat` by hand, fresh-context
   review, merge.
-- Streamlit follow-ups: navy/gold brand banner, sample questions in the sidebar, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
+- Streamlit follow-ups: navy/gold brand banner, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Pick the next competency question and its tool.
 
