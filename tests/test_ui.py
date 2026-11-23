@@ -87,7 +87,16 @@ def test_sidebar_footer_has_author_email_and_repo_link_with_icons():
     at.run()
     assert not at.exception
     footer = next(h.value for h in at.sidebar.get("html") if "wl-footer" in h.value and "<a " in h.value)
-    assert footer.count("<a ") == 2 and footer.count("<svg") == 2        # two lines, an icon on each
+    assert footer.count("<a ") == 2 and footer.count('class="wl-icon ') == 2   # two lines, an icon on each
+    assert "<svg" not in footer                                             # st.html's sanitizer strips svg elements
     assert 'href="mailto:calcworks@gmail.com"' in footer and "<span>Bob Flagg</span>" in footer
     assert 'href="https://github.com/bobflagg/WatchlineQA"' in footer and "<span>Source on GitHub</span>" in footer
     assert "Robert" not in footer
+
+
+def test_footer_icons_are_css_masks_that_survive_the_sanitizer():
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    css = next(h.value for h in at.get("html") if ".wl-icon-mail" in h.value)   # style-only html goes to the event container
+    assert css.count("data:image/svg+xml,") == 4                            # mask and -webkit-mask, for both icons
+    assert "<svg" not in css and "background-color: currentColor" in css      # the data URIs are percent-encoded
