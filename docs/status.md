@@ -38,6 +38,10 @@ Read this first in a fresh session. Update it at the end of every slice.
 - Understanding step: explainers for components with real flow, a notebook per simple tool (`docs/notebooks/`); no quizzes or micro-worlds. Specs in `docs/understanding/`,
   rendered pages published as artifacts.
 
+- Answers use a structured contract (summary, facts with evidence, caveats, sources, `kind`) with a
+  markdown fallback. A bare-bones Streamlit page comes after the first slice or two, to test the contract
+  against real data. Polished per-kind renderers wait for the UI.
+
 ## Open questions
 - Web chat after the terminal one: when?
 - Which competency questions come first after the building profile.
