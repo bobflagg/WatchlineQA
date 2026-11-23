@@ -34,6 +34,12 @@ Before writing or changing any Cypher, load `neo4j-cypher-skill` (Cypher 25; our
 supports Cypher 5 and 25). Check labels and properties against the live graph first, and use EXPLAIN on any
 new query. The agent's graph tools stay read-only.
 
+## UI skills
+
+For any Streamlit work, load `developing-with-streamlit` (API details, once Streamlit is a dependency) and
+`watchline-ui` (look, layout, and how answers, leads and caveats are displayed). UI code lives in
+`watchline/ui/`, apart from agent and graph code, and renders the structured answer contract.
+
 ## Ontology rules (apply to every answer)
 
 One source, shared with the agent's system prompt (`watchline/agent/prompts/ontology_rules.md`). Edit the rules
