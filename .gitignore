@@ -226,3 +226,5 @@ __marimo__/
 .DS_Store
 ignore-this-directory/
 .mcp.json
+.claude/skills/developing-with-streamlit
+

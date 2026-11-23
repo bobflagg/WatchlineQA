@@ -40,6 +40,9 @@ For any Streamlit work, load `developing-with-streamlit` (API details, once Stre
 `watchline-ui` (look, layout, and how answers, leads and caveats are displayed). UI code lives in
 `watchline/ui/`, apart from agent and graph code, and renders the structured answer contract.
 
+After a fresh clone, run `uv sync && uv run streamlit skills` to link the Streamlit skill. It points into
+`.venv`, so it is git-ignored.
+
 ## Ontology rules (apply to every answer)
 
 One source, shared with the agent's system prompt (`watchline/agent/prompts/ontology_rules.md`). Edit the rules
