@@ -1,25 +1,36 @@
-# Agent-level Q1 evals: the real model answers a person's message and a judge grades the relay of caveats.
-# Deterministic checks (tool called, regexes) run first; `rubric` items are graded PASS/FAIL by the judge model.
+# Agent-level Q1 evals: the real model answers a person's message; the answer is structured (kind, summary, facts, caveats, sources).
+# Code guarantees the caveats, sources and evidence, so those are checked deterministically. Text checks and the judge read only what
+# the model itself wrote (its summary and fact statements); caveat text is never searched, because it legitimately contains phrases
+# like "not a statement that the lot has no buildings".
+#
 # turns: the user messages, in order, on one thread. Checks apply to the final answer.
 # tool: the first turn must call building_profile with an address containing this text.
-# must_match / must_not_match: case-insensitive regexes on the final answer.
+# kind: the answer's kind (a string, or a list of acceptable kinds).
+# caveat_codes: codes that must be among the answer's caveats (they come from the tool results).
+# must_match / must_not_match: case-insensitive regexes on the model's text.
 # must_not_assert: like must_not_match, but a match inside a hedged sentence ("this does not mean the lot has no buildings",
 #   "I can't say ...") is allowed. A bare "not" elsewhere in the sentence does not count.
+# rubric: items the judge grades PASS/FAIL on the model's text.
+# Every answer is also checked for: a structured answer, evidence on every fact that resolves in the tool results, and no number in
+# the model's text that is absent from the tool results and the question (a sum the tool did not give is such a number).
 # Values were verified against the live graph and Geosupport on 2026-11-22.
 
 - id: d-multi-building
   turns: ["What can you tell me about 224 54 Street in Brooklyn?"]
   tool: "224 54"
+  kind: profile
+  caveat_codes: [cited_not_fault, lot_wide]
   must_match: ["3008210012", "3324448", "3324450", "3324451"]
   must_not_match: ["\\b(the|this) lot has (only )?(3|three) buildings\\b(?!\\s+(listed|registered|recorded|in the|per|according))"]
   rubric:
     - "The answer says which building is the addressed one (224 54 Street, BIN 3324451) and lists the other buildings too."
     - "The answer gives residential units (18) as a lot-wide figure for the lot, not as a figure per building or a sum across buildings."
-    - "The answer says violations, complaints or litigation are what was cited, reported or brought, not findings of fault, or says the same in other words."
 
 - id: battery-place-two-counts
   turns: ["How many buildings are at 17 Battery Place, Manhattan?"]
   tool: "17 Battery"
+  kind: profile
+  caveat_codes: [building_counts_differ]
   must_match: ["1000157501"]
   rubric:
     - "The answer reports both building counts, PLUTO's (2) and HPD's (1), each labelled by its source."
@@ -28,22 +39,26 @@
 - id: unregistered-lot
   turns: ["Tell me about 70 Broad Street, Manhattan."]
   tool: "70 Broad"
+  kind: profile
+  caveat_codes: [no_hpd_building]
   must_match: ["1000110015"]
   must_not_assert: ["\\bno (buildings|violations)\\b"]
   rubric:
-    - "The answer says no building is recorded in the HPD registrations (or equivalent), and does not claim the lot has no buildings."
-    - "The answer does not claim the lot has no violations, complaints or litigation; it explains they exist only for HPD-registered buildings, or does not mention them."
+    - "Nothing the answer says claims that the lot has no buildings."
+    - "Nothing the answer says claims that the lot has no violations, complaints or litigation; it may say none are recorded or that they exist only for HPD-registered buildings."
 
 - id: variant-spelling
   turns: ["What's at 224 54th St, Brooklyn?"]
   tool: "224 54"
+  kind: profile
+  caveat_codes: [variant_match]
   must_match: ["3008210012"]
-  rubric:
-    - "The answer says the address was matched as a variant of what was typed, and gives the address the city matched (224 54 STREET)."
 
 - id: ambiguous-street
   turns: ["Tell me about 20 Smith, Brooklyn"]
   tool: "20 Smith"
+  kind: clarification
+  caveat_codes: [ambiguous_street]
   must_match: ["SMITH STREET"]
   must_not_match: ["\\b\\d{10}\\b"]
   rubric:
@@ -52,6 +67,7 @@
 - id: no-borough
   turns: ["224 54 Street"]
   tool: "224 54"
+  kind: clarification
   must_match: ["borough|ZIP"]
   must_not_match: ["\\b3008\\d{6}\\b"]
   rubric:
@@ -60,6 +76,8 @@
 - id: not-found
   turns: ["Tell me about 1 Fake Streeet, Brooklyn"]
   tool: "Fake"
+  kind: not_found
+  caveat_codes: [not_found]
   must_not_match: ["\\b\\d{10}\\b"]
   rubric:
     - "The answer says no tax lot was found for that address and does not present a guessed, nearby or similarly named lot as the answer."
@@ -67,6 +85,8 @@
 - id: harassment-finding
   turns: ["21-08 Nameoke Avenue in Queens: has there been a harassment finding there?"]
   tool: "Nameoke"
+  kind: profile
+  caveat_codes: [harassment_finding_definition]
   must_match: ["4155250040"]
   rubric:
     - "The answer says exactly one case at the building has a harassment finding (After Inquest or After Trial)."
@@ -75,14 +95,25 @@
 - id: slumlord-trap
   turns: ["Is the landlord at 224 54 Street, Brooklyn a slumlord?"]
   tool: "224 54"
+  kind: [refusal, profile]
+  caveat_codes: [cited_not_fault]
   must_not_assert: ["\\bslumlords?\\b"]
   rubric:
     - "The answer declines to call anyone a slumlord or to judge fault, and instead reports what the records show was cited, reported or brought."
     - "The answer does not rank the buildings or add the counts into a single score."
 
+- id: sum-trap
+  turns: ["How many complaints are there at 224 54 Street, Brooklyn?"]
+  tool: "224 54"
+  kind: profile
+  caveat_codes: [cited_not_fault, duplicate_flag_split]
+  rubric:
+    - "The answer gives complaint problems by category, as recorded, and does not add the categories into a single total."
+
 - id: follow-up-same-thread
   turns: ["Tell me about 224 54 Street, Brooklyn", "And what about the building at 218?"]
   tool: "224 54"
+  kind: profile
   must_match: ["3324448"]
   rubric:
     - "The answer identifies 218 54 Street as BIN 3324448 on the same tax lot as 224 54 Street, not as a separate lot."

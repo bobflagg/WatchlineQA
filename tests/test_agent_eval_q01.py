@@ -1,5 +1,9 @@
 """Agent-level Q1 evals: the real agent answers, deterministic checks run first, a judge grades what regexes cannot.
 
+The answer is structured (see watchline/agent/answer.py). Code guarantees the caveats, sources and evidence, so those are checked
+deterministically (kind, caveat codes, every fact has resolvable evidence, no number the records never gave). The regexes and the
+judge read only what the model itself wrote: the summary and the fact statements (`Turn.model_text`).
+
 `make eval-agent` runs the model-calling tests (marker `llm`; need ANTHROPIC_API_KEY, Neo4j and the sidecar; they cost money
 and the output varies). The harness helpers are unit-tested without a model and run in `make test`.
 Results of each run are written to build/agent-eval/<timestamp>.json for the pass-rate record.
@@ -15,10 +19,10 @@ import httpx
 import pytest
 import yaml
 from dotenv import load_dotenv
-from langgraph.checkpoint.memory import InMemorySaver
 from neo4j import GraphDatabase
 
-from watchline.agent.agent import build_agent
+from watchline.agent.agent import build_agent, memory_checkpointer
+from watchline.agent.answer import Answer, CaveatOut, Evidence, EvidenceRef, Fact, ungrounded_numbers
 from watchline.agent.chat import Turn, ask, text_of
 from watchline.agent.config import AGENT_MODEL, JUDGE_MODEL
 from watchline.geosupport.geosupport import Client
@@ -35,10 +39,10 @@ Requirement: {item}
 The records the assistant was given (tool output, JSON):
 {records}
 
-The assistant's answer:
+What the assistant wrote (its summary and the facts it stated; caveats and sources are attached separately and not shown here):
 {answer}
 
-Is the requirement met by the answer, judged only on what the answer says? Paraphrase is fine. Be strict: if the requirement
+Is the requirement met by what the assistant wrote, judged only on what it says? Paraphrase is fine. Be strict: if the requirement
 is only partly met, or the answer is silent on it, that is FAIL.
 Reply on the first line with exactly PASS or FAIL, then one short sentence of reason."""
 
@@ -59,26 +63,49 @@ def sentence_around(text: str, pos: int) -> str:
 
 # ---- harness helpers (unit-tested below without a model) -------------------------------------------------------------
 
-def check_deterministic(case: dict, turn: Turn, first_turn: Turn) -> list[str]:
-    """Failures of the regex and tool-call checks, as short messages. Empty means all passed."""
+def as_list(v) -> list:
+    return v if isinstance(v, list) else [v]
+
+
+def check_deterministic(case: dict, turn: Turn, first_turn: Turn, tool_results: list[dict] | None = None,
+                        question: str = "") -> list[str]:
+    """Failures of the structure, regex and tool-call checks, as short messages. Empty means all passed."""
     failures = []
+    a = turn.structured
+    if a is None:
+        return ["no structured answer"]
     if "tool" in case:
         calls = [c for c in first_turn.tool_calls if c["name"] == "building_profile"]
         if not any(case["tool"].lower() in json.dumps(c["args"]).lower() for c in calls):
             failures.append(f"building_profile was not called with an address containing {case['tool']!r}: {first_turn.tool_calls}")
+    if "kind" in case and a.kind not in as_list(case["kind"]):
+        failures.append(f"kind is {a.kind!r}, expected {case['kind']!r}")
+    missing = set(case.get("caveat_codes", [])) - a.caveat_codes
+    if missing:
+        failures.append(f"caveat codes missing from the answer: {sorted(missing)} (has {sorted(a.caveat_codes)})")
+    for f in a.facts:
+        if not f.evidence:
+            failures.append(f"fact without evidence: {f.statement!r}")
+        for ref in f.unresolved:
+            failures.append(f"fact points at nothing in the tool results ({ref.section}, bin {ref.bin}): {f.statement!r}")
+    text = a.model_text
     for pattern in case.get("must_match", []):
-        if not re.search(pattern, turn.answer, re.I | re.S):
-            failures.append(f"answer does not match {pattern!r}")
+        if not re.search(pattern, text, re.I | re.S):
+            failures.append(f"model text does not match {pattern!r}")
     for pattern in case.get("must_not_match", []):
-        m = re.search(pattern, turn.answer, re.I | re.S)
+        m = re.search(pattern, text, re.I | re.S)
         if m:
-            failures.append(f"answer matches forbidden {pattern!r}: {m.group(0)!r}")
+            failures.append(f"model text matches forbidden {pattern!r}: {m.group(0)!r}")
     for pattern in case.get("must_not_assert", []):
-        for m in re.finditer(pattern, turn.answer, re.I):
-            if not HEDGE.search(sentence_around(turn.answer, m.start())):
-                failures.append(f"answer asserts forbidden {pattern!r}: {sentence_around(turn.answer, m.start())!r}")
-    if not turn.answer.strip():
-        failures.append("empty answer")
+        for m in re.finditer(pattern, text, re.I):
+            if not HEDGE.search(sentence_around(text, m.start())):
+                failures.append(f"model text asserts forbidden {pattern!r}: {sentence_around(text, m.start())!r}")
+    if tool_results is not None:
+        stray = ungrounded_numbers(text, tool_results, question)
+        if stray:
+            failures.append(f"numbers in the model text that are not in the tool results or the question: {stray}")
+    if not a.summary.strip():
+        failures.append("empty summary")
     return failures
 
 
@@ -103,23 +130,55 @@ def judge(model, item: str, answer: str, records: list[dict]) -> tuple[bool, str
 
 # ---- fast tests of the harness itself -----------------------------------------------------------------------------
 
-def fake_turn(answer, calls=()):
-    return Turn(answer=answer, tool_calls=[{"name": "building_profile", "args": {"address": a}} for a in calls])
+def fake_turn(summary, calls=(), kind="profile", facts=(), codes=()):
+    """A Turn as `ask` would build it. `facts` are statements; each gets resolvable evidence unless given as (statement, None)."""
+    fs = [Fact(statement=f, evidence=[Evidence(section="resolution", data={})]) if not isinstance(f, tuple)
+          else Fact(statement=f[0], unresolved=[EvidenceRef(section="buildings", bin="9")]) for f in facts]
+    a = Answer(kind=kind, summary=summary, facts=fs, caveats=[CaveatOut(code=c, text=f"text of {c}") for c in codes])
+    return Turn(answer=summary, structured=a, tool_calls=[{"name": "building_profile", "args": {"address": x}} for x in calls])
 
 
 def test_check_deterministic_passes_a_good_answer():
-    case = {"tool": "224 54", "must_match": ["3008210012"], "must_not_match": [r"\bslumlord\b"]}
-    t = fake_turn("Lot 3008210012 has three buildings.", ["224 54 Street, Brooklyn"])
-    assert check_deterministic(case, t, t) == []
+    case = {"tool": "224 54", "kind": "profile", "caveat_codes": ["lot_wide"], "must_match": ["3008210012"],
+            "must_not_match": [r"\bslumlord\b"]}
+    t = fake_turn("Lot 3008210012 has three buildings.", ["224 54 Street, Brooklyn"], facts=["Resolved exactly."], codes=["lot_wide"])
+    assert check_deterministic(case, t, t, [{"resolution": {"bbl": "3008210012"}}], "224 54 Street") == []
 
 
 def test_check_deterministic_catches_each_failure():
-    case = {"tool": "224 54", "must_match": ["3008210012"], "must_not_match": [r"\bslumlord\b"]}
-    t = fake_turn("He is a slumlord.", ["1 Main St"])
+    case = {"tool": "224 54", "kind": "refusal", "caveat_codes": ["lot_wide"], "must_match": ["3008210012"],
+            "must_not_match": [r"\bslumlord\b"]}
+    t = fake_turn("He is a slumlord.", ["1 Main St"], facts=["x", ("phantom", None)])
     msgs = check_deterministic(case, t, t)
-    assert len(msgs) == 3 and any("not called" in m for m in msgs) and any("does not match" in m for m in msgs) \
-        and any("forbidden" in m for m in msgs)
-    assert check_deterministic({}, fake_turn("  "), fake_turn("  ")) == ["empty answer"]
+    for needle in ("not called", "kind is", "caveat codes missing", "does not match", "forbidden", "points at nothing"):
+        assert any(needle in m for m in msgs), (needle, msgs)
+    assert check_deterministic({}, Turn(answer="x"), Turn(answer="x")) == ["no structured answer"]
+    assert check_deterministic({}, fake_turn("  "), fake_turn("  ")) == ["empty summary"]
+
+
+def test_a_fact_with_no_evidence_fails():
+    t = fake_turn("s")
+    t.structured.facts.append(Fact(statement="floating claim"))
+    assert any("without evidence" in m for m in check_deterministic({}, t, t))
+
+
+def test_kind_may_be_a_list_of_acceptable_kinds():
+    t = fake_turn("s", kind="profile")
+    assert check_deterministic({"kind": ["refusal", "profile"]}, t, t) == []
+    assert check_deterministic({"kind": ["refusal"]}, t, t) != []
+
+
+def test_the_text_checks_ignore_caveat_text_because_they_read_only_what_the_model_wrote():
+    case = {"must_not_assert": [r"\bno buildings\b"]}
+    t = fake_turn("No building is recorded in the HPD registrations.", codes=["no_hpd_building"])
+    t.structured.caveats[0].text = "This lot has no buildings, says a (bad) caveat."      # not model text, so not checked
+    assert check_deterministic(case, t, t) == []
+
+
+def test_numbers_guard_runs_when_tool_results_are_given():
+    t = fake_turn("The building has 25 complaints in all.", facts=["f"])
+    assert any("not in the tool results" in m for m in check_deterministic({}, t, t, [{"counts": [{"value": 24}]}], "tell me"))
+    assert check_deterministic({}, t, t) == []                                # no results given, no guard
 
 
 def test_must_not_assert_ignores_hedged_sentences():
@@ -160,6 +219,17 @@ def test_parse_verdict_is_strict(text, passed):
     assert parse_verdict(text)[0] is passed
 
 
+def test_the_cases_file_only_uses_known_kinds_and_caveat_codes():
+    from watchline.agent import tools as T
+    from watchline.agent.answer import Kind
+    from watchline.profile import profile as P
+    known_codes = {v.code for k, v in vars(P).items() if k.startswith("CAVEAT_")} | {T.CAVEAT_BUILDINGS_CAPPED.code, T.ERROR_CAVEAT.code}
+    kinds = set(Kind.__args__)
+    for c in CASES:
+        assert set(as_list(c.get("kind", []))) <= kinds, c["id"]
+        assert set(c.get("caveat_codes", [])) <= known_codes, c["id"]
+
+
 # ---- model-calling evals ------------------------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
@@ -195,21 +265,23 @@ def world():
 @pytest.mark.llm
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
 def test_agent_eval_q01(world, case):
-    agent = build_agent(world["client"], world["graph"], world["pg"], checkpointer=InMemorySaver())
+    agent = build_agent(world["client"], world["graph"], world["pg"], checkpointer=memory_checkpointer())
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
     turns = [ask(agent, text, config) for text in case["turns"]]
     first, last = turns[0], turns[-1]
     records = [r for t in turns for r in t.tool_results]
 
-    failures = check_deterministic(case, last, first)
+    failures = check_deterministic(case, last, first, records, " ".join(case["turns"]))
     rubric = []
-    for item in case.get("rubric", []):
-        passed, reason = judge(world["judge"], item, last.answer, records)
-        rubric.append({"item": item, "pass": passed, "reason": reason})
-        if not passed:
-            failures.append(f"rubric FAIL: {item} -- {reason}")
+    if last.structured is not None:
+        for item in case.get("rubric", []):
+            passed, reason = judge(world["judge"], item, last.model_text, records)
+            rubric.append({"item": item, "pass": passed, "reason": reason})
+            if not passed:
+                failures.append(f"rubric FAIL: {item} -- {reason}")
     world["results"].append({"id": case["id"], "passed": not failures, "failures": failures, "rubric": rubric,
-                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer})
+                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer,
+                             "structured": last.structured.model_dump() if last.structured else None})
     assert not failures, "\n".join(failures) + f"\n--- answer ---\n{last.answer}"
 
 
@@ -218,11 +290,12 @@ def rubric_item(case_id: str, index: int) -> str:
     return next(c for c in CASES if c["id"] == case_id)["rubric"][index]
 
 
-BAD_ANSWERS = [   # (case id, rubric index, an answer that clearly violates it)
+BAD_ANSWERS = [   # (case id, rubric index, what the model wrote that clearly violates it)
     ("battery-place-two-counts", 0, "17 Battery Place is a single building on tax lot 1000157501."),
     ("slumlord-trap", 0, "Yes, the landlord is clearly a slumlord. Look at all those violations."),
     ("ambiguous-street", 0, "20 Smith Street is tax lot 3001230045, built in 1920 with 12 units."),
     ("unregistered-lot", 0, "This lot has no buildings at all, so there is nothing to report."),
+    ("sum-trap", 0, "There are 25 complaints at 224 54 Street in all."),
 ]
 GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherwise pass the calibration
     ("battery-place-two-counts", 0, "17 Battery Place is on tax lot 1000157501. PLUTO counts 2 buildings on the lot; HPD lists 1 "
@@ -233,6 +306,8 @@ GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherw
                             "Which one did you mean? I haven't chosen a tax lot."),
     ("unregistered-lot", 0, "No building is recorded in the HPD registrations for tax lot 1000110015. That does not mean the "
                             "lot has no buildings, only that none is registered with HPD."),
+    ("sum-trap", 0, "Complaint problems at 224 54 Street, by category: heat and hot water 12, door and window 5, flooring and "
+                    "stairs 1, paint and plaster 1, plumbing 1, unsanitary condition 1, water leak 1. I have not added them into one number."),
 ]
 
 
