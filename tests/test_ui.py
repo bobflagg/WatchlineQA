@@ -29,3 +29,14 @@ def test_caveats_never_dropped():
     for c in FIXTURES["profile"].caveats:
         assert c.text in text
     assert any("Caveats apply" in c.value for c in at.caption)
+
+
+def test_registration_fixture_shows_its_caveats_and_the_building_tag():
+    at = AppTest.from_function(_page)
+    at.session_state["name"] = "registration"
+    at.run()
+    assert not at.exception
+    text = " ".join(m.value for m in at.markdown) + " " + " ".join(c.value for c in at.caption)
+    for c in FIXTURES["registration"].caveats:
+        assert c.text in text
+    assert "registrations BIN 3000001" in text
