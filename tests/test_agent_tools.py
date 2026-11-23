@@ -281,3 +281,80 @@ def test_registered_owner_buildings_capped_keeps_the_addressed_one():
     assert len(out["registration_buildings"]) == 5 and out["registration_buildings"][0]["bin"] == "1"
     assert out["buildings_listed"] == 39
     assert any(c["code"] == "buildings_capped" and "5 of 39" in c["text"] for c in out["caveats"])
+
+
+# ---- deed_vs_owner -------------------------------------------------------------------------------------------
+
+def _deed_rg(deed_rows=None, owners=None):
+    from test_deeds import FakeDG, drow, owner_row
+    from test_registration import FakeRG
+
+    class Both(FakeRG, FakeDG):
+        def __init__(self):
+            FakeRG.__init__(self, rows=_reg_rg()._rows, owners=[owner_row()] if owners is None else owners)
+            FakeDG.__init__(self, [drow()] if deed_rows is None else deed_rows)
+    return Both()
+
+
+def make_deed_tool(client, rg=None):
+    return T.make_deed_vs_owner_tool(client, FakeGraph(), rg or _deed_rg())
+
+
+def test_deed_vs_owner_tool_name_and_description_for_the_model():
+    tool = make_deed_tool(FakeClient(resolved()))
+    assert tool.name == "deed_vs_owner"
+    text = " ".join(tool.description.split())
+    assert "never proof of the same party" in text and "latest recorded date" in text
+    assert set(tool.args) == {"address", "borough", "zip_code"}
+
+
+def test_deed_vs_owner_returns_deeds_owners_and_separate_agreement_fields():
+    out = make_deed_tool(FakeClient(resolved())).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    json.dumps(out)
+    assert out["status"] == "ok" and out["resolution"]["bbl"] == "1000010001"
+    (deed,) = out["deeds"]
+    assert deed["documentId"] == "D1" and deed["amount"] == 0 and deed["grantees"][0]["name"] == "ACME LLC"
+    assert out["owners"][0]["name"] == "ACME LLC"
+    (pair,) = out["comparison"]
+    assert pair["nameAgreement"] == {"outcome": "exact_normalized", "rule": "N1"}
+    assert pair["addressAgreement"]["outcome"] == "same" and pair["addressAgreement"]["rule"] == "A1"
+    assert {"name_match_not_identity", "deed_not_sale", "snapshots_differ"} <= {c["code"] for c in out["caveats"]}
+    assert out["sources"][0] == P_GEOSUPPORT and len(out["sources"]) == 3
+
+
+def test_deed_vs_owner_no_deed_is_an_empty_list_with_a_caveat():
+    out = make_deed_tool(FakeClient(resolved()), _deed_rg(deed_rows=[])).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    assert out["deeds"] == [] and out["comparison"] == [] and "no_deed_found" in {c["code"] for c in out["caveats"]}
+
+
+def test_deed_vs_owner_unresolved_has_no_lot_and_no_deed_source():
+    from watchline.geosupport.geosupport import Outcome as O
+    nf = Result(outcome=O.STREET_NOT_RECOGNIZED, grc="11", typed="1 Main St")
+    out = make_deed_tool(FakeClient(nf)).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    assert out["lot"] is None and out["deeds"] == [] and out["sources"] == [P_GEOSUPPORT]
+
+
+def test_deed_vs_owner_statuses_are_answers_not_exceptions():
+    tool = make_deed_tool(FakeClient(resolved()))
+    assert tool.invoke({"address": "1 Main St"})["status"] == "needs_borough"
+    assert tool.invoke({"address": "next to the park", "borough": "Queens"})["status"] == "invalid_input"
+    unavailable = Result(outcome=Outcome.UNAVAILABLE, message="connection refused", typed="1 Main St")
+    assert make_deed_tool(FakeClient(unavailable)).invoke({"address": "1 Main St", "borough": "Manhattan"})["status"] == "error"
+
+
+def test_deed_vs_owner_failure_names_only_the_error_type():
+    class Boom:
+        def lot(self, bbl): raise RuntimeError("secret detail")
+    out = make_deed_tool(FakeClient(resolved()), Boom()).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    assert out["status"] == "error" and "RuntimeError" in out["message"] and "secret" not in out["message"]
+
+
+def test_deed_vs_owner_caps_say_so():
+    from test_deeds import drow, owner_row
+    from test_profile import answer
+
+    from watchline.deeds.deeds import build_comparison
+    rg = _deed_rg(deed_rows=[drow(f"D{i}") for i in range(5)], owners=[owner_row()])
+    out = T.deeds_to_dict(build_comparison(answer(), rg, rg), max_deeds=2, max_pairs=3)
+    assert len(out["deeds"]) == 2 and len(out["comparison"]) == 3
+    assert {"deeds_capped", "comparison_capped"} <= {c["code"] for c in out["caveats"]}

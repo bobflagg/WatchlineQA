@@ -4,11 +4,13 @@
 `building_profile` wraps watchline.profile: read-only (Neo4jProfileGraph), row-limited and timed out at the graph,
 and capped again here so a lot with hundreds of buildings cannot flood the model's context.
 `registered_owner` wraps watchline.registration the same way (Q2: HPD registrations and their owner contacts).
+`deed_vs_owner` wraps watchline.deeds (Q3: the most recent deed(s), their grantees, and name and address agreement with the HPD owners).
 """
 from typing import Any
 
 from langchain.tools import tool
 
+from watchline.deeds.deeds import DeedComparison, deed_vs_owner
 from watchline.geosupport.resolution import BoroughRequired, Graph, Match
 from watchline.profile.profile import (
     GEOSUPPORT,
@@ -28,6 +30,12 @@ CAVEAT_BUILDINGS_CAPPED = CaveatTemplate("buildings_capped",
                                          "'totals_across_all_listed_buildings' still covers all {total}, so it will not equal the sum of the rows shown."))
 CAVEAT_REGISTRATION_BUILDINGS_CAPPED = CaveatTemplate("buildings_capped",
                                                      "Showing {shown} of {total} buildings listed for the lot; the rest are omitted from this output.")
+ADDRESS_KEYS = ("mailingAddress", "addressLine2", "zip")   # the second line is reported apart from the match
+MAX_DEEDS_OUT = 10
+MAX_PAIRS_OUT = 100
+CAVEAT_DEEDS_CAPPED = CaveatTemplate("deeds_capped", "Showing {shown} of {total} deeds recorded on the latest date; the rest are omitted from this output.")
+CAVEAT_COMPARISON_CAPPED = CaveatTemplate("comparison_capped",
+                                          "Showing {shown} of {total} grantee and owner comparisons; the rest are omitted from this output.")
 ERROR_CAVEAT = CaveatTemplate("lookup_failed", "The lookup failed ({kind}). This is an outage or a fault, not an answer about the address; "
                               "do not guess.")
 
@@ -112,6 +120,37 @@ def registrations_to_dict(x: Registrations, max_buildings: int = MAX_BUILDINGS_O
     return out
 
 
+def deeds_to_dict(x: DeedComparison, max_deeds: int = MAX_DEEDS_OUT, max_pairs: int = MAX_PAIRS_OUT) -> dict[str, Any]:
+    """JSON-safe view of a DeedComparison. Every tied deed, grantee and owner is listed as recorded; agreement is per pair, none chosen."""
+    r = x.resolution
+    out: dict[str, Any] = {
+        "status": "error" if r.outcome is Match.UNAVAILABLE else "ok",
+        "resolution": _resolution_dict(r),
+        "lot": x.lot,
+        "deeds": [{
+            "documentId": d.documentId, "docType": d.docType, "docDate": d.docDate, "recordedDate": d.recordedDate,
+            "amount": d.amount, "otherLots": d.otherLots,
+            "grantees": [{"name": g.name, "mailingAddress": g.mailingAddress, "addressLine2": g.addressLine2, "zip": g.zip}
+                         for g in d.grantees],
+        } for d in x.deeds[:max_deeds]],
+        "owners": [{"contactType": o.contactType, "name": o.name, "mailingAddress": o.mailingAddress,
+                    "addressLine2": o.addressLine2, "zip": o.zip} for o in x.owners[:MAX_BUILDINGS_OUT]],
+        "comparison": [{
+            "documentId": p.documentId, "grantee": p.grantee, "owner": p.owner, "ownerType": p.ownerType,
+            "nameAgreement": {"outcome": p.nameOutcome, "rule": p.nameRule},
+            "addressAgreement": {"outcome": p.addressOutcome, "rule": "A1",
+                                 "grantee": dict(zip(ADDRESS_KEYS, p.granteeAddress)), "owner": dict(zip(ADDRESS_KEYS, p.ownerAddress))},
+        } for p in x.pairs[:max_pairs]],
+        "caveats": [c.as_dict() for c in x.caveats],
+        "sources": [GEOSUPPORT, *x.sources],
+    }
+    if len(x.deeds) > max_deeds:
+        out["caveats"].append(CAVEAT_DEEDS_CAPPED.format(shown=max_deeds, total=len(x.deeds)).as_dict())
+    if len(x.pairs) > max_pairs:
+        out["caveats"].append(CAVEAT_COMPARISON_CAPPED.format(shown=max_pairs, total=len(x.pairs)).as_dict())
+    return out
+
+
 def make_building_profile_tool(client, graph: Graph, pg: ProfileGraph):
     """Bind the profile lookup to its clients. Returns a LangChain tool."""
 
@@ -187,3 +226,43 @@ def make_registered_owner_tool(client, graph: Graph, rg: RegistrationGraph):
 
     registered_owner_tool.name = "registered_owner"
     return registered_owner_tool
+
+
+def make_deed_vs_owner_tool(client, graph: Graph, rg):
+    """Bind the deed-against-registered-owner lookup to its clients. `rg` serves both reads (Neo4jDeedGraph). Returns a LangChain tool."""
+
+    @tool(parse_docstring=True)
+    def deed_vs_owner_tool(address: str, borough: str | None = None, zip_code: str | int | None = None) -> dict:
+        """Look up the most recent ACRIS deed(s) on a New York City street address's tax lot, every grantee on them, the HPD
+        registered owners, and whether each grantee's name and address agree with each registered owner's.
+
+        Call this for questions about the deed, the grantee, the most recent transfer of title, or whether the deed and the HPD
+        registration name the same party. Most recent means the latest recorded date; if several deeds share it, all are listed
+        and none is chosen. A deed shows a transfer of title, not a sale (an amount of 0 is common). Name and address agreement are
+        two separate fields, each a comparison of recorded strings: exact_normalized or normalization_match is a lead that the
+        names are written alike, never proof of the same party, and different is not proof of different parties. Never call a
+        grantee or a registrant "the owner". The returned caveats are attached to your answer for you; do not restate them.
+        Check status first: ok means a lookup was made (read resolution.outcome for exact, variant, ambiguous or not_found);
+        needs_borough means ask the user for the borough or ZIP; invalid_input means the text was not an address; error means an
+        outage or fault, not an answer about the address.
+
+        Args:
+            address: House number and street as the user typed it, optionally with a borough, ZIP or neighborhood.
+            borough: Manhattan, Brooklyn, Queens, Bronx or Staten Island, when the user gave it separately.
+            zip_code: Five-digit ZIP, when the user gave it separately.
+        """
+        try:
+            zip5 = None if zip_code is None else str(zip_code).strip()
+            try:
+                x = deed_vs_owner(client, graph, rg, address, borough=borough, zip5=zip5)
+            except BoroughRequired as e:
+                return {"status": "needs_borough", "message": f"{e}. Ask the user for the borough or ZIP; do not guess."}
+            except ValueError as e:
+                return {"status": "invalid_input", "message": str(e)}
+            return deeds_to_dict(x)
+        except Exception as e:  # noqa: BLE001  same rule as the other tools: the model gets an answer, never a stack trace
+            caveat = ERROR_CAVEAT.format(kind=type(e).__name__)
+            return {"status": "error", "message": caveat.text, "caveats": [caveat.as_dict()], "sources": []}
+
+    deed_vs_owner_tool.name = "deed_vs_owner"
+    return deed_vs_owner_tool
