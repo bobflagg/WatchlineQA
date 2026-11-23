@@ -39,11 +39,11 @@ Read this first in a fresh session. Update it at the end of every slice.
   the profile's `buildings`), `registration` kind and `registrations` section in `answer.py`, system-prompt lines, `build_agent(..., rg)`, and
   `connect()` now returns five values. Tests: 156 fast tests pass; 11 live tool-level evals (`tests/evals/q02_cases.yaml`, from live probes)
   pass with the live tests and the Q1 evals (`make test-live`, `make eval`). One UI fixture (`?fixtures=1`, `registration`); generic renderer.
-  Not yet: agent-level Q2 evals (`tests/evals/agent_q02_cases.yaml`, need the judge), `make chat` by hand on anchors A and D and an ended
+  Agent-level Q2 evals written (`tests/evals/agent_q02_cases.yaml`, `tests/test_agent_eval_q02.py`: 10 cases and a judge calibration; the fast harness tests pass, the model-calling ones have not been run). Not yet: running `make eval-agent` (Q1 and Q2, three runs), `make chat` by hand on anchors A and D and an ended
   registration, fresh-context review, merge.
 
 ## Next
-- Finish the Q2 slice (see the plan): agent-level evals with the judge (and Q1 still passing), `make chat` by hand, fresh-context
+- Finish the Q2 slice (see the plan): run `make eval-agent` (Q1 still passing, Q2 three runs, judge calibration), fix what it shows, `make chat` by hand, fresh-context
   review, merge.
 - Streamlit follow-ups: navy/gold brand banner, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.

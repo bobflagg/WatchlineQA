@@ -2,7 +2,7 @@
 
 Intent: Q2 (`specs/questions/q02.md`, Q2.1 and Q2.2). Type an address, get each HPD registration on the
 addressed lot's buildings: registration id, last-registered and end dates, and the owner contacts as recorded.
-Status: module, agent wiring, tool-level evals and UI fixture done; agent-level evals, review and merge remain. Branch: `q2-registered-owner`.
+Status: module, agent wiring, tool-level evals and UI fixture done; agent-level evals written (not yet run); review and merge remain. Branch: `q2-registered-owner`.
 
 ## Checked live (2026-11-23)
 

@@ -1,0 +1,115 @@
+# Agent-level Q2 evals (HPD registered owner and registration dates): the real model answers a person's message through the
+# registered_owner tool. Same structure and keys as agent_q01_cases.yaml (read its header); additionally:
+#   tool_name: registered_owner   the tool that `tool` refers to (the default is building_profile)
+#   last_tool: the tool the final turn must call (a follow-up that switches tools)
+# Expected values come from the live probes in docs/plans/q2-registered-owner.md and tests/evals/q02_cases.yaml (2026-11-23), not the spec.
+# The text checks read only what the model wrote. Caveat text is attached by code and never searched.
+# Standing risks these cases test: a registrant called "the owner of the building" (title), an ended registration presented as
+# current, an owner inferred where none is recorded, several registrations or spellings merged, a managing agent named from the registrant.
+
+- id: a-registered-owner
+  turns: ["Who is the registered owner of 5413 7 Avenue, Brooklyn?"]
+  tool: "5413 7"
+  tool_name: registered_owner
+  kind: registration
+  caveat_codes: [registrant_not_title, registration_period, owner_not_other_roles]
+  must_match: ["5413 PLAZA LLC", "316103", "3014788"]
+  must_not_assert: ["\\bowned by\\b", "\\bthe owner of the (building|property|lot)\\b"]
+  rubric:
+    - "The answer names 5413 PLAZA LLC as the registered owner per the HPD registration (a corporate owner), and does not say it owns, holds title to, or is the deed owner of the building."
+    - "The answer gives the registration's last-registered date (2025-09-30) and end date (2026-09-01) as the records give them."
+
+- id: who-owns-is-not-title
+  turns: ["Who owns 438 52 Street, Brooklyn?"]
+  tool: "438 52"
+  tool_name: registered_owner
+  kind: registration
+  caveat_codes: [registrant_not_title]
+  must_match: ["438 52 ST OWNERS CORP", "350423"]
+  must_not_assert: ["\\bowned by\\b", "\\bthe owner of the (building|property|lot)\\b"]
+  rubric:
+    - "The answer reports 438 52 ST OWNERS CORP as the name recorded in the HPD registration, not as established ownership: it says registration records who registered, not who holds title, or otherwise answers only 'registered owner'."
+
+- id: ended-registration-not-current
+  turns: ["Who is the registered owner of 234 54 Street, Brooklyn?"]
+  tool: "234 54"
+  tool_name: registered_owner
+  kind: registration
+  caveat_codes: [registration_period, registrant_not_title]
+  must_match: ["306882", "2020-08-31", "2021-09-01"]
+  must_not_assert: ["\\bcurrent(ly)? (registered )?owner\\b", "\\bowned by\\b"]
+  rubric:
+    - "The answer says the registration ended on 2021-09-01, before the data's snapshot date (2026-05-29), and does not present the recorded owner as the current registered owner."
+    - "Where the answer gives a person's name, it gives it with the role it was recorded in (individual owner) and does not use it for anything else."
+
+- id: owner-name-spellings-kept
+  turns: ["Who is the registered owner of each building at 224 54 Street, Brooklyn?"]
+  tool: "224 54"
+  tool_name: registered_owner
+  kind: registration
+  caveat_codes: [registrant_not_title, owner_not_other_roles]
+  must_match: ["3324448", "3324450", "3324451", "302437", "344220", "331116", "HDFC INC\\.", "HDFC INC(?![.\\w])"]
+  rubric:
+    - "The answer lists each of the three buildings (BINs 3324448, 3324450, 3324451) with its own registration id and the owner name as recorded, and marks 224 54 Street (BIN 3324451) as the addressed building."
+    - "The answer keeps the owner names exactly as recorded, including that BIN 3324451's registration spells the name without the final period while the other two have it, and does not merge them into one normalized name."
+
+- id: two-registrations-one-without-owner
+  turns: ["Who is the registered owner of 24 Avon Place, Staten Island?"]
+  tool: "24 Avon"
+  tool_name: registered_owner
+  kind: registration
+  caveat_codes: [no_owner_contact, registrant_not_title]
+  must_match: ["11009", "11065"]
+  rubric:
+    - "The answer lists both registrations (11009 and 11065) and says registration 11009 has no owner contact recorded, without naming or guessing an owner for it."
+    - "The answer reports that registration 11009 has no last-registered date recorded, rather than giving one."
+
+- id: no-hpd-building-no-owner-inferred
+  turns: ["Who is the registered owner of 70 Broad Street, Manhattan?"]
+  tool: "70 Broad"
+  tool_name: registered_owner
+  kind: [registration, not_found]
+  caveat_codes: [no_hpd_building]
+  must_match: ["1000110015"]
+  must_not_assert: ["\\b(has|have|with)\\s+no\\s+(owner|owners)\\b", "\\bno one owns\\b", "\\bunowned\\b", "\\bowned by\\b"]
+  rubric:
+    - "The answer says no building is recorded in the HPD registrations for this lot, so no registration or registered owner can be read, and does not name or guess an owner."
+    - "Nothing the answer says claims that the lot or building has no owner; it says none is recorded."
+
+- id: registration-current-at-snapshot
+  turns: ["Is the HPD registration at 438 52 Street, Brooklyn current?"]
+  tool: "438 52"
+  tool_name: registered_owner
+  kind: registration
+  caveat_codes: [registration_period]
+  must_match: ["350423", "2026-09-01"]
+  rubric:
+    - "The answer compares the registration's end date (2026-09-01) with the data's snapshot date (2026-05-29) and says the registration had not ended by the snapshot, and that the data gives an end date but no start date."
+    - "The answer does not say the registration is current today or beyond the snapshot date; it limits the statement to what the data shows as of its snapshot."
+
+- id: no-borough
+  turns: ["Who is the registered owner of 224 54 Street?"]
+  tool: "224 54"
+  tool_name: registered_owner
+  kind: clarification
+  must_match: ["borough|ZIP"]
+  must_not_match: ["\\b3008\\d{6}\\b", "HDFC"]
+  rubric:
+    - "The answer asks the user for the borough or ZIP and does not guess a borough or name an owner."
+
+- id: follow-up-from-a-profile
+  turns: ["Tell me about 224 54 Street, Brooklyn", "Who is the registered owner there?"]
+  tool: "224 54"
+  last_tool: registered_owner
+  kind: registration
+  caveat_codes: [registrant_not_title]
+  must_match: ["331116"]
+  rubric:
+    - "The answer reports the registered owner per HPD registration for the building(s) on the lot that was just profiled, not for a different address, and does not call the registrant the owner of the building."
+
+- id: managing-agent-trap
+  turns: ["Who is the managing agent for 5413 7 Avenue, Brooklyn?"]
+  kind: [refusal, registration]
+  must_not_assert: ["\\bthe managing agent is\\b", "\\bmanaged by\\b"]
+  rubric:
+    - "The answer does not name a managing agent and does not present the registered owner (5413 PLAZA LLC) as the managing agent; it says managing agents are not something it can read here (or the records it has do not show one)."

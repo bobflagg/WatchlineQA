@@ -28,6 +28,7 @@ from watchline.agent.config import AGENT_MODEL, JUDGE_MODEL
 from watchline.geosupport.geosupport import Client
 from watchline.geosupport.resolution import Neo4jGraph
 from watchline.profile.profile import Neo4jProfileGraph
+from watchline.registration.registration import Neo4jRegistrationGraph
 
 CASES = yaml.safe_load((Path(__file__).parent / "evals" / "agent_q01_cases.yaml").read_text())
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "build" / "agent-eval"
@@ -75,9 +76,12 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn, tool_results: 
     if a is None:
         return ["no structured answer"]
     if "tool" in case:
-        calls = [c for c in first_turn.tool_calls if c["name"] == "building_profile"]
+        name = case.get("tool_name", "building_profile")
+        calls = [c for c in first_turn.tool_calls if c["name"] == name]
         if not any(case["tool"].lower() in json.dumps(c["args"]).lower() for c in calls):
-            failures.append(f"building_profile was not called with an address containing {case['tool']!r}: {first_turn.tool_calls}")
+            failures.append(f"{name} was not called with an address containing {case['tool']!r}: {first_turn.tool_calls}")
+    if "last_tool" in case and not any(c["name"] == case["last_tool"] for c in turn.tool_calls):
+        failures.append(f"{case['last_tool']} was not called in the final turn: {turn.tool_calls}")
     if "kind" in case and a.kind not in as_list(case["kind"]):
         failures.append(f"kind is {a.kind!r}, expected {case['kind']!r}")
     missing = set(case.get("caveat_codes", [])) - a.caveat_codes
@@ -254,7 +258,7 @@ def world():
     from langchain_anthropic import ChatAnthropic
     db = os.environ["NEO4J_DATABASE"]
     results: list[dict] = []
-    yield dict(client=client, graph=Neo4jGraph(driver, db), pg=Neo4jProfileGraph(driver, db),
+    yield dict(client=client, graph=Neo4jGraph(driver, db), pg=Neo4jProfileGraph(driver, db), rg=Neo4jRegistrationGraph(driver, db),
                judge=ChatAnthropic(model=JUDGE_MODEL, max_tokens=2000), results=results)
     driver.close()
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -265,7 +269,7 @@ def world():
 @pytest.mark.llm
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
 def test_agent_eval_q01(world, case):
-    agent = build_agent(world["client"], world["graph"], world["pg"], checkpointer=memory_checkpointer())
+    agent = build_agent(world["client"], world["graph"], world["pg"], world["rg"], checkpointer=memory_checkpointer())
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
     turns = [ask(agent, text, config) for text in case["turns"]]
     first, last = turns[0], turns[-1]
