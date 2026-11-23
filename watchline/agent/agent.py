@@ -13,7 +13,7 @@ from deepagents import (
     create_deep_agent,
     register_harness_profile,
 )
-from langchain.agents.structured_output import ProviderStrategy
+from langchain.agents.structured_output import ToolStrategy
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.memory import InMemorySaver
@@ -64,7 +64,7 @@ def build_agent(client, graph, pg, *, model: str | BaseChatModel = AGENT_MODEL, 
         tools=[make_building_profile_tool(client, graph, pg)],
         system_prompt=system_prompt(),
         permissions=[FilesystemPermission(operations=["read", "write"], paths=["/**"], mode="deny")],
-        response_format=ProviderStrategy(ModelAnswer),     # the model's final message is a ModelAnswer; chat.ask assembles the rest
+        response_format=ToolStrategy(ModelAnswer),     # the model's final message is a ModelAnswer; chat.ask assembles the rest
         checkpointer=checkpointer,
         name="watchline",
     )

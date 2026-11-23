@@ -42,7 +42,7 @@
   kind: profile
   caveat_codes: [no_hpd_building]
   must_match: ["1000110015"]
-  must_not_assert: ["\\bno (buildings|violations)\\b"]
+  must_not_assert: ["\\b(has|have|with|contains?|there (is|are))\\s+no\\s+(buildings|violations|complaints|litigation)\\b"]
   rubric:
     - "Nothing the answer says claims that the lot has no buildings."
     - "Nothing the answer says claims that the lot has no violations, complaints or litigation; it may say none are recorded or that they exist only for HPD-registered buildings."

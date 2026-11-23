@@ -12,14 +12,16 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 Kind = Literal["profile", "clarification", "not_found", "refusal", "error"]
-Section = Literal["resolution", "characteristics", "counts", "buildings", "totals"]
+Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------
 
 class EvidenceRef(BaseModel):
     section: Section = Field(description="Which part of the tool result the statement rests on.")
-    bin: str | None = Field(default=None, description="The building's BIN. Required when section is 'buildings'.")
+    bin: str | None = Field(default=None, description=(
+        "The building's BIN, to point at one building under section 'buildings'. Without it, 'buildings' means the whole list "
+        "(use that to say no building is listed)."))
 
 
 class ModelFact(BaseModel):
@@ -77,39 +79,62 @@ _SECTION_KEY = {"resolution": "resolution", "characteristics": "characteristics"
                 "totals": "totals_across_all_listed_buildings"}
 
 
-def _resolve(ref: EvidenceRef, results: list[dict]) -> Evidence | None:
-    """The tool data a reference points at, or None. The latest result that has it wins; a BIN picks the result listing it."""
-    for out in reversed(results):
-        if ref.section == "buildings":
-            for b in out.get("buildings") or []:
-                if ref.bin is not None and b.get("bin") == ref.bin:
-                    return Evidence(section="buildings", bin=ref.bin, data=b)
-            continue
-        data = out.get(_SECTION_KEY[ref.section])
-        if data:                                  # None, [] and {} mean the tool had nothing for this section
-            return Evidence(section=ref.section, data=data)
+def _resolve(ref: EvidenceRef, results: list[dict]) -> tuple[Evidence, int] | None:
+    """The tool data a reference points at, and the index of the result it came from, or None.
+
+    The latest result that has it wins; a BIN picks the result that lists it. `buildings` without a BIN is the whole list, which may
+    be empty (that is how an absence is evidenced). `lookup` is the tool's own status and message, for answers that ask a question.
+    """
+    for i in reversed(range(len(results))):
+        out = results[i]
+        if ref.section == "lookup":
+            if out.get("status"):
+                return Evidence(section="lookup", data={"status": out["status"], "message": out.get("message")}), i
+        elif ref.section == "buildings":
+            if ref.bin is None:
+                if "buildings" in out and out.get("resolution"):
+                    return Evidence(section="buildings", data=out["buildings"]), i
+            else:
+                for b in out.get("buildings") or []:
+                    if b.get("bin") == ref.bin:
+                        return Evidence(section="buildings", bin=ref.bin, data=b), i
+        else:
+            data = out.get(_SECTION_KEY[ref.section])
+            if data:                                    # None, [] and {} mean the tool had nothing for this section
+                return Evidence(section=ref.section, data=data), i
     return None
 
 
-def assemble(model: ModelAnswer, tool_results: list[dict]) -> Answer:
-    """Pure: the model's answer plus the tool results in, the full Answer out. Caveats and sources come only from the tools."""
+def assemble(model: ModelAnswer, tool_results: list[dict], earlier: list[dict] = ()) -> Answer:
+    """Pure: the model's answer plus the tool results in, the full Answer out. Caveats and sources come only from the tools.
+
+    `tool_results` are this turn's. `earlier` are results from earlier turns of the same conversation: a follow-up may rest on
+    them, so evidence can point at them, and a result that evidence points at contributes its caveats and sources too.
+    """
+    results = [*earlier, *tool_results]
+    used = set(range(len(earlier), len(results)))        # this turn's results always count
     facts = []
     for f in model.facts:
         resolved, unresolved = [], []
         for ref in f.evidence:
-            ev = _resolve(ref, tool_results)
-            (resolved if ev else unresolved).append(ev or ref)
+            hit = _resolve(ref, results)
+            if hit:
+                resolved.append(hit[0])
+                used.add(hit[1])
+            else:
+                unresolved.append(ref)
         facts.append(Fact(statement=f.statement, evidence=resolved, unresolved=unresolved))
     caveats: list[CaveatOut] = []
     sources: list[str] = []
-    for out in tool_results:
+    for i in sorted(used):
+        out = results[i]
         for c in out.get("caveats") or []:
             item = CaveatOut(code=c["code"], text=c["text"])
             if item not in caveats:
                 caveats.append(item)
-        for s in out.get("sources") or []:
-            if s not in sources:
-                sources.append(s)
+        for src in out.get("sources") or []:
+            if src not in sources:
+                sources.append(src)
     return Answer(kind=model.kind, summary=model.summary, facts=facts, caveats=caveats, sources=sources)
 
 

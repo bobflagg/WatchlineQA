@@ -34,10 +34,35 @@ def test_evidence_is_the_tool_data_copied_by_code(result):
 
 
 def test_references_that_point_at_nothing_are_kept_as_unresolved(result):
-    a = assemble(model(fact("A phantom building.", ("buildings", "999")), fact("No bin given.", ("buildings", None))), [result])
+    a = assemble(model(fact("A phantom building.", ("buildings", "999")), fact("Not returned at all.", ("lookup", None))),
+                 [{"resolution": {}, "buildings": []}])
     assert [f.evidence for f in a.facts] == [[], []]
     assert [len(f.unresolved) for f in a.facts] == [1, 1]
     assert "unverified reference: buildings BIN 999" in render_markdown(a)
+
+
+def test_buildings_without_a_bin_is_the_whole_list_even_when_it_is_empty(result):
+    a = assemble(model(fact("Two buildings.", ("buildings", None))), [result])
+    assert a.facts[0].evidence[0].data == result["buildings"] and a.facts[0].unresolved == []
+    unregistered = {"status": "ok", "resolution": {"outcome": "exact"}, "buildings": [], "caveats": [], "sources": []}
+    a = assemble(model(fact("No building is listed.", ("buildings", None))), [unregistered])
+    assert a.facts[0].evidence[0].data == [] and a.facts[0].unresolved == []
+    no_lookup_result = {"status": "needs_borough", "message": "Ask the borough."}
+    assert assemble(model(fact("x", ("buildings", None))), [no_lookup_result]).facts[0].unresolved      # nothing was looked up
+
+
+def test_lookup_is_the_tools_own_status_and_message():
+    r = {"status": "needs_borough", "message": "Ask the user for the borough or ZIP."}
+    a = assemble(model(fact("It needs a borough.", ("lookup", None)), kind="clarification"), [r])
+    assert a.facts[0].evidence[0].data == r and a.facts[0].unresolved == []
+
+
+def test_a_follow_up_can_cite_an_earlier_turns_result_and_inherits_its_caveats(result):
+    earlier = {**result, "caveats": [{"code": "earlier_only", "text": "From the first lookup."}], "sources": ["PLUTO (earlier)"]}
+    unrelated = {**result, "caveats": [{"code": "unrelated", "text": "Not cited."}], "buildings": [{"bin": "77"}]}
+    a = assemble(model(fact("Building 1 again.", ("buildings", "1"))), [], earlier=[unrelated, earlier])
+    assert a.facts[0].unresolved == [] and a.caveat_codes == {"earlier_only"} and a.sources == ["PLUTO (earlier)"]
+    assert assemble(model(), [], earlier=[earlier]).caveats == []        # nothing cited, nothing from this turn: no caveats
 
 
 def test_a_bin_given_on_another_section_is_harmless(result):

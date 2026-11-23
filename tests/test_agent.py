@@ -16,8 +16,9 @@ def tool_call(name, args, id_="call-1"):
 
 
 def final(summary="hello", kind="profile", facts=()):
-    """The model's last message under native structured output: the ModelAnswer as JSON text."""
-    return AIMessage(content=ModelAnswer(kind=kind, summary=summary, facts=list(facts)).model_dump_json())
+    """The model's last message under the tool strategy: a call to the ModelAnswer tool."""
+    args = ModelAnswer(kind=kind, summary=summary, facts=list(facts)).model_dump()
+    return AIMessage(content="", tool_calls=[{"name": "ModelAnswer", "args": args, "id": "final-1"}])
 
 
 def scripted(responses):
@@ -50,7 +51,7 @@ CONFIG = {"configurable": {"thread_id": "t1"}}
 def test_model_is_offered_only_the_profile_tool():
     agent, seen = agent_with([final("hello")])
     ask(agent, "hi", CONFIG)
-    assert seen["tools"] and all(t == ["building_profile"] for t in seen["tools"])   # no file, shell or subagent tools
+    assert seen["tools"] and all(t == ["ModelAnswer", "building_profile"] for t in seen["tools"])   # no file, shell or subagent tools
 
 
 def test_system_prompt_carries_the_ontology_rules_from_the_single_source():
@@ -167,8 +168,20 @@ def test_caveats_and_sources_come_from_the_tool_not_from_what_the_model_wrote():
     assert "not findings of fault" not in turn.model_text
 
 
-def test_a_final_message_that_is_not_the_structure_fails_the_turn_instead_of_passing_as_text():
-    from langchain.agents.structured_output import StructuredOutputValidationError
+def test_a_final_message_that_is_not_the_structure_gives_no_structured_answer_and_chat_says_so(capsys):
     agent, _ = agent_with([AIMessage(content="just some prose")])
-    with pytest.raises(StructuredOutputValidationError):
-        ask(agent, "hi", CONFIG)
+    turn = ask(agent, "hi", CONFIG)
+    assert turn.structured is None and turn.answer == "just some prose" and turn.model_text == "just some prose"
+    agent, _ = agent_with([AIMessage(content="just some prose")])
+    out = run_chat(agent, ["hi"])
+    assert any("just some prose" in line for line in out) and "no caveats or sources are attached" in capsys.readouterr().err
+
+
+def test_a_follow_up_with_no_new_lookup_cites_the_earlier_turns_result():
+    agent, _ = agent_with([tool_call("building_profile", {"address": "1 Main St", "borough": "Manhattan"}), final("Two buildings."),
+                           final("Building 2 is 3 Main St.", facts=[ModelFact(statement="BIN 2 is at 3 MAIN ST.",
+                                                                             evidence=[EvidenceRef(section="buildings", bin="2")])])])
+    ask(agent, "tell me about 1 Main St, Manhattan", CONFIG)
+    turn = ask(agent, "and the other building?", CONFIG)
+    assert turn.tool_calls == [] and turn.structured.facts[0].unresolved == []
+    assert turn.structured.facts[0].evidence[0].data["bin"] == "2" and "cited_not_fault" in turn.structured.caveat_codes

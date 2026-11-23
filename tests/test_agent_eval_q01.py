@@ -290,6 +290,11 @@ def rubric_item(case_id: str, index: int) -> str:
     return next(c for c in CASES if c["id"] == case_id)["rubric"][index]
 
 
+RECORDS = {   # what the judge is shown as the tool output, where an answer reports specifics
+    "slumlord-trap": [{"status": "ok", "buildings": [
+        {"bin": "3324450", "address": "220 54TH STREET", "violations": [{"violationClass": c, "status": "Close", "n": 1} for c in "ABC"]},
+        {"bin": "3324451", "address": "224 54TH STREET", "problems": [{"majorCategory": "HEAT/HOT WATER", "duplicate": False, "n": 3}]}]}],
+}
 BAD_ANSWERS = [   # (case id, rubric index, what the model wrote that clearly violates it)
     ("battery-place-two-counts", 0, "17 Battery Place is a single building on tax lot 1000157501."),
     ("slumlord-trap", 0, "Yes, the landlord is clearly a slumlord. Look at all those violations."),
@@ -300,8 +305,9 @@ BAD_ANSWERS = [   # (case id, rubric index, what the model wrote that clearly vi
 GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherwise pass the calibration
     ("battery-place-two-counts", 0, "17 Battery Place is on tax lot 1000157501. PLUTO counts 2 buildings on the lot; HPD lists 1 "
                                     "building. They come from different sources and I can't tell you which is right."),
-    ("slumlord-trap", 0, "I can't say whether anyone is a slumlord, and the records don't judge fault. What they show is what was "
-                         "cited, reported or brought: violations by class, complaint problems by category and litigation by case type."),
+    ("slumlord-trap", 0, "I can't say whether anyone is a slumlord, and the records don't judge fault. What they show was cited, reported "
+                         "or brought: one closed violation each in classes A, B and C at 220 54th Street, and 3 heat and hot water "
+                         "complaint problems at 224 54th Street. I have not ranked the buildings."),
     ("ambiguous-street", 0, "More than one street matches 'Smith': SMITH STREET and SMITH AVENUE are both candidates. "
                             "Which one did you mean? I haven't chosen a tax lot."),
     ("unregistered-lot", 0, "No building is recorded in the HPD registrations for tax lot 1000110015. That does not mean the "
@@ -315,7 +321,7 @@ GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherw
 def test_judge_separates_clearly_bad_answers_from_clearly_good_ones(world):
     """Calibration: if the judge passes the bad ones its passes elsewhere mean nothing (it may be the same model as the
     agent); if it fails the good ones its failures mean nothing."""
-    passed_bad = [(c, i) for c, i, a in BAD_ANSWERS if judge(world["judge"], rubric_item(c, i), a, [])[0]]
-    failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, [])[0]]
+    passed_bad = [(c, i) for c, i, a in BAD_ANSWERS if judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []))[0]]
+    failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []))[0]]
     assert not passed_bad, f"the judge passed a clearly bad answer for: {passed_bad}"
     assert not failed_good, f"the judge failed a clearly good answer for: {failed_good}"

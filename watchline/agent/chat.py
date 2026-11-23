@@ -36,6 +36,22 @@ def text_of(message) -> str:
     return "".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text")
 
 
+def earlier_results(agent, config: dict, this_turn: int) -> list[dict]:
+    """Tool results from earlier turns of the thread, so a follow-up can cite what an earlier lookup returned."""
+    try:
+        messages = agent.get_state(config).values.get("messages", [])
+    except Exception:    # noqa: BLE001  no checkpointer, or a stand-in agent: there is no history to read
+        return []
+    out = []
+    for m in messages:
+        if getattr(m, "type", None) == "tool" and isinstance(m.content, str):
+            try:
+                out.append(json.loads(m.content))
+            except ValueError:
+                pass
+    return out[:len(out) - this_turn] if this_turn else out
+
+
 def ask(agent, text: str, config: dict, on_tool_call=None) -> Turn:
     """Send one user message on a thread and return the final answer plus the tools called."""
     turn = Turn(answer="")
@@ -54,13 +70,13 @@ def ask(agent, text: str, config: dict, on_tool_call=None) -> Turn:
                             on_tool_call(call["name"], call["args"])
                     if not m.tool_calls and text_of(m).strip():
                         turn.answer = text_of(m)
-                elif getattr(m, "type", None) == "tool":
+                elif getattr(m, "type", None) == "tool" and getattr(m, "name", None) != ModelAnswer.__name__:
                     try:
                         turn.tool_results.append(json.loads(m.content) if isinstance(m.content, str) else m.content)
                     except ValueError:
                         turn.tool_results.append({"raw": str(m.content)[:200]})
     if final is not None:
-        turn.structured = assemble(final, turn.tool_results)
+        turn.structured = assemble(final, turn.tool_results, earlier_results(agent, config, len(turn.tool_results)))
         turn.answer = render_markdown(turn.structured)
     return turn
 
@@ -113,6 +129,9 @@ def converse(agent, config: dict, read=input, write=print) -> None:
         except Exception as exc:    # an API or graph failure ends the turn, not the session; the error text is not shown
             print(f"\n[That question failed: {type(exc).__name__}. Nothing was answered; try again.]\n", file=sys.stderr)
             continue
+        if turn.structured is None:
+            print("\n[The model did not return a structured answer, so no caveats or sources are attached to this reply.]",
+                  file=sys.stderr)
         write(f"\n{turn.answer}\n")
 
 
