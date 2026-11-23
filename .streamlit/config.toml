@@ -11,6 +11,7 @@ showWidgetBorder = true
 
 [theme.sidebar]
 backgroundColor = "#0a1629"
+textColor = "#ffffff"
 secondaryBackgroundColor = "#12243f"
 primaryColor = "#d4a017"
 borderColor = "#22344b"

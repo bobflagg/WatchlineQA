@@ -30,9 +30,21 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 - Streamlit page (branch `streamlit-page`, plan in `docs/plans/streamlit-page.md`): `watchline/ui/` (`render.py`, `app.py`, `fixtures.py`), `make ui`,
   `?fixtures=1` previews every kind without the model. Generic renderer only; smoke tests in `tests/test_ui.py`. Logo in the sidebar (rounded, pulled up with CSS). Checked on live data by hand; merged.
+  Two nested pulldowns in the sidebar (`watchline/ui/samples.py`: competency question, then its sample queries, Q1 and Q2 for now; a pick runs in the chat); not yet looked at in a browser.
+
+- Q2 registered owner (branch `q2-registered-owner`, plan in `docs/plans/q2-registered-owner.md`, with live probe results):
+  `watchline/registration/registration.py`, `registered_owners(client, graph, rg, text)`: every HPD registration per building of the
+  addressed lot, with `lastRegistered` and `registrationEnd` (from the building-registration relationship) and the owner contacts as
+  recorded. Agent wiring: `registered_owner` tool (`watchline/agent/tools.py`; the per-building list is `registration_buildings`, apart from
+  the profile's `buildings`), `registration` kind and `registrations` section in `answer.py`, system-prompt lines, `build_agent(..., rg)`, and
+  `connect()` now returns five values. Tests: 156 fast tests pass; 11 live tool-level evals (`tests/evals/q02_cases.yaml`, from live probes)
+  pass with the live tests and the Q1 evals (`make test-live`, `make eval`). One UI fixture (`?fixtures=1`, `registration`); generic renderer.
+  Agent-level Q2 evals written (`tests/evals/agent_q02_cases.yaml`, `tests/test_agent_eval_q02.py`: 10 cases and a judge calibration). First run of `make eval-agent` (2026-11-23, Haiku agent and judge, one run): Q1 11 of 11, Q2 8 of 10, both calibrations pass. The two Q2 failures were a prompt gap (the model cited the profile section `buildings` on a registration answer; the prompt now says to use `registrations`) and a rubric that asked the model to repeat a code-attached caveat (dropped); both cases pass on rerun. The other cases have not been rerun since the prompt change. Merged without: a full three-run eval rerun, a worst-case-lot timing check, `make chat` by hand on anchors A and D and an ended
+  registration, and the fresh-context review (`/code-review`). Sidebar dropdown text color and the footer's pinning were not confirmed in a browser.
 
 ## Next
-- Streamlit follow-ups: navy/gold brand banner, sample questions in the sidebar, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
+- Q2 follow-ups left from the merge: the review, a three-run `make eval-agent`, the `make chat` hand check, worst-case timing.
+- Streamlit follow-ups: navy/gold brand banner, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Pick the next competency question and its tool.
 

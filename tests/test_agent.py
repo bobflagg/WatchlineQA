@@ -230,3 +230,10 @@ def test_without_a_checkpointer_there_is_no_history_so_no_correction_is_attempte
     agent = build_agent(FakeClient(resolved()), FakeGraph(), FakePG(buildings=BUILDINGS), model=model)
     turn = ask(agent, "tell me about 1 Main St, Manhattan", CONFIG)
     assert turn.unverified == ["77"] and len(seen["calls"]) == 2
+
+
+def test_registered_owner_tool_is_offered_only_when_the_registration_graph_is_given():
+    from test_registration import FakeRG
+    agent, seen = agent_with([final("hello")], rg=FakeRG())
+    ask(agent, "hi", CONFIG)
+    assert all(t == ["ModelAnswer", "building_profile", "registered_owner"] for t in seen["tools"])

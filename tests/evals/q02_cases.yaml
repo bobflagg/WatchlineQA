@@ -1,0 +1,131 @@
+# Q2 eval cases (HPD registered owner and registration dates), run through the registered_owner tool (what the model sees).
+# Values were probed against the live graph and Geosupport on 2026-11-23, not taken from the spec; candidates until a snapshot is frozen.
+# input keys: address, borough, zip_code
+# expect keys: status, outcome, bbl, bins (exact set), addressed_bin, registrations ({bin: {registration id: [last, end, [[type, name], ...]]}}; a null name means only the type is checked (individuals' names stay out of the file)),
+#              no_buildings, caveat_codes (all present), caveat_codes_absent,
+#              caveats_contain / caveats_absent (substrings)
+
+- id: a-single-registration
+  question: Q2.1 Q2.2
+  why: Ordinary case. One building, one registration, one corporate owner; the Agent and officers are not owners.
+  input: {address: "5413 7 Avenue, Brooklyn"}
+  expect:
+    status: ok
+    outcome: exact
+    bbl: "3008260002"
+    bins: ["3014788"]
+    addressed_bin: "3014788"
+    registrations:
+      "3014788": {316103: ["2025-09-30", "2026-09-01", [["CorporateOwner", "5413 PLAZA LLC"]]]}
+    caveat_codes: [registrant_not_title, registration_period, owner_not_other_roles]
+    caveat_codes_absent: [no_owner_contact, no_registration_found, no_hpd_building]
+    caveats_contain: ["not proof of who holds title", "2026-05-29"]
+
+- id: c-co-op-name-as-recorded
+  question: Q2.1
+  why: A co-op registers under its corporation; the name is shown as HPD spells it.
+  input: {address: "438 52 Street, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008070024"
+    registrations:
+      "3013901": {350423: ["2025-10-23", "2026-09-01", [["CorporateOwner", "438 52 ST OWNERS CORP"]]]}
+
+- id: d-three-buildings-spellings-kept
+  question: Q2.1 Q2.2
+  why: Three buildings, one registration each. The owner is spelled with and without a trailing period; both are kept, not merged.
+  input: {address: "224 54 Street, Brooklyn"}
+  expect:
+    status: ok
+    outcome: exact
+    bbl: "3008210012"
+    bins: ["3324448", "3324450", "3324451"]
+    addressed_bin: "3324451"
+    registrations:
+      "3324448": {302437: ["2025-07-16", "2026-09-01", [["CorporateOwner", "HP SUNSET PARK I HDFC INC."]]]}
+      "3324450": {344220: ["2025-07-16", "2026-09-01", [["CorporateOwner", "HP SUNSET PARK I HDFC INC."]]]}
+      "3324451": {331116: ["2025-07-16", "2026-09-01", [["CorporateOwner", "HP SUNSET PARK I HDFC INC"]]]}
+
+- id: d-variant-spelling
+  question: Q2.1
+  why: A respelled street is a variant and the registration caveats still travel with it.
+  input: {address: "224 54th St, Brooklyn"}
+  expect:
+    status: ok
+    outcome: variant
+    bbl: "3008210012"
+    addressed_bin: "3324451"
+    caveat_codes: [variant_match, registrant_not_title, registration_period]
+    caveats_contain: ["matched by a variant", "224 54th St", "224 54 STREET"]
+
+- id: ended-before-snapshot
+  question: Q2.2
+  why: A registration whose end date is before the snapshot is listed with its dates, not hidden or presented as current.
+  input: {address: "234 54 Street, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008210019"
+    bins: ["3014490"]
+    registrations:
+      "3014490": {306882: ["2020-08-31", "2021-09-01", [["IndividualOwner", null]]]}
+    caveat_codes: [registration_period]
+
+- id: no-hpd-building
+  question: Q2.1
+  why: A lot with no HPD building has nothing to list. The answer says so and infers no owner.
+  input: {address: "70 Broad Street, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1000110015"
+    no_buildings: true
+    caveat_codes: [no_hpd_building]
+    caveat_codes_absent: [registrant_not_title, registration_period]
+
+- id: two-owner-entities-listed
+  question: Q2.1
+  why: One registration with two corporate owner contacts. Both are listed, in recorded order, neither chosen.
+  input: {address: "302 West 148th Street, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1020450057"
+    registrations:
+      "1060822": {121720: ["2025-05-28", "2026-09-01", [["CorporateOwner", "HP PLAZA LLC"], ["CorporateOwner", "HP PLAZA LP"]]]}
+
+- id: several-registrations-no-owner-and-no-date
+  question: Q2.1 Q2.2
+  why: Two registrations on one building. One has no owner contact and no last-registered date; nothing is inferred for it.
+  input: {address: "24 Avon Place, Staten Island"}
+  expect:
+    status: ok
+    bbl: "5005760049"
+    registrations:
+      "5014747":
+        11009: [null, "2025-09-01", []]
+        11065: ["2026-01-08", "2026-09-01", [["IndividualOwner", null]]]
+    caveat_codes: [no_owner_contact]
+
+- id: zip-only-variant
+  question: Q2.1
+  why: A ZIP given separately resolves the borough; the match is a variant and says so.
+  input: {address: "1 Main St", zip_code: 11220}
+  expect:
+    status: ok
+    outcome: variant
+    bbl: "3000277501"
+    registrations:
+      "3346104": {384597: ["2025-08-30", "2026-09-01", [["CorporateOwner", "CLOCK TOWER CONDOMINIUM"]]]}
+
+- id: needs-borough
+  question: Q2.1
+  why: No borough or ZIP, so the tool asks instead of guessing a lot.
+  input: {address: "224 54 Street"}
+  expect:
+    status: needs_borough
+    caveats_contain: ["do not guess"]
+
+- id: not-an-address
+  question: Q2.1
+  why: Text with no house number and street is rejected, not looked up.
+  input: {address: "somewhere nice", borough: "Queens"}
+  expect:
+    status: invalid_input

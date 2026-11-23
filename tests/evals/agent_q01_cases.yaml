@@ -4,7 +4,8 @@
 # like "not a statement that the lot has no buildings".
 #
 # turns: the user messages, in order, on one thread. Checks apply to the final answer.
-# tool: the first turn must call building_profile with an address containing this text.
+# tool: the first turn must call a tool (building_profile unless tool_name says otherwise) with an address containing this text.
+# tool_name / last_tool: the tool `tool` refers to; a tool the final turn must call (for follow-ups that switch tools).
 # kind: the answer's kind (a string, or a list of acceptable kinds).
 # caveat_codes: codes that must be among the answer's caveats (they come from the tool results).
 # must_match / must_not_match: case-insensitive regexes on the model's text.
