@@ -31,6 +31,10 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
     st.session_state.history = []          # [(role, text | (Answer, unverified))]
 
+AUTHOR, AUTHOR_EMAIL = "Robert Flagg", "calcworks@gmail.com"
+REPO_URL = "https://github.com/bobflagg/WatchlineQA"
+
+
 def _pick_group():
     """A new competency question was chosen: forget the query chosen under the previous one."""
     st.session_state.sample = None
@@ -55,6 +59,8 @@ with st.sidebar:
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.history = []
         st.rerun()
+    st.divider()
+    st.caption(f"{AUTHOR}  \n[{AUTHOR_EMAIL}](mailto:{AUTHOR_EMAIL})  \n[Source on GitHub]({REPO_URL})")
 
 for role, item in st.session_state.history:
     with st.chat_message(role):

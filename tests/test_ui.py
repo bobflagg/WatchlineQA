@@ -80,3 +80,12 @@ def test_changing_the_question_type_clears_the_chosen_query(monkeypatch):
     at.sidebar.selectbox(key="sample_group").select("Q2: registered owner").run()
     assert at.sidebar.selectbox(key="sample").value is None
     assert list(at.sidebar.selectbox(key="sample").options) == list(SAMPLE_QUESTIONS["Q2: registered owner"])
+
+
+def test_sidebar_footer_has_author_email_and_repo_link():
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    assert not at.exception
+    footer = " ".join(c.value for c in at.sidebar.caption)
+    assert "Robert Flagg" in footer and "mailto:calcworks@gmail.com" in footer
+    assert "https://github.com/bobflagg/WatchlineQA" in footer
