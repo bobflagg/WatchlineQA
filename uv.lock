@@ -2085,6 +2085,7 @@ dependencies = [
     { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "neo4j" },
+    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
@@ -2105,6 +2106,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=1.5.2" },
     { name = "langchain-anthropic", specifier = ">=1.7.12" },
     { name = "neo4j", specifier = ">=6.4.1" },
+    { name = "pydantic", specifier = ">=2.14.4" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "pyyaml", specifier = ">=6.0.4" },
 ]
