@@ -32,8 +32,10 @@ CAVEAT_REGISTRATION_BUILDINGS_CAPPED = CaveatTemplate("buildings_capped",
                                                      "Showing {shown} of {total} buildings listed for the lot; the rest are omitted from this output.")
 ADDRESS_KEYS = ("mailingAddress", "addressLine2", "zip")   # the second line is reported apart from the match
 MAX_DEEDS_OUT = 10
+MAX_OWNERS_OUT = 25
 MAX_PAIRS_OUT = 100
 CAVEAT_DEEDS_CAPPED = CaveatTemplate("deeds_capped", "Showing {shown} of {total} deeds recorded on the latest date; the rest are omitted from this output.")
+CAVEAT_OWNERS_CAPPED = CaveatTemplate("owners_capped", "Showing {shown} of {total} registered owner contacts; the rest are omitted from this output.")
 CAVEAT_COMPARISON_CAPPED = CaveatTemplate("comparison_capped",
                                           "Showing {shown} of {total} grantee and owner comparisons; the rest are omitted from this output.")
 ERROR_CAVEAT = CaveatTemplate("lookup_failed", "The lookup failed ({kind}). This is an outage or a fault, not an answer about the address; "
@@ -134,7 +136,7 @@ def deeds_to_dict(x: DeedComparison, max_deeds: int = MAX_DEEDS_OUT, max_pairs: 
                          for g in d.grantees],
         } for d in x.deeds[:max_deeds]],
         "owners": [{"contactType": o.contactType, "name": o.name, "mailingAddress": o.mailingAddress,
-                    "addressLine2": o.addressLine2, "zip": o.zip} for o in x.owners[:MAX_BUILDINGS_OUT]],
+                    "addressLine2": o.addressLine2, "zip": o.zip} for o in x.owners[:MAX_OWNERS_OUT]],
         "comparison": [{
             "documentId": p.documentId, "grantee": p.grantee, "owner": p.owner, "ownerType": p.ownerType,
             "nameAgreement": {"outcome": p.nameOutcome, "rule": p.nameRule},
@@ -146,6 +148,8 @@ def deeds_to_dict(x: DeedComparison, max_deeds: int = MAX_DEEDS_OUT, max_pairs: 
     }
     if len(x.deeds) > max_deeds:
         out["caveats"].append(CAVEAT_DEEDS_CAPPED.format(shown=max_deeds, total=len(x.deeds)).as_dict())
+    if len(x.owners) > MAX_OWNERS_OUT:
+        out["caveats"].append(CAVEAT_OWNERS_CAPPED.format(shown=MAX_OWNERS_OUT, total=len(x.owners)).as_dict())
     if len(x.pairs) > max_pairs:
         out["caveats"].append(CAVEAT_COMPARISON_CAPPED.format(shown=max_pairs, total=len(x.pairs)).as_dict())
     return out

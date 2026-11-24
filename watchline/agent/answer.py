@@ -111,7 +111,7 @@ def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evi
                     return Evidence(section="registrations", bin=ref.bin, bbl=_bbl(out), data=b), i
         elif ref.section in ("deeds", "owners", "comparison"):
             lst = out.get(ref.section)                    # [] is evidence of absence, so only a missing key skips the result
-            if lst is not None and out.get("resolution"):
+            if lst is not None and out.get("resolution") and out.get("lot") is not None:   # absence needs a lot that was read
                 return Evidence(section=ref.section, bbl=_bbl(out), data=lst), i
         elif ref.section == "buildings":
             if ref.bin is None:

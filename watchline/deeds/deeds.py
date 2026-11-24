@@ -39,6 +39,9 @@ CAVEAT_NO_DEED = Caveat("no_deed_found",
 CAVEAT_SHARED_ADDRESS = Caveat("shared_address_not_evidence",
                                ("A shared address can be a mail drop or a representative's office. It is not evidence that two "
                                 "records are one party."))
+CAVEAT_OWNERS_ALL_REGISTRATIONS = Caveat("owners_from_all_registrations",
+    ("Owners are read from every HPD registration of the lot's buildings, including registrations that have ended. This answer "
+     "does not show which are current; use the registered-owner answer for registration dates."))
 CAVEAT_NO_GRANTEE = Caveat("deed_without_grantee", "At least one deed has no grantee recorded.")
 
 
@@ -147,6 +150,8 @@ def build_comparison(resolution: Answer, rg: RegistrationGraph, dg: DeedGraph) -
     regs = R.build_registrations(resolution, rg)
     # Q2's period and other-roles caveats are about registration dates and roles this answer does not show.
     caveats = [c for c in regs.caveats if c not in (R.CAVEAT_PERIOD, R.CAVEAT_OTHER_ROLES)]
+    if any(g.owners for b in regs.buildings for g in b.registrations):
+        caveats.append(CAVEAT_OWNERS_ALL_REGISTRATIONS)
     if regs.lot is None:
         return DeedComparison(resolution, caveats=tuple(caveats))
 
@@ -154,7 +159,7 @@ def build_comparison(resolution: Answer, rg: RegistrationGraph, dg: DeedGraph) -
     deeds, owners = _deeds(rows), _owners(regs)
     pairs = _pairs(deeds, owners)
     if not deeds:
-        return DeedComparison(resolution, lot=regs.lot, owners=owners, caveats=(*caveats, CAVEAT_NO_DEED), sources=(HPD,))
+        return DeedComparison(resolution, lot=regs.lot, owners=owners, caveats=(*caveats, CAVEAT_NO_DEED), sources=(ACRIS, HPD))
     caveats += [CAVEAT_RECORDED, CAVEAT_SNAPSHOTS]
     if pairs:
         caveats.append(CAVEAT_NAME_NOT_IDENTITY)

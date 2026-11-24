@@ -358,3 +358,13 @@ def test_deed_vs_owner_caps_say_so():
     out = T.deeds_to_dict(build_comparison(answer(), rg, rg), max_deeds=2, max_pairs=3)
     assert len(out["deeds"]) == 2 and len(out["comparison"]) == 3
     assert {"deeds_capped", "comparison_capped"} <= {c["code"] for c in out["caveats"]}
+
+
+def test_deed_vs_owner_owner_cap_says_so():
+    from test_deeds import drow, owner_row
+    from test_profile import answer
+
+    from watchline.deeds.deeds import build_comparison
+    rg = _deed_rg(deed_rows=[drow()], owners=[owner_row(f"OWNER {i} LLC") for i in range(T.MAX_OWNERS_OUT + 3)])
+    out = T.deeds_to_dict(build_comparison(answer(), rg, rg))
+    assert len(out["owners"]) == T.MAX_OWNERS_OUT and "owners_capped" in {c["code"] for c in out["caveats"]}

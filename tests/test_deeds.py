@@ -196,3 +196,12 @@ def test_deed_dates_from_the_driver_become_iso_strings():
 
     (row_,) = D.Neo4jDeedGraph(Drv(), "watchline").deeds("1")
     assert (row_["recordedDate"], row_["docDate"]) == ("2025-04-02", "2025-03-14")
+
+
+def test_owners_come_from_every_registration_and_the_caveat_says_so():
+    assert "owners_from_all_registrations" in codes(run([drow()], [owner_row()]))
+    assert "owners_from_all_registrations" not in codes(run([drow()], []))
+
+
+def test_no_deed_answer_cites_acris():
+    assert D.ACRIS in run([], [owner_row()]).sources

@@ -244,3 +244,9 @@ def test_deed_sections_do_not_resolve_against_a_profile(result):
 def test_numbers_guard_accepts_deed_ids_amounts_and_dates_from_the_tool(deed_result):
     assert ungrounded_numbers("Deed D1 was recorded 2025-04-02 with an amount of 0.", [deed_result]) == []
     assert "5000000" in ungrounded_numbers("The amount was 5,000,000.", [deed_result])
+
+
+def test_an_empty_deed_list_is_not_evidence_when_no_lot_was_read(deed_result):
+    deed_result.update(deeds=[], lot=None)
+    a = assemble(model(fact("No deed is recorded.", ("deeds", None))), [deed_result])
+    assert a.facts[0].unresolved and not a.facts[0].evidence
