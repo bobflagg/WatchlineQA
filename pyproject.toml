@@ -45,4 +45,4 @@ select = ["E4", "E7", "E9", "F", "I"]
 known-third-party = ["geosupport"]
 
 [tool.pytest.ini_options]
-markers = ["llm: calls a model (needs ANTHROPIC_API_KEY, costs money, output varies); run with make eval-agent"]
+markers = ["llm: calls a model (needs EVAL_ANTHROPIC_API_KEY, costs money, output varies); run with make eval-agent"]

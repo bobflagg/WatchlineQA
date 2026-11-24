@@ -28,7 +28,8 @@ def pytest_report_header(config):
 
 
 def pytest_terminal_summary(terminalreporter):
+    from test_agent_eval_q01 import USE_JUDGE  # what the tests decided at import, not a fresh env read
     for guard in _GUARDS:
         terminalreporter.write_sep("-", "estimated model spend (see build/agent-eval/usage-*.json)")
-        terminalreporter.write_line(f"Judge: {'ON' if os.environ.get('EVAL_JUDGE') == '1' else 'off'}   max calls/case: {guard.max_calls}")
+        terminalreporter.write_line(f"Judge: {'ON' if USE_JUDGE else 'off'}   max calls/case: {guard.max_calls}")
         terminalreporter.write_line(guard.summary())
