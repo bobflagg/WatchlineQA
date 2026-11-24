@@ -65,6 +65,10 @@ The graph label is `Lot` (ontology: TaxLot). Some properties are shorter: `units
   that tells a renderer what shape it is getting. Caveats are fields, so no display can drop them. Each
   answer also has a plain-markdown rendering so the terminal chat works. Layout and styling wait for the UI.
 - No free-form Cypher from the model in the main path.
+- Live model calls cost money. Never run live agent evals, notebooks or chat loops unless `EVAL_MAX_USD` (or the
+  equivalent cap) is set. State the maximum cost before any live run, run no more cases than were approved, and
+  prefer the scripted fake model for anything that tests our code rather than the model. Evals use the eval
+  API key, the agent and notebooks use the agent key.
 - Write the simplest thing that passes the tests and answers the question. Small commits.
 - If Claude makes the same mistake twice, add a line to "Mistakes to avoid" below.
 
