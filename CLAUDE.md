@@ -19,7 +19,8 @@ journalists, tenant advocates, watchdog agencies, the public. See `docs/process.
 - `geosupport/`: the Docker sidecar (pass-through only; interpretation stays in `watchline/`).
 - `specs/questions/`: competency questions (a symlink to another project; read the files you need and do
   not browse the source project).
-- `docs/`: process, plans, explainers.
+- `docs/`: process, plans, explainers. The current development plan is `docs/plans/report-graph.md` (report
+  graph and product split, demo mid-January 2027); read it before starting new work.
 - `docs/ontology.ttl`: the ontology the graph is based on. Source of truth for the ontology rules below.
 
 ## Agent-building skills
