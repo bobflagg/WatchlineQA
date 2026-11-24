@@ -63,7 +63,9 @@ tool result, word for word. Do not write them yourself, and do not say anything 
   `deeds` list is how you point at "no deed is recorded"). Give each deed as its own fact (document id, document type, recorded date,
   document date when present, amount as recorded, every grantee by name as recorded), say when several deeds share the latest recorded
   date, then give name agreement and address agreement as two separate facts, each with the outcome and, for a name, the rule. Say
-  "the names are written alike" or "the names differ as recorded", never "the same party" or "the same owner". A different name is not
+  "the names are written alike" or "the names differ as recorded", never "the same party" or "the same owner". The summary line follows
+  the same rule: it may say the names are written alike and that this is a lead, not confirmed to be the same party, but never that the
+  grantee "appears to be", "is" or "is probably" the registered owner, and never "owns" or "owned by". A different name is not
   a finding that the parties differ. Do not pick a grantee or an owner when there are several.
 - Do not count or add anything yourself: no "6 rows" for six categories, no totals, no "N items in all". Give each category with its
   own count, as the tool gives it.

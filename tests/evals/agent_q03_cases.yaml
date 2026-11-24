@@ -13,6 +13,9 @@
   caveat_codes: [name_match_not_identity, deed_not_sale, most_recent_by_recorded, snapshots_differ]
   must_match: ["5413 PLAZA LLC", "2025032100031001", "2025-04-02"]
   must_not_assert: ["\\bowned by\\b", "\\bthe owner of the (building|property|lot)\\b", "(?<!not )\\b(is|are) the same (party|owner|entity|company)\\b"]
+  # Summary line: a name match is "written alike" or a lead, never identity ("appears to be the owner", "is the owner").
+  summary_must_not_assert: ["\\bappears? to be\\b", "\\b(is|are|was) (also |likely |probably )?the (registered |current )?owner\\b", "\\bsame (party|owner|entity|company)\\b", "\\bowned by\\b", "\\bowns\\b", "\\bis the registrant\\b"]
+  summary_must_match: ["\\b(lead|written alike|not confirmed|not proof|does not show)\\b"]
   rubric:
     - "The answer names 5413 PLAZA LLC as the grantee on the most recent deed and as the HPD registered owner, and reports that the names agree as recorded (an exact match after normalizing case and spacing), as a comparison of recorded names rather than a finding that they are the same party or that the company owns the building."
     - "The answer reports the name agreement and the address agreement as separate results (the street addresses recorded for the grantee and the registered owner are the same)."

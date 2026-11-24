@@ -59,7 +59,7 @@ Reply on the first line with exactly PASS or FAIL, then one short sentence of re
 
 # A match is allowed only inside a sentence that says what the lot does NOT mean or what the assistant cannot say,
 # for example "This does not mean the lot has no buildings." A bare "not" elsewhere in the sentence is not enough.
-HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label|show|establish|prove|indicate)\b", re.I)
+HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label|show|establish|prove|indicate|confirm(?:ed|ation)?)\b", re.I)
 SENTENCE_END = re.compile(r"[.!?](?=\s+[A-Z\"'(]|\s*$)|\n")
 
 
@@ -117,6 +117,14 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn, tool_results: 
         stray = ungrounded_numbers(text, tool_results, question)
         if stray:
             failures.append(f"numbers in the model text that are not in the tool results or the question: {stray}")
+    # The summary is the line people read first, so a name match must not read as identity there (caveats alone do not fix it).
+    for pattern in case.get("summary_must_not_assert", []):
+        for m in re.finditer(pattern, a.summary, re.I):
+            if not HEDGE.search(sentence_around(a.summary, m.start())):
+                failures.append(f"summary asserts forbidden {pattern!r}: {sentence_around(a.summary, m.start())!r}")
+    for pattern in case.get("summary_must_match", []):
+        if not re.search(pattern, a.summary, re.I | re.S):
+            failures.append(f"summary does not match {pattern!r} (a lead label is required): {a.summary!r}")
     if not a.summary.strip():
         failures.append("empty summary")
     return failures

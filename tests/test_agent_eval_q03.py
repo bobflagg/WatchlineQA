@@ -190,3 +190,15 @@ def test_judge_separates_clearly_bad_answers_from_clearly_good_ones(world):
     failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []), world["guard"])[0]]
     assert not passed_bad, f"the judge passed a clearly bad answer for: {passed_bad}"
     assert not failed_good, f"the judge failed a clearly good answer for: {failed_good}"
+
+
+def test_the_summary_must_not_read_as_identity_and_must_carry_a_lead_label():
+    """The live answer that read 'the grantee appears to be the registered owner' (run 20261124-122857) must fail; the hedged one passes."""
+    case = next(c for c in CASES if c["id"] == "a-exact-match-is-not-same-party")
+    bad = ("The most recent recorded deed for 5413 7 Avenue names 5413 PLAZA LLC as grantee. The HPD registered owner is also 5413 PLAZA LLC, "
+           "and the names and mailing addresses agree as recorded, so the grantee appears to be the registered owner per HPD registration.")
+    failures = check_deterministic({k: case[k] for k in ("summary_must_not_assert", "summary_must_match")}, fake_turn(bad), fake_turn(bad))
+    assert any("appears" in f for f in failures) and any("lead label" in f for f in failures)
+    good = ("The most recent recorded deed names 5413 PLAZA LLC as grantee and the HPD registered owner is recorded with the same name: the names "
+            "are written alike, a lead, not confirmed to be the same party.")
+    assert check_deterministic({k: case[k] for k in ("summary_must_not_assert", "summary_must_match")}, fake_turn(good), fake_turn(good)) == []

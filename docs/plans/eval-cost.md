@@ -141,3 +141,26 @@ Supporting measures: one run by default (`EVAL_RUNS=1`; repeats are opt-in); **c
 ## Verification
 
 Stage 1: `make check` (fast tests incl. new fake-model tests). Stage 2: logged cost against Console for the eval key. Stages 3 to 4: logged per-case cost and cache-hit rate.
+
+## Stage 4 result (live, five cases, run 20261124-122824)
+
+Caps: EVAL_MAX_USD=1.00, EVAL_MAX_CALLS=8, EVAL_CASE_TIMEOUT_S=90. Estimated total **$0.0082** (21 calls, 99,967 input of which 63,261 cache read and 19,372 cache write, 6,817 output). 4 passed, 1 failed.
+
+| Case | Calls | Est. $ | Input | Cache read | Cache write | Output | Result |
+|---|---|---|---|---|---|---|---|
+| Q1 d-multi-building | 3 | 0.0018 | 21,226 | 13,362 (63%) | 7,826 | 1,312 | pass |
+| Q1 battery-place-two-counts | 2 | 0.0007 | 13,469 | 11,163 (83%) | 2,280 | 544 | pass |
+| Q2 a-registered-owner | 2 | 0.0005 | 12,030 | 11,168 (93%) | 836 | 531 | pass |
+| Q3 a-exact-match-is-not-same-party | 3 | 0.0018 | 22,266 | 15,099 (68%) | 7,129 | 1,600 | **fail (judge rubric)** |
+| Q3 zero-amount-is-not-a-sale | 2 | 0.0006 | 13,796 | 12,469 (90%) | 1,301 | 704 | pass |
+
+- Agent calls: 12, $0.0058. The other 9 calls (about $0.0024) are the **judge**, which ran although it should have been off (EVAL_JUDGE was not set in the shell; a module or .env sets it; to be found). The one failure is a judge rubric item, not a deterministic check.
+- Cache works: 63% to 93% of input is read from cache; the first case of a Q-file pays the writes.
+- Console reconcile (20% rule): pending, user compares the eval key's usage for 2026-11-24 with the sum of all live runs today.
+
+### Stage 4 follow-up: the Q3 name-match failure, and the judge
+
+- `EVAL_JUDGE=1` was set in `.env`, which is why the judge ran in Stage 4. Run with `EVAL_JUDGE=0` to force it off (the shell value wins over `.env`). The closing summary now prints `Judge: ON|off` and the call limit.
+- The answer "the grantee appears to be the registered owner" was **not acceptable**: it states a name match as identity in the summary line. Deterministic check added to `a-exact-match-is-not-same-party` (`summary_must_not_assert`, `summary_must_match` in `agent_q03_cases.yaml`, run in `check_deterministic`): the summary must carry a lead label and must not say "appears to be", "is the owner", "same party", "owns" or "owned by". It fails the recorded live answer and passes a hedged one (test added). The name-match caveat code was already required.
+- Prompt fix (`system.md`): the "never the same party" rule now also covers the summary line.
+- Live re-checks (judge off, cap $0.10, 8 calls): first run failed on my own hedge detector (it did not know "not confirmation that"; the answer was correct), fixed with a test; second run passed. About $0.0014 and $0.0005.
