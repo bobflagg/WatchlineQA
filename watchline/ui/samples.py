@@ -13,4 +13,8 @@ SAMPLE_QUESTIONS: dict[str, tuple[str, ...]] = {
         "When did the HPD registration at 234 54 Street, Brooklyn end?",
         "Who owns 70 Broad Street, Manhattan?",
     ),
+    "Q3: deed grantee against HPD owner": (
+        "Who is the grantee on the most recent deed for 5413 7 Avenue, Brooklyn, and is it the HPD registered owner?",
+        "Does the deed grantee at 548 52 Street, Brooklyn match the HPD registered owner?",
+    ),
 }

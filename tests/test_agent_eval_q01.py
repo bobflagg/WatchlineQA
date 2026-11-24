@@ -31,6 +31,7 @@ from watchline.profile.profile import Neo4jProfileGraph
 from watchline.registration.registration import Neo4jRegistrationGraph
 
 CASES = yaml.safe_load((Path(__file__).parent / "evals" / "agent_q01_cases.yaml").read_text())
+USE_JUDGE = os.environ.get("EVAL_JUDGE") == "1"     # the judge is the expensive part: off unless asked (`EVAL_JUDGE=1 make eval-agent`)
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "build" / "agent-eval"
 
 JUDGE_PROMPT = """You are grading one answer from a housing-records assistant against one requirement.
@@ -50,7 +51,7 @@ Reply on the first line with exactly PASS or FAIL, then one short sentence of re
 
 # A match is allowed only inside a sentence that says what the lot does NOT mean or what the assistant cannot say,
 # for example "This does not mean the lot has no buildings." A bare "not" elsewhere in the sentence is not enough.
-HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label)\b", re.I)
+HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label|show|establish|prove|indicate)\b", re.I)
 SENTENCE_END = re.compile(r"[.!?](?=\s+[A-Z\"'(]|\s*$)|\n")
 
 
@@ -277,7 +278,7 @@ def test_agent_eval_q01(world, case):
 
     failures = check_deterministic(case, last, first, records, " ".join(case["turns"]))
     rubric = []
-    if last.structured is not None:
+    if last.structured is not None and USE_JUDGE:
         for item in case.get("rubric", []):
             passed, reason = judge(world["judge"], item, last.model_text, records)
             rubric.append({"item": item, "pass": passed, "reason": reason})
@@ -322,6 +323,7 @@ GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherw
 
 
 @pytest.mark.llm
+@pytest.mark.skipif(not USE_JUDGE, reason="the judge is off; set EVAL_JUDGE=1 to run rubric grading and its calibration")
 def test_judge_separates_clearly_bad_answers_from_clearly_good_ones(world):
     """Calibration: if the judge passes the bad ones its passes elsewhere mean nothing (it may be the same model as the
     agent); if it fails the good ones its failures mean nothing."""

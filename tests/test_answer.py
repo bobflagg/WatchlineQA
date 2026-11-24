@@ -208,3 +208,39 @@ def test_numbers_guard_accepts_registration_ids_and_dates_from_the_tool(reg_resu
     text = "Registration 100 was last registered 2025-09-30 and ends 2026-09-01."
     assert ungrounded_numbers(text, [reg_result]) == []
     assert "101" in ungrounded_numbers("Registration 101 was filed.", [reg_result])
+
+
+# ---- deeds and comparison -----------------------------------------------------------------------------------
+
+@pytest.fixture
+def deed_result():
+    from test_agent_tools import _deed_rg
+    from test_profile import answer
+
+    from watchline.deeds.deeds import build_comparison
+    rg = _deed_rg()
+    return T.deeds_to_dict(build_comparison(answer(), rg, rg))
+
+
+def test_deed_sections_resolve_to_the_tool_lists_and_carry_caveats(deed_result):
+    a = assemble(model(fact("Latest deed D1.", ("deeds", None)), fact("Names agree.", ("comparison", None)),
+                       fact("Owner.", ("owners", None)), kind="ownership_comparison"), [deed_result])
+    assert [f.unresolved for f in a.facts] == [[], [], []]
+    assert a.facts[0].evidence[0].data[0]["documentId"] == "D1"
+    assert a.facts[1].evidence[0].data[0]["nameAgreement"]["outcome"] == "exact_normalized"
+    assert {"name_match_not_identity", "most_recent_by_recorded"} <= a.caveat_codes and a.kind == "ownership_comparison"
+
+
+def test_an_empty_deed_list_is_evidence_of_no_deed(deed_result):
+    deed_result["deeds"] = []
+    a = assemble(model(fact("No deed is recorded.", ("deeds", None))), [deed_result])
+    assert not a.facts[0].unresolved and a.facts[0].evidence[0].data == []
+
+
+def test_deed_sections_do_not_resolve_against_a_profile(result):
+    assert assemble(model(fact("x", ("deeds", None))), [result]).facts[0].unresolved
+
+
+def test_numbers_guard_accepts_deed_ids_amounts_and_dates_from_the_tool(deed_result):
+    assert ungrounded_numbers("Deed D1 was recorded 2025-04-02 with an amount of 0.", [deed_result]) == []
+    assert "5000000" in ungrounded_numbers("The amount was 5,000,000.", [deed_result])

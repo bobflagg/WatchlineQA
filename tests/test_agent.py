@@ -237,3 +237,10 @@ def test_registered_owner_tool_is_offered_only_when_the_registration_graph_is_gi
     agent, seen = agent_with([final("hello")], rg=FakeRG())
     ask(agent, "hi", CONFIG)
     assert all(t == ["ModelAnswer", "building_profile", "registered_owner"] for t in seen["tools"])
+
+
+def test_deed_tool_is_offered_only_when_the_graph_can_read_deeds():
+    from test_agent_tools import _deed_rg
+    agent, seen = agent_with([final("hello")], rg=_deed_rg())
+    ask(agent, "hi", CONFIG)
+    assert all(sorted(t) == ["ModelAnswer", "building_profile", "deed_vs_owner", "registered_owner"] for t in seen["tools"])

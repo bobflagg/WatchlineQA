@@ -15,7 +15,7 @@ import pytest
 import yaml
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
-from test_agent_eval_q01 import as_list, check_deterministic, fake_turn, judge
+from test_agent_eval_q01 import USE_JUDGE, as_list, check_deterministic, fake_turn, judge
 
 from watchline.agent.agent import build_agent, memory_checkpointer
 from watchline.agent.chat import ask
@@ -131,7 +131,7 @@ def test_agent_eval_q02(world, case):
 
     failures = check_deterministic(case, last, first, records, " ".join(case["turns"]))
     rubric = []
-    if last.structured is not None:
+    if last.structured is not None and USE_JUDGE:
         for item in case.get("rubric", []):
             passed, reason = judge(world["judge"], item, last.model_text, records)
             rubric.append({"item": item, "pass": passed, "reason": reason})
@@ -177,6 +177,7 @@ GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherw
 
 
 @pytest.mark.llm
+@pytest.mark.skipif(not USE_JUDGE, reason="the judge is off; set EVAL_JUDGE=1 to run rubric grading and its calibration")
 def test_judge_separates_clearly_bad_answers_from_clearly_good_ones(world):
     """Calibration: if the judge passes the bad ones its passes elsewhere mean nothing (it may be the same model as the
     agent); if it fails the good ones its failures mean nothing."""

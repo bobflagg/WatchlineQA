@@ -21,7 +21,7 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact
 from watchline.agent.config import AGENT_MODEL
-from watchline.agent.tools import make_building_profile_tool, make_registered_owner_tool
+from watchline.agent.tools import make_building_profile_tool, make_deed_vs_owner_tool, make_registered_owner_tool
 
 PROMPTS = Path(__file__).parent / "prompts"
 BUILTIN_TOOLS = frozenset({"ls", "read_file", "write_file", "edit_file", "delete", "glob", "grep", "execute", "task",
@@ -51,7 +51,7 @@ def _lock_down() -> None:
 
 
 def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel = AGENT_MODEL, checkpointer=None):
-    """A compiled agent. `rg` is the registration graph; without it the agent has no registered-owner tool.
+    """A compiled agent. `rg` is the registration graph (Neo4jDeedGraph for the deed tool too); without it the agent has no registered-owner tool.
     `model` is a bare Claude model id (made `anthropic:<id>`), a provider:model string, or a chat model."""
     if isinstance(model, str) and ":" not in model:
         model = f"anthropic:{model}"
@@ -63,6 +63,8 @@ def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel = AGEN
     tools = [make_building_profile_tool(client, graph, pg)]
     if rg is not None:
         tools.append(make_registered_owner_tool(client, graph, rg))
+        if hasattr(rg, "deeds"):          # the deed read lives on Neo4jDeedGraph; a registration-only graph gets no deed tool
+            tools.append(make_deed_vs_owner_tool(client, graph, rg))
     return create_deep_agent(
         model=model,
         tools=tools,

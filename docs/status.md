@@ -42,7 +42,14 @@ Read this first in a fresh session. Update it at the end of every slice.
   Agent-level Q2 evals written (`tests/evals/agent_q02_cases.yaml`, `tests/test_agent_eval_q02.py`: 10 cases and a judge calibration). First run of `make eval-agent` (2026-11-23, Haiku agent and judge, one run): Q1 11 of 11, Q2 8 of 10, both calibrations pass. The two Q2 failures were a prompt gap (the model cited the profile section `buildings` on a registration answer; the prompt now says to use `registrations`) and a rubric that asked the model to repeat a code-attached caveat (dropped); both cases pass on rerun. The other cases have not been rerun since the prompt change. Merged without: a full three-run eval rerun, a worst-case-lot timing check, `make chat` by hand on anchors A and D and an ended
   registration, and the fresh-context review (`/code-review`). Sidebar dropdown text color and the footer's pinning were not confirmed in a browser.
 
+- Q3 deed grantee against HPD owner (branch `q3-deed-vs-owner`, plan in `docs/plans/q3-deed-vs-owner.md`; merged 2026-11-24 ahead of a change in direction):
+  `watchline/deeds/` (`deed_vs_owner`, N1/N2/A1 comparison), `deed_vs_owner` tool, `ownership_comparison` kind with `deeds`, `owners` and `comparison`
+  sections, system-prompt lines, UI fixture and Q3 samples. 217 fast tests, the live tests and 34 tool-level evals (`make eval`, 7 for Q3) pass.
+  Agent-level Q3 evals are written (`tests/evals/agent_q03_cases.yaml`, `tests/test_agent_eval_q03.py`). The LLM judge is now off by default for
+  all agent evals (cost); `EVAL_JUDGE=1 make eval-agent` adds it. First agent-level run (2026-11-23, Haiku agent, judge off, one run): 7 of 8 pass; `follow-up-from-a-profile` did not complete (Anthropic "credit balance too low" error, not an answer failure) and needs a rerun. Merged without: the `follow-up-from-a-profile` agent eval (rerun), a judge-graded run, `make chat` and `make ui` by hand, and the fresh-context review (`/code-review`). Agent-eval cost analysis: `docs/eval-agent-cost.md`.
+
 ## Next
+- Q3 follow-ups left from the merge: rerun `follow-up-from-a-profile`, run `make chat` on anchors A and G, `/code-review`.
 - Q2 follow-ups left from the merge: the review, a three-run `make eval-agent`, the `make chat` hand check, worst-case timing.
 - Streamlit follow-ups: navy/gold brand banner, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
@@ -62,6 +69,8 @@ Read this first in a fresh session. Update it at the end of every slice.
   against real data. Polished per-kind renderers wait for the UI.
 
 ## Open questions
+- Architecture: two products (conversational agent, human-in-the-loop report graph following the PESP guide) on a shared
+  question library. Proposal in `docs/plans/report-graph.md`; decide after the eval-cost work and a small bake-off.
 - Web chat after the terminal one: when?
 - Which competency questions come first after the building profile.
 
