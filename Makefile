@@ -16,8 +16,8 @@ test-live:  ## Live tests (need Neo4j and the Geosupport sidecar; skip if unreac
 eval:  ## Q1, Q2 and Q3 tool-level evals (need Neo4j and the sidecar; skip if unreachable)
 	uv run pytest tests/test_eval_q01.py tests/test_eval_q02.py tests/test_eval_q03.py -rs
 
-eval-agent:  ## Agent-level evals on the real model (need Neo4j, the sidecar and EVAL_ANTHROPIC_API_KEY; costs money, stops at EVAL_MAX_USD, default $0.25). EVAL_JUDGE=1 adds the LLM judge
-	uv run pytest -m llm -rs -v
+eval-agent:  ## Agent-level evals on the real model (need Neo4j, the sidecar and EVAL_ANTHROPIC_API_KEY; costs money). Defaults: judge off, EVAL_MAX_USD=0.50, EVAL_MAX_CALLS=8 per case. Judge is opt-in: `make eval-agent JUDGE=1`
+	EVAL_JUDGE=$(if $(filter 1,$(JUDGE)),1,0) EVAL_MAX_USD=$(or $(EVAL_MAX_USD),0.50) EVAL_MAX_CALLS=$(or $(EVAL_MAX_CALLS),8) uv run pytest -m llm -rs -v
 
 chat:  ## Terminal chat with the agent (needs Neo4j, the sidecar and AGENT_ANTHROPIC_API_KEY)
 	uv run python -m watchline.agent.chat

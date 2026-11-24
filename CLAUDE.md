@@ -68,7 +68,7 @@ The graph label is `Lot` (ontology: TaxLot). Some properties are shorter: `units
 - Live model calls cost money. Never run live agent evals, notebooks or chat loops unless `EVAL_MAX_USD` (or the
   equivalent cap) is set. State the maximum cost before any live run, run no more cases than were approved, and
   prefer the scripted fake model for anything that tests our code rather than the model. Evals use
-  `EVAL_ANTHROPIC_API_KEY`, the agent and notebooks use `AGENT_ANTHROPIC_API_KEY` (template: `docs/env.example`). The eval runner
+  `EVAL_ANTHROPIC_API_KEY`, the agent and notebooks use `AGENT_ANTHROPIC_API_KEY` (template: `.env.example`). The eval runner
   refuses to start without its key and stops at `EVAL_MAX_USD` (default $0.25), `EVAL_MAX_CALLS` per case and `EVAL_CASE_TIMEOUT_S`;
   costs are logged to `build/agent-eval/usage-*.json` (see `docs/plans/eval-cost.md`).
 - Write the simplest thing that passes the tests and answers the question. Small commits.

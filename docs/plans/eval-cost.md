@@ -36,7 +36,7 @@
 - **Limits and defaults:** `EVAL_MAX_USD` 0.25 for the whole run (printed in the pytest header, summary at the end); `EVAL_MAX_CALLS` 12 per case; `EVAL_CASE_TIMEOUT_S` 90 (checked before each model call, plus a 60 s HTTP timeout on every request); `EVAL_JUDGE_MAX_CHARS` 12,000, with the cut logged, recorded in the usage file and marked in the judge's prompt. A missing `EVAL_ANTHROPIC_API_KEY` fails the run (not skips).
 - **Tests** (`tests/test_eval_guard.py`, 17, plus the payload test): cost math including cache split and the over-100k tier; unknown model refused; per-call, per-case and per-run recording with the usage file; spend cap aborts the run and later cases cannot start; a looping model (invalid `ModelAnswer` forever) stops at the call limit and the next case runs; timeout; an abort swallowed by the `ask` correction retry still fails the case through `check()`; step limit stops a loop with no guard; judge truncation and its log; key separation. `make check`: 235 passed.
 - **Not covered, named:** a call that hangs inside the HTTP client is bounded only by the 60 s request timeout (times the SDK's 2 retries); the timeout is not a hard kill. Judge calls made after a case ends count toward the run cap but not that case's usage. Cost is an estimate from logged tokens until Stage 2 reconciles it with the Console.
-- **`.env.example`:** the permission rules deny writes to that path, so the template is at `docs/env.example`; copy it with `cp docs/env.example .env.example`. I did not touch `.env`.
+- **`.env.example`:** the permission rules deny writes to that path, so the template was first written to `docs/env.example`; it now lives at `.env.example` and the docs copy is deleted. I did not touch `.env`.
 - **You must add** `AGENT_ANTHROPIC_API_KEY` and `EVAL_ANTHROPIC_API_KEY` to `.env` before any live run (chat, UI and notebooks stop working until `AGENT_ANTHROPIC_API_KEY` is set).
 
 *Stop for your review.*
@@ -164,3 +164,14 @@ Caps: EVAL_MAX_USD=1.00, EVAL_MAX_CALLS=8, EVAL_CASE_TIMEOUT_S=90. Estimated tot
 - The answer "the grantee appears to be the registered owner" was **not acceptable**: it states a name match as identity in the summary line. Deterministic check added to `a-exact-match-is-not-same-party` (`summary_must_not_assert`, `summary_must_match` in `agent_q03_cases.yaml`, run in `check_deterministic`): the summary must carry a lead label and must not say "appears to be", "is the owner", "same party", "owns" or "owned by". It fails the recorded live answer and passes a hedged one (test added). The name-match caveat code was already required.
 - Prompt fix (`system.md`): the "never the same party" rule now also covers the summary line.
 - Live re-checks (judge off, cap $0.10, 8 calls): first run failed on my own hedge detector (it did not know "not confirmation that"; the answer was correct), fixed with a test; second run passed. About $0.0014 and $0.0005.
+
+## Stage 5 result (run by the user, agent only, judge off, cap $0.50, 8 calls per case)
+
+Estimated **$0.0257** for all 29 cases: 71 calls, 515,731 input (452,609 cache read = 88%, 62,200 cache write), 26,620 output. Cheapest case $0.0002 (`no-borough`), dearest $0.0023 (`d-multi-building`). No case reached the 8-call limit; the most was 5 calls (both `follow-up-from-a-profile` cases, $0.0018 and $0.0022), then 4 (`follow-up-same-thread`). Pass/fail counts were not in the pasted output. Against the targets: under $1 per merge check and under $5 per full run, by about 40x and 190x. Console reconciliation for this run is still to be done.
+
+### Repeated lookups in the Stage 5 traces (usage-20261124-124027.json)
+
+- Q2 `follow-up-from-a-profile` (224 54 Street, 5 calls): call 2 answered after `building_profile`, call 3 was the **repeat guard firing** (the model re-sent the identical `building_profile` call and got the `repeat_lookup` message), call 4 wrote the profile answer; turn 2 then made one distinct call, `registered_owner`.
+- Q3 `follow-up-from-a-profile` (5413 7 Avenue, 5 calls): the same pattern, guard fired once, then `deed_vs_owner` in turn 2.
+- Q1 `follow-up-same-thread` (4 calls): **no repeat**; the two lookups are for different addresses (224 and 218 54 Street).
+- So the guard fired in 2 of 29 cases, each costing one extra call (about $0.0004). The cause of the repeat is still unknown.
