@@ -20,7 +20,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact
-from watchline.agent.config import AGENT_MODEL
+from watchline.agent.config import agent_model
+from watchline.agent.repeat_guard import RepeatGuardMiddleware
 from watchline.agent.tools import make_building_profile_tool, make_deed_vs_owner_tool, make_registered_owner_tool
 
 PROMPTS = Path(__file__).parent / "prompts"
@@ -50,9 +51,12 @@ def _lock_down() -> None:
         excluded_tools=BUILTIN_TOOLS, general_purpose_subagent=GeneralPurposeSubagentProfile(enabled=False)))
 
 
-def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel = AGENT_MODEL, checkpointer=None):
+def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel | None = None, checkpointer=None):
     """A compiled agent. `rg` is the registration graph (Neo4jDeedGraph for the deed tool too); without it the agent has no registered-owner tool.
-    `model` is a bare Claude model id (made `anthropic:<id>`), a provider:model string, or a chat model."""
+    `model` is a bare Claude model id (made `anthropic:<id>`), a provider:model string, or a chat model. Left out, it is AGENT_MODEL on
+    AGENT_ANTHROPIC_API_KEY (evals pass their own model, built on the eval key)."""
+    if model is None:
+        model = agent_model()
     if isinstance(model, str) and ":" not in model:
         model = f"anthropic:{model}"
     # The lockdown is a harness profile registered for "anthropic" only. Another provider would silently get the default
@@ -70,6 +74,7 @@ def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel = AGEN
         tools=tools,
         system_prompt=system_prompt(),
         permissions=[FilesystemPermission(operations=["read", "write"], paths=["/**"], mode="deny")],
+        middleware=[RepeatGuardMiddleware()],
         response_format=ToolStrategy(ModelAnswer),     # the model's final message is a ModelAnswer; chat.ask assembles the rest
         checkpointer=checkpointer,
         name="watchline",

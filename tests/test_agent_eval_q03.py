@@ -3,12 +3,11 @@
 The judge (rubric grading and its calibration) runs only with EVAL_JUDGE=1; otherwise only the deterministic checks run.
 Same method as test_agent_eval_q01.py and test_agent_eval_q02.py (deterministic checks on the structured answer first, a judge only for
 what regexes cannot decide, and the judge calibrated against clearly good and clearly bad answers), and the same helpers. Cases are in
-tests/evals/agent_q03_cases.yaml. `make eval-agent` runs them; they need ANTHROPIC_API_KEY, Neo4j and the sidecar, cost money, and vary.
+tests/evals/agent_q03_cases.yaml. `make eval-agent` runs them; they need EVAL_ANTHROPIC_API_KEY, Neo4j and the sidecar, cost money, and vary.
 """
 import json
 import os
 import time
-import uuid
 from pathlib import Path
 
 import httpx
@@ -16,11 +15,17 @@ import pytest
 import yaml
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
-from test_agent_eval_q01 import USE_JUDGE, as_list, check_deterministic, fake_turn, judge
+from test_agent_eval_q01 import USE_JUDGE, as_list, check_deterministic, fake_turn, judge, run_case
 
 from watchline.agent.agent import build_agent, memory_checkpointer
-from watchline.agent.chat import ask
-from watchline.agent.config import AGENT_MODEL, JUDGE_MODEL
+from watchline.agent.config import (
+    AGENT_MODEL,
+    EVAL_KEY_ENV,
+    JUDGE_MODEL,
+    MissingKey,
+    eval_agent_model,
+    eval_judge_model,
+)
 from watchline.deeds.deeds import Neo4jDeedGraph
 from watchline.geosupport.geosupport import Client
 from watchline.geosupport.resolution import Neo4jGraph
@@ -76,10 +81,12 @@ def test_the_sale_patterns_catch_a_sale_claim_and_allow_the_denial():
 # ---- model-calling evals ------------------------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def world():
+def world(eval_guard):
     load_dotenv()    # here, not at import, so the fast tests never read .env
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        pytest.skip("ANTHROPIC_API_KEY not set")
+    try:
+        agent_llm, judge_llm = eval_agent_model(), eval_judge_model().with_config(callbacks=[eval_guard])
+    except MissingKey:
+        pytest.fail(f"{EVAL_KEY_ENV} is not set: the eval runner will not start without its own key (see .env.example).")
     client = Client()
     try:
         client.health()
@@ -94,11 +101,10 @@ def world():
     except Exception as exc:
         driver.close()
         pytest.skip(f"Neo4j not reachable: {exc}")
-    from langchain_anthropic import ChatAnthropic
     db = os.environ["NEO4J_DATABASE"]
     results: list[dict] = []
     yield dict(client=client, graph=Neo4jGraph(driver, db), pg=Neo4jProfileGraph(driver, db), rg=Neo4jDeedGraph(driver, db),
-               judge=ChatAnthropic(model=JUDGE_MODEL, max_tokens=2000), results=results)
+               judge=judge_llm, model=agent_llm, guard=eval_guard, results=results)
     driver.close()
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = RESULTS_DIR / f"q03-{time.strftime('%Y%m%d-%H%M%S')}.json"
@@ -108,9 +114,8 @@ def world():
 @pytest.mark.llm
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
 def test_agent_eval_q03(world, case):
-    agent = build_agent(world["client"], world["graph"], world["pg"], world["rg"], checkpointer=memory_checkpointer())
-    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
-    turns = [ask(agent, text, config) for text in case["turns"]]
+    turns, usage = run_case(world, case, lambda: build_agent(world["client"], world["graph"], world["pg"], world["rg"],
+                                                             model=world["model"], checkpointer=memory_checkpointer()))
     first, last = turns[0], turns[-1]
     records = [r for t in turns for r in t.tool_results]
 
@@ -118,12 +123,12 @@ def test_agent_eval_q03(world, case):
     rubric = []
     if last.structured is not None and USE_JUDGE:
         for item in case.get("rubric", []):
-            passed, reason = judge(world["judge"], item, last.model_text, records)
+            passed, reason = judge(world["judge"], item, last.model_text, records, world["guard"])
             rubric.append({"item": item, "pass": passed, "reason": reason})
             if not passed:
                 failures.append(f"rubric FAIL: {item} -- {reason}")
     world["results"].append({"id": case["id"], "passed": not failures, "failures": failures, "rubric": rubric,
-                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer, "corrected": last.corrected,
+                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer, "corrected": last.corrected, "usage": usage,
                              "structured": last.structured.model_dump() if last.structured else None})
     assert not failures, "\n".join(failures) + f"\n--- answer ---\n{last.answer}"
 
@@ -181,7 +186,7 @@ GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherw
 def test_judge_separates_clearly_bad_answers_from_clearly_good_ones(world):
     """Calibration: if the judge passes the bad ones its passes elsewhere mean nothing (it may be the same model as the
     agent); if it fails the good ones its failures mean nothing."""
-    passed_bad = [(c, i) for c, i, a in BAD_ANSWERS if judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []))[0]]
-    failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []))[0]]
+    passed_bad = [(c, i) for c, i, a in BAD_ANSWERS if judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []), world["guard"])[0]]
+    failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []), world["guard"])[0]]
     assert not passed_bad, f"the judge passed a clearly bad answer for: {passed_bad}"
     assert not failed_good, f"the judge failed a clearly good answer for: {failed_good}"

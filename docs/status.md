@@ -48,6 +48,8 @@ Read this first in a fresh session. Update it at the end of every slice.
   Agent-level Q3 evals are written (`tests/evals/agent_q03_cases.yaml`, `tests/test_agent_eval_q03.py`). The LLM judge is now off by default for
   all agent evals (cost); `EVAL_JUDGE=1 make eval-agent` adds it. First agent-level run (2026-11-23, Haiku agent, judge off, one run): 7 of 8 pass; `follow-up-from-a-profile` did not complete (Anthropic "credit balance too low" error, not an answer failure) and needs a rerun. Merged without: the `follow-up-from-a-profile` agent eval (rerun), a judge-graded run, `make chat` and `make ui` by hand, and the fresh-context review (`/code-review`). Agent-eval cost analysis: `docs/eval-agent-cost.md`.
 
+- Eval cost work (`docs/plans/eval-cost.md`): Console showed 640M Haiku 5.5 tokens on 2026-11-23, a runaway loop (Deep Agents sets recursion_limit 9,999). Stage 1 done with the fake model: separate keys (`AGENT_ANTHROPIC_API_KEY`, `EVAL_ANTHROPIC_API_KEY`), usage recorder and price table, spend cap, call limit, timeout, step limit, judge records cap. Stages 2 and 3 run live (about $0.012 in total): the unfinished Q3 case was the model repeating an identical `building_profile` call forever; fixed with `RepeatGuardMiddleware` (`watchline/agent/repeat_guard.py`), case now passes. Next: Stage 4 (about five cases, reconcile with the Console).
+
 ## Next
 - Q3 follow-ups left from the merge: rerun `follow-up-from-a-profile`, run `make chat` on anchors A and G, `/code-review`.
 - Q2 follow-ups left from the merge: the review, a three-run `make eval-agent`, the `make chat` hand check, worst-case timing.

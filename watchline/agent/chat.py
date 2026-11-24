@@ -39,6 +39,8 @@ def text_of(message) -> str:
     return "".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text")
 
 
+RECURSION_LIMIT = 30    # graph steps per user message (each model call plus its tool run is about two): about 15 model calls at most
+
 CORRECTION_PREFIX = "[correction]"
 CORRECTION = (CORRECTION_PREFIX + " Your last answer contains numbers that are not in the tool results: {numbers}. Do not count or "
               "add anything yourself. Answer again, with every number copied from the tool results exactly as given.")
@@ -69,6 +71,7 @@ def _run(agent, text: str, config: dict, on_tool_call=None, carry: list[dict] = 
     turn = Turn(answer="")
     final = None
     ids: set = set(carry_ids)
+    config = {"recursion_limit": RECURSION_LIMIT, **config}     # Deep Agents sets 9,999; a looping agent must stop long before that
     for chunk in agent.stream({"messages": [{"role": "user", "content": text}]}, config, stream_mode="updates"):
         for update in chunk.values():
             if isinstance(update, dict) and update.get("structured_response") is not None:
@@ -196,8 +199,8 @@ def converse(agent, config: dict, read=input, write=print) -> None:
 
 def main() -> int:
     load_dotenv(find_dotenv(usecwd=True))
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("ANTHROPIC_API_KEY is not set (put it in .env).", file=sys.stderr)
+    if not os.environ.get("AGENT_ANTHROPIC_API_KEY"):
+        print("AGENT_ANTHROPIC_API_KEY is not set (put it in .env; see .env.example).", file=sys.stderr)
         return 2
     try:
         client, graph, pg, rg, close = connect()

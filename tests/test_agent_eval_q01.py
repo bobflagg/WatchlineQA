@@ -4,7 +4,7 @@ The answer is structured (see watchline/agent/answer.py). Code guarantees the ca
 deterministically (kind, caveat codes, every fact has resolvable evidence, no number the records never gave). The regexes and the
 judge read only what the model itself wrote: the summary and the fact statements (`Turn.model_text`).
 
-`make eval-agent` runs the model-calling tests (marker `llm`; need ANTHROPIC_API_KEY, Neo4j and the sidecar; they cost money
+`make eval-agent` runs the model-calling tests (marker `llm`; need EVAL_ANTHROPIC_API_KEY, Neo4j and the sidecar; they cost money
 and the output varies). The harness helpers are unit-tested without a model and run in `make test`.
 Results of each run are written to build/agent-eval/<timestamp>.json for the pass-rate record.
 """
@@ -24,7 +24,15 @@ from neo4j import GraphDatabase
 from watchline.agent.agent import build_agent, memory_checkpointer
 from watchline.agent.answer import Answer, CaveatOut, Evidence, EvidenceRef, Fact, ungrounded_numbers
 from watchline.agent.chat import Turn, ask, text_of
-from watchline.agent.config import AGENT_MODEL, JUDGE_MODEL
+from watchline.agent.config import (
+    AGENT_MODEL,
+    EVAL_KEY_ENV,
+    JUDGE_MODEL,
+    MissingKey,
+    eval_agent_model,
+    eval_judge_model,
+)
+from watchline.evals.guard import DEFAULT_JUDGE_MAX_CHARS, EvalAbort, env_int, truncate_records
 from watchline.geosupport.geosupport import Client
 from watchline.geosupport.resolution import Neo4jGraph
 from watchline.profile.profile import Neo4jProfileGraph
@@ -125,8 +133,14 @@ def parse_verdict(text: str) -> tuple[bool, str]:
     return False, text.strip()[:300]
 
 
-def judge(model, item: str, answer: str, records: list[dict]) -> tuple[bool, str]:
-    prompt = JUDGE_PROMPT.format(item=item, records=json.dumps(records, default=str, separators=(',', ':'))[:80000], answer=answer)
+def judge(model, item: str, answer: str, records: list[dict], guard=None) -> tuple[bool, str]:
+    """Grade one rubric item. The records text is cut to EVAL_JUDGE_MAX_CHARS (default 12,000); a cut is logged and, with a guard,
+    recorded in the usage file."""
+    limit = env_int("EVAL_JUDGE_MAX_CHARS", DEFAULT_JUDGE_MAX_CHARS)
+    shown, cut = truncate_records(json.dumps(records, default=str, separators=(',', ':')), limit)
+    if cut and guard is not None:
+        guard.note_truncation(item, cut)
+    prompt = JUDGE_PROMPT.format(item=item, records=shown, answer=answer)
     reply = text_of(model.invoke(prompt))
     if not reply.strip():
         raise RuntimeError("the judge returned no text (out of tokens?); this is a harness error, not a verdict")
@@ -237,11 +251,36 @@ def test_the_cases_file_only_uses_known_kinds_and_caveat_codes():
 
 # ---- model-calling evals ------------------------------------------------------------------------------------------
 
+def case_config(guard) -> dict:
+    """The run config for one case: a fresh thread, the guard watching every model call, and a step limit that matches the call limit."""
+    return {"configurable": {"thread_id": str(uuid.uuid4())}, "callbacks": [guard], "recursion_limit": 2 * guard.max_calls + 2}
+
+
+def run_case(world, case, build):
+    """Run a case's turns under the guard. Returns (turns, usage). A limit hit raises EvalAbort (a failure of this case, or of the run)."""
+    guard = world["guard"]
+    guard.start_case(case["id"])
+    try:
+        agent = build()
+        config = case_config(guard)
+        turns = [ask(agent, text, config) for text in case["turns"]]
+        guard.check()      # a limit hit inside code that swallows exceptions still fails the case
+    except EvalAbort as stop:
+        if stop.run_wide:
+            pytest.exit(f"eval run stopped: {stop}", returncode=3)
+        raise
+    finally:
+        usage = guard.end_case()
+    return turns, usage
+
+
 @pytest.fixture(scope="module")
-def world():
+def world(eval_guard):
     load_dotenv()    # here, not at import, so the fast tests never read .env
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        pytest.skip("ANTHROPIC_API_KEY not set")
+    try:
+        agent_llm, judge_llm = eval_agent_model(), eval_judge_model().with_config(callbacks=[eval_guard])
+    except MissingKey:
+        pytest.fail(f"{EVAL_KEY_ENV} is not set: the eval runner will not start without its own key (see .env.example).")
     client = Client()
     try:
         client.health()
@@ -256,11 +295,10 @@ def world():
     except Exception as exc:
         driver.close()
         pytest.skip(f"Neo4j not reachable: {exc}")
-    from langchain_anthropic import ChatAnthropic
     db = os.environ["NEO4J_DATABASE"]
     results: list[dict] = []
     yield dict(client=client, graph=Neo4jGraph(driver, db), pg=Neo4jProfileGraph(driver, db), rg=Neo4jRegistrationGraph(driver, db),
-               judge=ChatAnthropic(model=JUDGE_MODEL, max_tokens=2000), results=results)
+               judge=judge_llm, model=agent_llm, guard=eval_guard, results=results)
     driver.close()
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = RESULTS_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}.json"
@@ -270,9 +308,8 @@ def world():
 @pytest.mark.llm
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
 def test_agent_eval_q01(world, case):
-    agent = build_agent(world["client"], world["graph"], world["pg"], world["rg"], checkpointer=memory_checkpointer())
-    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
-    turns = [ask(agent, text, config) for text in case["turns"]]
+    turns, usage = run_case(world, case, lambda: build_agent(world["client"], world["graph"], world["pg"], world["rg"],
+                                                             model=world["model"], checkpointer=memory_checkpointer()))
     first, last = turns[0], turns[-1]
     records = [r for t in turns for r in t.tool_results]
 
@@ -280,12 +317,12 @@ def test_agent_eval_q01(world, case):
     rubric = []
     if last.structured is not None and USE_JUDGE:
         for item in case.get("rubric", []):
-            passed, reason = judge(world["judge"], item, last.model_text, records)
+            passed, reason = judge(world["judge"], item, last.model_text, records, world["guard"])
             rubric.append({"item": item, "pass": passed, "reason": reason})
             if not passed:
                 failures.append(f"rubric FAIL: {item} -- {reason}")
     world["results"].append({"id": case["id"], "passed": not failures, "failures": failures, "rubric": rubric,
-                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer, "corrected": last.corrected,
+                             "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer, "corrected": last.corrected, "usage": usage,
                              "structured": last.structured.model_dump() if last.structured else None})
     assert not failures, "\n".join(failures) + f"\n--- answer ---\n{last.answer}"
 
@@ -327,7 +364,7 @@ GOOD_ANSWERS = [  # clearly meets it; a judge that fails everything would otherw
 def test_judge_separates_clearly_bad_answers_from_clearly_good_ones(world):
     """Calibration: if the judge passes the bad ones its passes elsewhere mean nothing (it may be the same model as the
     agent); if it fails the good ones its failures mean nothing."""
-    passed_bad = [(c, i) for c, i, a in BAD_ANSWERS if judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []))[0]]
-    failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []))[0]]
+    passed_bad = [(c, i) for c, i, a in BAD_ANSWERS if judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []), world["guard"])[0]]
+    failed_good = [(c, i) for c, i, a in GOOD_ANSWERS if not judge(world["judge"], rubric_item(c, i), a, RECORDS.get(c, []), world["guard"])[0]]
     assert not passed_bad, f"the judge passed a clearly bad answer for: {passed_bad}"
     assert not failed_good, f"the judge failed a clearly good answer for: {failed_good}"
