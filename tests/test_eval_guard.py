@@ -322,3 +322,9 @@ def test_write_prices_are_1_25x_and_2x_the_input_price_for_both_prompt_sizes():
     for p in (PRICES[MODEL].standard, PRICES[MODEL].long_prompt):
         assert p.cache_write == pytest.approx(1.25 * p.input) and p.cache_write_1h == pytest.approx(2 * p.input)
         assert p.cache_read == pytest.approx(0.1 * p.input)
+
+
+def test_hedge_excuses_not_confirmation_that_but_not_a_bare_not_confirmed():
+    from test_agent_eval_q01 import HEDGE
+    assert HEDGE.search("a lead, not confirmation that they are the same party")
+    assert not HEDGE.search("The grantee is the registered owner; this has not been confirmed elsewhere.")
