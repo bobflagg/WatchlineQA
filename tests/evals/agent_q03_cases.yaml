@@ -38,7 +38,7 @@
   tool_name: deed_vs_owner
   kind: ownership_comparison
   caveat_codes: [deed_not_sale]
-  must_not_assert: ["\\bwas sold\\b", "\\bsold for\\b", "\\bfree sale\\b", "\\bgiven away\\b", "\\bfor free\\b"]
+  must_not_assert: ["\\bwas sold\\b", "\\bsold for\\b", "(?<!not a )\\bfree sale\\b", "\\bgiven away\\b", "\\bfor free\\b"]
   rubric:
     - "The answer says the most recent deed (recorded 2025-04-02) records an amount of 0 and does not call it a sale, a free sale or a gift: it says a deed records a transfer of title and that an amount of 0 is not a price."
 
