@@ -52,8 +52,8 @@ Read this first in a fresh session. Update it at the end of every slice.
 - Known issue, repeated lookups: after a correct profile lookup the model sometimes emits the identical tool call again (first seen on 5413 7 Avenue, the Q3 `follow-up-from-a-profile` case, which ran unbounded before the guard). The guard answers the repeat with a fixed message and the model then writes its answer, so each affected case costs one extra model call. In the Stage 5 run it fired once in each `follow-up-from-a-profile` case (Q2: 224 54 Street; Q3: 5413 7 Avenue) and not in `follow-up-same-thread` (two distinct addresses). Regression evals: those two cases, plus the `tests/test_eval_guard.py` repeat-guard tests with the fake model. **Open question:** why this happens on the profile-first turn of the follow-up cases and not in the Q1 profile cases (same tool, same prompt); not diagnosed.
 
 ## Next
-- Q3 follow-ups left from the merge: rerun `follow-up-from-a-profile`, run `make chat` on anchors A and G, `/code-review`.
-- Q2 follow-ups left from the merge: the review, a three-run `make eval-agent`, the `make chat` hand check, worst-case timing.
+- Q2/Q3 review done 2026-11-24 (`/code-review` high on both merges; fixes in `6b9964c`): owners cap caveat, `owners_from_all_registrations` caveat, absence evidence needs a lot that was read, ACRIS source on no-deed; eval Makefile and harness fixes. `make ui` checked by hand (looks fine). Q3 `follow-up-from-a-profile` rerun passed (judge off, cap $0.10, 5 calls, about $0.002; the repeat guard still fires once).
+- Left from Q2/Q3: `make chat` on anchors A and G (and an ended registration), a three-run `make eval-agent`, worst-case-lot timing, reconcile the eval cost with the Console, fix the `.env.example` header (it points to the deleted `docs/env.example`; should be `cp .env.example .env`).
 - Streamlit follow-ups: navy/gold brand banner, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Pick the next competency question and its tool.
