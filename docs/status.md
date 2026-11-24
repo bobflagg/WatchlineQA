@@ -53,7 +53,7 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 ## Next
 - Q2/Q3 review done 2026-11-24 (`/code-review` high on both merges; fixes in `6b9964c`): owners cap caveat, `owners_from_all_registrations` caveat, absence evidence needs a lot that was read, ACRIS source on no-deed; eval Makefile and harness fixes. `make ui` checked by hand (looks fine). Q3 `follow-up-from-a-profile` rerun passed (judge off, cap $0.10, 5 calls, about $0.002; the repeat guard still fires once).
-- Left from Q2/Q3: `make chat` on anchors A and G (and an ended registration), a three-run `make eval-agent`, worst-case-lot timing, reconcile the eval cost with the Console, fix the `.env.example` header (it points to the deleted `docs/env.example`; should be `cp .env.example .env`).
+- Left from Q2/Q3: `make chat` on an ended registration (anchors A and G checked by hand 2026-11-24, all good), a three-run `make eval-agent`, worst-case-lot timing, reconcile the eval cost with the Console, fix the `.env.example` header (it points to the deleted `docs/env.example`; should be `cp .env.example .env`).
 - Streamlit follow-ups: navy/gold brand banner, per-kind renderers and lead/finding pills (when a tool returns leads), streaming.
 - Explainers for components with real flow (address resolution and profile pipeline, then the agent flow); `main` is pushed so code pins resolve.
 - Pick the next competency question and its tool.
