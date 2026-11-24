@@ -1,7 +1,59 @@
-# Report graph and product split (DRAFT proposal, 2026-11-24)
+# Report graph and product split (direction agreed 2026-11-24; details open)
 
-Status: proposal for discussion. Nothing here is built or decided. Source for the report procedure: the PESP
-"How to Research Your Landlord" guide (May 2026, Strategic Landlord Research Guide).
+Status: direction agreed in discussion on 2026-11-24; the sequence and dates below are still a proposal.
+Source for the report procedure: the PESP "How to Research Your Landlord" guide (May 2026, Strategic
+Landlord Research Guide).
+
+## Decisions so far
+
+- **Two products** on one shared question library (below). The report graph is a demo piece first.
+- **Demo:** mid-January 2027, to JustFix (Who Owns What) and the Housing Data Coalition of NYC. The audience
+  includes organizers and other non-technical staff, so the report must read well in plain language, and
+  the evidence and caveats must be one click away for the data people.
+- **Reproducible sections now, generated narrative later.** The report has two layers (next section).
+- **Evidence first for this audience.** They know the data and care about leads versus findings. The
+  confirm-or-reject checkpoint on a name match is the centrepiece of the demo.
+
+## Two layers: sections and narrative
+
+- **Sections (deterministic, reproducible).** Each question function returns a structured section (kind,
+  facts, evidence, caveat codes, sources). The report graph assembles them in the PESP order. The same
+  inputs on the same graph snapshot give the same sections, so they can be snapshot-tested and re-run
+  exactly. Record the graph snapshot (or load date) and the researcher's checkpoint decisions in the report.
+- **Narrative (optional, generated, swappable model).** A model reads the sections and writes the intro,
+  connecting prose and summary. It may vary run to run, so the report labels sections as reproducible and
+  narrative as generated. Later a more powerful model can write it.
+- **The firewall.** The narrative step may not change facts. Its output passes the same deterministic
+  checks as agent answers: caveat codes carried through, no summed severity, no identity-asserting phrasing
+  (a name match is a lead), and every number and name must trace to a section. A stronger model can then be
+  swapped in without risking a dropped caveat. Early development ships sections only.
+
+## Demo-first sequence (proposal; about seven weeks)
+
+1. **By early December:** lock the section contract (Q1 to Q3 already follow it). Add questions for the
+   PESP steps the demo needs: building facts, registered owner and contacts, deed history, conditions.
+   Choose them by what the demo story needs, not by question number.
+2. **Early to mid December:** pick the demo landlords (below). Build the graph skeleton with one real
+   checkpoint (accept or reject a name-match lead) and a checkpointer. Run end to end, deterministic only.
+3. **Late December:** holiday buffer. Light work: plain-language rendering of sections, "not yet covered"
+   placeholders for steps without tools, report export.
+4. **Early January:** add the narrative layer behind the firewall checks. Rehearse. Prebuild and save a
+   backup run in case of a network or API problem during the talk.
+5. **Freeze about a week before the talk.** No new features after that, only fixes found in rehearsal.
+
+The conversational agent can appear at the end as a short "ask a follow-up" step. It is not on the critical
+path.
+
+## Choosing the demo landlords
+
+- Candidates come from read-only probing of the graph, then a human review. Criteria: rich data across the
+  steps that have tools; a mix of recorded findings and name-match leads that need a human decision; at
+  least one step where the honest answer is "the graph cannot say".
+- Prefer landlords already prominent in public reporting or enforcement. Avoid small or private owners.
+  Show person names only with their recorded role.
+- Consider asking JustFix or HDC for a landlord they would like to see. It guarantees relevance and gives
+  them a way to check the output against what they know.
+- Verify every number in the chosen reports by hand before the talk.
 
 ## Why
 
@@ -79,8 +131,15 @@ reject is recorded in the report.
   parents (Delaware, Florida, hedge funds) fall to web search and the researcher.
 - Financial standing and distress (the guide's sixth question) are out of its focus. Financing documents are
   in the graph, so this is a possible later section.
-- Which of the 28 questions map to which node, and which remain for the agent only.
-- Report format and export (the guide uses a notes document and an inference table).
-- Who the report's reader is: tenant organizers, journalists, or both.
-- Evals: the report graph's nodes are deterministic, so most of its tests are free. Only the web research and
-  drafting steps need model-based checks.
+- Which of the 28 questions map to which node, and which remain for the agent only. Settle this when the
+  demo question list is chosen.
+- Report format and export (the guide uses a notes document and an inference table). Plain-language
+  rendering for non-technical readers is now a requirement.
+- How WoW and this report differ, so the demo can say it plainly. Check what Who Owns What shows today
+  before claiming a difference.
+- Reader: organizers and non-technical staff as well as data people (decided for the demo). Journalists
+  later.
+- Evals: the report graph's nodes are deterministic, so most of its tests are free (snapshot tests on
+  sections). Only the web research and narrative steps need model-based checks, and the narrative firewall
+  checks are deterministic too.
+- Whether the demo's web research step is live or prerecorded. A live web step is a risk during a talk.
