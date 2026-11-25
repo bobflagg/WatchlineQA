@@ -95,3 +95,7 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
 - Slice 3 (done): `watchline/report/export.py` (Markdown under the five PESP questions, decisions table, the researcher's takeaway labelled as theirs; `report.md` and
   `decisions.json` in `build/reports/<address slug>/`) and `watchline/report/run.py` with `make report ADDRESS="..." [DECISIONS=file.json LANDLORD=name LABEL=text]`.
   Live check, no model: 2141 Washington Avenue run twice with the same decisions file gives byte-identical reports (184 lines).
+- Slice 4 (done): `watchline/ui/report_page.py` (takes `ReportDeps`, so tests run it on fakes) and `watchline/ui/report_app.py`, run with `make report-ui` as its own Streamlit
+  entry point, apart from the chat page (merging the two into one `st.navigation` app is a follow-up). The page: address form, sections as they are read, the landlord picker, a card per lead
+  (Lead pill, Used and Set aside evidence, what argues against, Accept, Reject or Decide later, a note, a role), then the finished report with the portfolio as held next to after
+  your decisions, a takeaway box and downloads for report.md and decisions.json. AppTest covers each state. Not yet looked at in a browser.
