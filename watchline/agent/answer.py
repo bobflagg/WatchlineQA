@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 ModelKind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
 Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
-Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts"]
+Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts", "registered_owners"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------
@@ -110,7 +110,7 @@ def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evi
             for b in blist:
                 if b.get("bin") == ref.bin:
                     return Evidence(section=ref.section, bin=ref.bin, bbl=_bbl(out), data=b), i
-        elif ref.section in ("deeds", "owners", "comparison", "timeline", "timeline_counts", "violations", "violations_rate", "cases", "case_counts"):
+        elif ref.section in ("deeds", "owners", "comparison", "timeline", "timeline_counts", "violations", "violations_rate", "cases", "case_counts", "registered_owners"):
             lst = out.get(ref.section)                    # [] is evidence of absence, so only a missing key skips the result
             if lst is not None and out.get("resolution") and out.get("lot") is not None:   # absence needs a lot that was read
                 return Evidence(section=ref.section, bbl=_bbl(out), data=lst), i

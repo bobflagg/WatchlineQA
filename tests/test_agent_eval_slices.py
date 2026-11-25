@@ -184,3 +184,40 @@ def test_agent_eval_slices(world, case):
                              "tool_calls": [c for t in turns for c in t.tool_calls], "answer": last.answer, "corrected": last.corrected, "usage": usage,
                              "structured": last.structured.model_dump() if last.structured else None})
     assert not failures, "\n".join(failures) + f"\n--- answer ---\n{last.answer}"
+
+
+# ---- fixes from the first live run (2026-11-25): the model cited the wrong tool's section, subtracted a count, and a hedge was missed ----------
+
+def test_a_hedge_of_the_form_not_a_finding_that_excuses_the_same_party_phrase():
+    c = case("respondent-matching-the-owner-is-a-lead")
+    hedged = fake_turn("The respondent BEAVER STREET COMMONS LLC matches the registered owner name by rule N1; this is a lead, not a finding that they are the same party.")
+    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, hedged, hedged) == []
+    claim = fake_turn("The respondent and the registered owner are the same company.")
+    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, claim, claim)
+
+
+def test_the_model_can_point_at_the_owner_names_in_a_litigation_answer():
+    from test_agent_tools import FakeClient, FakeGraph, resolved
+    from test_conditions import FakeCG
+    from test_conditions import case as lit_case
+
+    from watchline.agent import tools as T
+    from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact, assemble
+    out = T.make_litigation_cases_tool(FakeClient(resolved()), FakeGraph(), FakeCG(cases=[lit_case()], owners=[dict(name="ACME LLC")])).invoke(
+        {"address": "1 Main St", "borough": "Manhattan"})
+    a = assemble(ModelAnswer(kind="litigation", summary="One case.", facts=[
+        ModelFact(statement="The registered owner is ACME LLC.", evidence=[EvidenceRef(section="registered_owners")])]), [out])
+    assert not a.facts[0].unresolved and a.facts[0].evidence[0].data == ["ACME LLC"]
+
+
+def test_the_prompt_says_which_section_each_new_tool_feeds_and_forbids_subtracting_counts():
+    from watchline.agent.agent import system_prompt
+    text = " ".join(system_prompt().split())
+    assert "`deeds` is only for `deed_vs_owner`" in text and "`characteristics` is only for `building_profile`" in text
+    assert "`owners` is only for `deed_vs_owner`" in text and "Never subtract one count from another" in text
+    from test_agent_tools import FakeClient, FakeGraph, resolved
+
+    from watchline.agent import tools as T
+    from watchline.deeds.timeline import Neo4jTimelineGraph
+    desc = " ".join(T.make_deed_timeline_tool(FakeClient(resolved()), FakeGraph(), Neo4jTimelineGraph.__new__(Neo4jTimelineGraph)).description.split())
+    assert "never subtract one from another" in desc

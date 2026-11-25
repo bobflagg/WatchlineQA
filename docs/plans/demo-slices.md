@@ -56,5 +56,8 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   eight new cases. Cap `EVAL_MAX_USD=0.10`, 8 calls per case. State the cost and get approval before any live run.
 
 ## Not done yet
-- Run the agent-level evals for the four new tools (written, `tests/evals/agent_slices_cases.yaml` and `tests/test_agent_eval_slices.py`, 9 cases; no live run yet); `/code-review` of Slices A and B; explainer updates; sidebar sample questions
+- Agent-level evals for the four new tools (`tests/evals/agent_slices_cases.yaml`, `tests/test_agent_eval_slices.py`, 9 cases). First live run 2026-11-25
+  (Haiku 5.5 agent and judge, judge on, cap $0.10, 8 calls per case): 5 passed, 4 failed, estimated cost $0.0123 (29 calls). Failures were three prompt gaps
+  (the model cited another tool's section: `deeds`, `characteristics`, `owners`), one subtracted count, and one checker false positive ("not a finding that").
+  Fixed, not yet rerun; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.

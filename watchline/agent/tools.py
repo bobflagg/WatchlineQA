@@ -400,7 +400,7 @@ def make_deed_timeline_tool(client, graph: Graph, tg):
         Call this for questions about the deed history of a lot, how often it changed hands, whether it was held or transferred, or
         deeds in a period. A deed records a transfer of title, not a sale: an amount of 0, and correction or confirmatory deeds, are
         counted as not a sale, and no deed is called a sale of the building. Counts are of deeds and cover the whole period even when
-        the list is capped. Never add counts into one number. Grantor and grantee names are as recorded; variants are not merged and
+        the list is capped. Never add counts into one number and never subtract one from another; amountZero is the number of deeds that record an amount of 0. Grantor and grantee names are as recorded; variants are not merged and
         none is called "the owner". For the latest deed compared with the HPD registered owner, use deed_vs_owner. The returned
         caveats are attached to your answer for you; do not restate them. Check status first: ok means a lookup was made (read
         resolution.outcome for exact, variant, ambiguous or not_found); needs_borough means ask the user for the borough or ZIP;
