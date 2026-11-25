@@ -80,9 +80,15 @@ second decision on the same link replaces the first and both stay in the log.
 - Live fixture, looked up by landlord name: BAHUMI 55 lots and 176 units, BADHUMI 1 lot and 3 units, accepted gives 56 and 179.
 - Berkovics as the contrast: records joined by identity edges, so `accepted_by_method`. Probe its numbers before writing expectations.
 
-## Open questions (for you)
-- Should a rejected identity-basis link be allowed at all in the demo, or only address and name leads?
-- Where does the decision log live between sessions: in the report file only, or a small local store?
-- Q7's "used or set aside" wording: this note uses `setAside` per evidence item. Is that the vocabulary you want on the slide?
-- The 2020 deed on the BADHUMI lot names `2141 WASHINGTON LLC` as grantee. Whether that name appears in the BAHUMI records is not
-  probed; it would be a separate lead, and it is not part of this slice unless you want it.
+## Decisions (2026-11-25, from the open questions)
+- **Rejecting identity-basis links.** Build it so any link can be accepted or rejected. The demo uses only the BADHUMI address lead. A rejection
+  of an identity-basis link overrides a method decision, so the report labels it as the researcher's decision. Berkovics shows the
+  identity-basis case read-only, as "already joined by the method".
+- **Decision log.** In the report file only, as a JSON list saved next to the report. The LangGraph checkpointer holds in-progress state
+  during a run, nothing more. The same file reproduces the report without a graph runner, and serves the backup run before the talk. Revisit
+  a local store only if the report becomes a multi-session product.
+- **Vocabulary.** The field stays `setAside` (Q7's "used or set aside"). On the page the labels are "Used" and "Set aside", with the reason
+  (masked address, mail-drop list). "Rejected" is reserved for the researcher's decision on a link, never for evidence.
+- **`2141 WASHINGTON LLC`.** Not part of this slice. It is a 2020 grantee on the BADHUMI lot, a lead between a deed and the HPD owners, not a link
+  between landlord records. Before the demo, run `deed_vs_owner` on 2141 Washington Avenue (no model) to see what it shows. If the name appears
+  in the BAHUMI records it becomes a second checkpoint candidate. Not yet probed.
