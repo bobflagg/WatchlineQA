@@ -10,6 +10,7 @@ from typing import Any
 
 from langchain.tools import tool
 
+from watchline.contacts.contacts import Contacts, building_contacts
 from watchline.deeds.deeds import DeedComparison, deed_vs_owner
 from watchline.deeds.timeline import DeedTimeline, deed_timeline
 from watchline.geosupport.resolution import BoroughRequired, Graph, Match
@@ -34,12 +35,14 @@ CAVEAT_REGISTRATION_BUILDINGS_CAPPED = CaveatTemplate("buildings_capped",
                                                      "Showing {shown} of {total} buildings listed for the lot; the rest are omitted from this output.")
 ADDRESS_KEYS = ("mailingAddress", "addressLine2", "zip")   # the second line is reported apart from the match
 MAX_DEEDS_OUT = 10
+MAX_CONTACTS_OUT = 200
 MAX_OWNERS_OUT = 25
 MAX_PAIRS_OUT = 100
 CAVEAT_DEEDS_CAPPED = CaveatTemplate("deeds_capped", "Showing {shown} of {total} deeds recorded on the latest date; the rest are omitted from this output.")
 CAVEAT_OWNERS_CAPPED = CaveatTemplate("owners_capped", "Showing {shown} of {total} registered owner contacts; the rest are omitted from this output.")
 CAVEAT_COMPARISON_CAPPED = CaveatTemplate("comparison_capped",
                                           "Showing {shown} of {total} grantee and owner comparisons; the rest are omitted from this output.")
+CAVEAT_CONTACTS_CAPPED = CaveatTemplate("contacts_capped", "Showing the first {shown} contacts; the rest are omitted from this output.")
 CAVEAT_NAMES_CAPPED = Caveat("party_names_capped",
                              ("For at least one deed, only the first distinct party names are listed. The row totals (grantorRows, "
                               "granteeRows) count every party row recorded, including repeats and spelling variants."))
@@ -157,6 +160,40 @@ def deeds_to_dict(x: DeedComparison, max_deeds: int = MAX_DEEDS_OUT, max_pairs: 
         out["caveats"].append(CAVEAT_OWNERS_CAPPED.format(shown=MAX_OWNERS_OUT, total=len(x.owners)).as_dict())
     if len(x.pairs) > max_pairs:
         out["caveats"].append(CAVEAT_COMPARISON_CAPPED.format(shown=max_pairs, total=len(x.pairs)).as_dict())
+    return out
+
+
+def contacts_to_dict(x: Contacts, max_buildings: int = MAX_BUILDINGS_OUT, max_contacts: int = MAX_CONTACTS_OUT) -> dict[str, Any]:
+    """JSON-safe view of Contacts. Every contact is listed with the role it was recorded in; none is chosen, merged or matched to another record.
+
+    The per-building list is `contact_buildings`, so an answer can point at it apart from `registration_buildings`.
+    """
+    r = x.resolution
+    out: dict[str, Any] = {
+        "status": "error" if r.outcome is Match.UNAVAILABLE else "ok",
+        "resolution": _resolution_dict(r),
+        "lot": x.lot,
+        "buildings_listed": len(x.buildings) if x.lot is not None else None,
+        "contact_buildings": [],
+        "caveats": [c.as_dict() for c in x.caveats],
+        "sources": [GEOSUPPORT, *([HPD] if x.lot is not None else [])],
+    }
+    shown = sorted(x.buildings, key=lambda b: not b.addressed)[:max_buildings]   # the addressed building always shows
+    left, cut = max_contacts, False
+    for b in shown:
+        regs = []
+        for g in b.registrations:
+            keep = g.contacts[:max(left, 0)]
+            cut = cut or len(keep) < len(g.contacts)
+            left -= len(keep)
+            regs.append({"registrationId": g.registrationId, "lastRegistered": g.lastRegistered, "registrationEnd": g.registrationEnd,
+                         "contacts": [{"role": c.role, "name": c.name, "title": c.title, "mailingAddress": c.mailingAddress,
+                                       "addressLine2": c.addressLine2, "zip": c.zip} for c in keep]})
+        out["contact_buildings"].append({"bin": b.bin, "address": b.address, "addressed": b.addressed, "registrations": regs})
+    if len(x.buildings) > len(shown):
+        out["caveats"].append(CAVEAT_REGISTRATION_BUILDINGS_CAPPED.format(shown=len(shown), total=len(x.buildings)).as_dict())
+    if cut:
+        out["caveats"].append(CAVEAT_CONTACTS_CAPPED.format(shown=max_contacts).as_dict())
     return out
 
 
@@ -342,3 +379,41 @@ def make_deed_timeline_tool(client, graph: Graph, tg):
     deed_timeline_tool.name = "deed_timeline"
     return deed_timeline_tool
 
+
+def make_building_contacts_tool(client, graph: Graph, cg):
+    """Bind the contact lookup to its clients. `cg` is a Neo4jContactGraph. Returns a LangChain tool."""
+
+    @tool(parse_docstring=True)
+    def building_contacts_tool(address: str, borough: str | None = None, zip_code: str | int | None = None) -> dict:
+        """List the HPD contacts on the registrations of the buildings on a New York City street address's tax lot: managing agent,
+        head officer, officers, shareholders, site manager, lessee and the owner contacts, each with the role it was recorded in, its
+        recorded title and its business address.
+
+        Call this for questions about who the managing agent, head officer or site manager is, or who can be reached about a
+        building. Show a person only with the role recorded; the same name in two roles is two contacts. A managing agent or officer
+        is a management or corporate role, never "the owner". A shared address is not evidence that two contacts are one party. Every
+        registration is listed; an empty list means none is recorded. The returned caveats are attached to your answer for you; do not
+        restate them. Check status first: ok means a lookup was made (read resolution.outcome for exact, variant, ambiguous or
+        not_found); needs_borough means ask the user for the borough or ZIP; invalid_input means the text was not an address; error
+        means an outage or fault, not an answer about the address.
+
+        Args:
+            address: House number and street as the user typed it, optionally with a borough, ZIP or neighborhood.
+            borough: Manhattan, Brooklyn, Queens, Bronx or Staten Island, when the user gave it separately.
+            zip_code: Five-digit ZIP, when the user gave it separately.
+        """
+        try:
+            zip5 = None if zip_code is None else str(zip_code).strip()
+            try:
+                x = building_contacts(client, graph, cg, address, borough=borough, zip5=zip5)
+            except BoroughRequired as e:
+                return {"status": "needs_borough", "message": f"{e}. Ask the user for the borough or ZIP; do not guess."}
+            except ValueError as e:
+                return {"status": "invalid_input", "message": str(e)}
+            return contacts_to_dict(x)
+        except Exception as e:  # noqa: BLE001  same rule as the other tools: the model gets an answer, never a stack trace
+            caveat = ERROR_CAVEAT.format(kind=type(e).__name__)
+            return {"status": "error", "message": caveat.text, "caveats": [caveat.as_dict()], "sources": []}
+
+    building_contacts_tool.name = "building_contacts"
+    return building_contacts_tool

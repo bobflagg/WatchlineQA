@@ -35,6 +35,9 @@ layout of the facts but may not drop a caveat, a lead label or the evidence tags
   tag on amount 0 and on CORRD or CONDEED deeds. Above it, the counts as separate figures ("Deeds", "Not a sale"), never a
   combined number. A multi-lot deed shows "also names N other lots". Show at most a few names per party with "N rows recorded" for
   the rest. Evidence sections: `timeline` (the list) and `timeline_counts`.
+- **`contacts`** (Q4): one row per contact with its recorded role and title, shown as "Name, as Managing Agent". A
+  person never appears without the role. Roles are Record, not Lead. A shared business address shows a Lead pill with the note that
+  it is not evidence of identity.
 - **Identity checkpoint** (Q22, Q7 with the Q9 effect, planned, design only; see `docs/plans/identity-checkpoint.md`): each name-match link is a
   Lead card with its evidence, shows its decision state (Awaiting decision, Accepted, Rejected) as a pill, and a counts strip that
   shows the portfolio count before and after the researcher's decisions, each labelled with the decisions it assumes.

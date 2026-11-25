@@ -42,6 +42,19 @@ def test_registration_fixture_shows_its_caveats_and_the_building_tag():
     assert "registrations BIN 3000001" in text
 
 
+def test_contacts_fixture_shows_roles_caveats_and_the_building_tag():
+    at = AppTest.from_function(_page)
+    at.session_state["name"] = "contacts"
+    at.run()
+    assert not at.exception
+    text = " ".join(m.value for m in at.markdown) + " " + " ".join(c.value for c in at.caption)
+    for c in FIXTURES["contacts"].caveats:
+        assert c.text in text                                  # the agent-is-not-the-owner caveat cannot be dropped
+    assert "contacts BIN 3000001" in text
+    for f in FIXTURES["contacts"].facts:                       # every person appears with the role recorded
+        assert any(role in f.statement for role in ("Agent", "HeadOfficer", "SiteManager"))
+
+
 def test_timeline_fixture_shows_counts_caveats_and_the_section_tags():
     at = AppTest.from_function(_page)
     at.session_state["name"] = "timeline"

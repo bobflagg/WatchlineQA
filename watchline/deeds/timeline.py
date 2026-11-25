@@ -8,6 +8,7 @@ the answer never calls any deed a sale of the building. Nothing is attributed to
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from watchline.contacts.contacts import Neo4jContactGraph
 from watchline.deeds.deeds import ACRIS, CAVEAT_MULTI_LOT, CAVEAT_NO_DEED, CAVEAT_NOT_SALE, DEED_TYPES, Neo4jDeedGraph
 from watchline.geosupport.resolution import Answer, Graph, resolve_text
 from watchline.profile.profile import (
@@ -84,8 +85,8 @@ _IN_PERIOD = ("(:Lot {bbl: $bbl})-[:HAS_DEED]->(d:Deed WHERE d.docType IN $types
               "AND ($since IS NULL OR d.recordedDate >= date($since)) AND ($until IS NULL OR d.recordedDate <= date($until)))")
 
 
-class Neo4jTimelineGraph(Neo4jDeedGraph):
-    """The registration and latest-deed reads plus the timeline reads, so one object serves every tool. Read-only, parameterized, row-limited, with a server-side timeout. No free-form Cypher from callers."""
+class Neo4jTimelineGraph(Neo4jDeedGraph, Neo4jContactGraph):
+    """The registration, latest-deed and contact reads plus the timeline reads, so one object serves every tool. Read-only, parameterized, row-limited, with a server-side timeout. No free-form Cypher from callers."""
 
     def timeline(self, bbl: str, since: str | None, until: str | None) -> list[dict]:
         """One row per deed, newest recorded first, with up to MAX_NAMES distinct names per side and the party row totals."""

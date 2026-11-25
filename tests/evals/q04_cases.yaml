@@ -1,0 +1,43 @@
+# Q4 eval cases (HPD contacts and their recorded roles), run through the building_contacts tool (what the model sees).
+# Values were probed against the live graph on 2026-11-25 (not taken from the spec); candidates until a snapshot is frozen.
+# input keys: address, borough, zip_code
+# expect keys: status, outcome, bbl, contacts ({registrationId: [[role, name, title, mailingAddress], ...]}, exact, in order),
+#   caveat_codes (all present), caveat_codes_absent
+
+- id: a-five-contacts-one-address
+  question: Q4
+  why: Anchor A, registration 316103 lists five contacts. The site manager has the same name as the agent but its own role and no address.
+       Four share one business address, which is not evidence of identity.
+  input: {address: "5413 7 Avenue, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008260002"
+    contacts:
+      "316103":
+        - [Agent, JAY WONG, null, "746 61ST STREET"]
+        - [CorporateOwner, 5413 PLAZA LLC, null, "746 61ST STREET"]
+        - [HeadOfficer, BAOZHEN CHEN, PRESIDENT, "746 61ST STREET"]
+        - [Shareholder, BAO ZHEN CHEN, null, "746 61ST STREET"]
+        - [SiteManager, JAY WONG, null, null]
+    caveat_codes: [role_as_recorded, agent_not_owner, shared_address_not_evidence, registrant_not_title]
+    caveat_codes_absent: [no_contacts_found, contacts_capped]
+
+- id: agent-with-the-owner-name
+  question: Q4
+  why: The agent and the individual owner carry the same name. They are two contacts in two roles, listed as recorded, not merged.
+  input: {address: "210 Seventh Avenue, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1007720044"
+    contacts:
+      "119437":
+        - [Agent, RAINESS ERROL, null, "210 SEVENTH AVENUE"]
+        - [IndividualOwner, RAINESS ERROL, null, "210 SEVENTH AVENUE"]
+    caveat_codes: [role_as_recorded, agent_not_owner, shared_address_not_evidence]
+
+- id: needs-borough
+  question: Q4
+  why: An address with no borough or ZIP is a question, not a guess.
+  input: {address: "5413 7 Avenue"}
+  expect:
+    status: needs_borough

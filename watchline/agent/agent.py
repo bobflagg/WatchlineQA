@@ -23,6 +23,7 @@ from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact
 from watchline.agent.config import agent_model
 from watchline.agent.repeat_guard import RepeatGuardMiddleware
 from watchline.agent.tools import (
+    make_building_contacts_tool,
     make_building_profile_tool,
     make_deed_timeline_tool,
     make_deed_vs_owner_tool,
@@ -74,6 +75,8 @@ def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel | None
         tools.append(make_registered_owner_tool(client, graph, rg))
         if hasattr(rg, "deeds"):          # the deed read lives on Neo4jDeedGraph; a registration-only graph gets no deed tool
             tools.append(make_deed_vs_owner_tool(client, graph, rg))
+        if hasattr(rg, "contacts"):
+            tools.append(make_building_contacts_tool(client, graph, rg))
         if hasattr(rg, "timeline"):
             tools.append(make_deed_timeline_tool(client, graph, rg))
     return create_deep_agent(

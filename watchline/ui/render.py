@@ -9,7 +9,7 @@ from watchline.agent.answer import Answer, Evidence, EvidenceRef
 
 
 def _tag(ev: Evidence | EvidenceRef) -> str:
-    return f"{ev.section} BIN {ev.bin}" if ev.bin and ev.section in ("buildings", "registrations") else ev.section
+    return f"{ev.section} BIN {ev.bin}" if ev.bin and ev.section in ("buildings", "registrations", "contacts") else ev.section
 
 
 def render_answer(answer: Answer, unverified: list[str] = ()) -> None:

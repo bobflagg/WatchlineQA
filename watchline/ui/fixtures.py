@@ -1,5 +1,6 @@
 """Hand-built answers, one per kind, for looking at the page without the model, the graph or the sidecar."""
 from watchline.agent.answer import Answer, CaveatOut, Evidence, Fact
+from watchline.contacts import contacts as _contacts
 from watchline.deeds import deeds as _deeds
 from watchline.deeds import timeline as _timeline
 from watchline.registration import registration as _reg
@@ -39,6 +40,14 @@ _TIMELINE_COUNTS = {"deeds": 2, "notSale": 1, "amountZero": 1, "byType": {"DEED"
 _TIMELINE_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
                      (_timeline.CAVEAT_ORDER, _timeline.CAVEAT_PARTY_NAMES, _deeds.CAVEAT_NOT_SALE, _deeds.CAVEAT_MULTI_LOT)]
 
+_CONTACTS = {"bin": "3000001", "address": "1 Example Street", "addressed": True, "registrations": [
+    {"registrationId": 100001, "lastRegistered": "2025-09-30", "registrationEnd": "2026-09-01", "contacts": [
+        {"role": "Agent", "name": "PAT EXAMPLE", "title": None, "mailingAddress": "9 Office Rd", "addressLine2": None, "zip": "11220"},
+        {"role": "HeadOfficer", "name": "SAM SAMPLE", "title": "PRESIDENT", "mailingAddress": "9 Office Rd", "addressLine2": None, "zip": "11220"},
+        {"role": "SiteManager", "name": "PAT EXAMPLE", "title": None, "mailingAddress": None, "addressLine2": None, "zip": None}]}]}
+_CONTACT_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
+                    (_contacts.CAVEAT_ROLE_AS_RECORDED, _contacts.CAVEAT_AGENT_NOT_OWNER, _deeds.CAVEAT_SHARED_ADDRESS)]
+
 FIXTURES: dict[str, Answer] = {
     "profile": Answer(
         kind="profile", summary="The lot at 1 Example Street, Brooklyn has one registered building with 8 violations cited.",
@@ -66,6 +75,16 @@ FIXTURES: dict[str, Answer] = {
                     evidence=[Evidence(section="comparison", bbl="3000010001", data=_COMPARISON)])],
         caveats=_DEED_CAVEATS,
         sources=["ACRIS deeds and parties (data through 2026-05-31)", "HPD registrations (data through 2026-05-29)"]),
+    "contacts": Answer(
+        kind="contacts",
+        summary="HPD lists three contacts on the building's one registration: an agent, a head officer and a site manager.",
+        facts=[Fact(statement="PAT EXAMPLE is recorded as the Agent, at 9 Office Rd.",
+                    evidence=[Evidence(section="contacts", bin="3000001", bbl="3000010001", data=_CONTACTS)]),
+               Fact(statement="SAM SAMPLE is recorded as the HeadOfficer, with the title PRESIDENT.",
+                    evidence=[Evidence(section="contacts", bin="3000001", bbl="3000010001", data=_CONTACTS)]),
+               Fact(statement="PAT EXAMPLE is also recorded as the SiteManager, with no address.",
+                    evidence=[Evidence(section="contacts", bin="3000001", bbl="3000010001", data=_CONTACTS)])],
+        caveats=_CONTACT_CAVEATS, sources=["HPD registrations (data through 2026-05-29)"]),
     "timeline": Answer(
         kind="timeline",
         summary="Two deeds are recorded on the lot. One of them is not a sale because its amount is 0.",
