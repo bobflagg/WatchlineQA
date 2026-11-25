@@ -67,6 +67,8 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   positive ("the records do not give a severity rating" is a denial; the pattern is now narrower, tested offline). `agent-is-not-the-owner` cited `registered_owners`, a section
   I added for litigation, in a contacts answer (prompt now says it is only for `litigation_cases`). Rerun of those two ($0.0036, 7 calls): `agent-is-not-the-owner` passed; `how-bad-is-it-is-not-a-severity` failed on a new cause (the model cited `characteristics`
   for the lot's year built, class and units in a violations answer). A `lot` section now lets a fact cite the lot's own values; rerun alone ($0.0018, 3 calls): passed, citing `violations_rate` and `lot`.
-  Not every case has run on the final prompt: a full run of all 9 would cost about $0.012; The amount-0 case passes but the model still writes "the other 2"
+  Full run of all 9 on the final prompt (2026-11-25, $0.0128, 32 calls, judge on): 8 passed, 1 failed (`zero-amount-deeds-are-not-sales`: the judge wanted "amount 0 is not a sale"
+  said outright, and the model again wrote "the other 2", a subtracted count). `respondent-matching-the-owner-is-a-lead` passed but used 6 calls (it also called three other tools, and the numbers guard
+  caught "four" and "three"); The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.
