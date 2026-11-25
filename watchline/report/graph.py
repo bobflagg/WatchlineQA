@@ -28,6 +28,7 @@ from watchline.conditions.conditions import build_litigation, build_violations
 from watchline.contacts.contacts import build_contacts
 from watchline.deeds.deeds import build_comparison
 from watchline.deeds.timeline import build_timeline
+from watchline.entities.dos import build_entities, entities_view
 from watchline.geosupport.resolution import Answer as Resolution
 from watchline.geosupport.resolution import BoroughRequired, Match, resolve_text
 from watchline.identity.checkpoint import DECISIONS, Decision
@@ -262,10 +263,9 @@ def build_report_graph(deps: ReportDeps, checkpointer: BaseCheckpointSaver | Non
         tl, cmp = T.timeline_to_dict(build_timeline(r, deps.rg)), T.deeds_to_dict(build_comparison(r, deps.rg, deps.rg))
         return {"parts": {"deeds": _part(S.deed_history(tl, cmp))}}
 
+    @_guarded("entity", "The owner entity")
     def entity_research(state: FullState) -> dict:
-        return {"parts": {"entity": _part(S.not_covered("Entity research", "The New York State record for the owner entity (its type, filing date, registered agent and "
-                                                                           "process address) is not in this report yet. The graph holds New York entities only where they match "
-                                                                           "an owner name, and an out-of-state parent needs a web search by the researcher."))}}
+        return {"parts": {"entity": _part(S.entity_research(entities_view(build_entities(res(state), deps.rg))))}}
 
     def landlords(state: FullState) -> dict:
         try:

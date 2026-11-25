@@ -72,6 +72,41 @@ def _no_buildings(d: dict, what: str) -> Answer | None:
                                              "buildings, so this is not a statement that conditions are good."), caveats=_caveats(d), sources=_sources(d))
 
 
+# ---- step 5: the owner entity -------------------------------------------------------------------------------------------------
+
+def entity_research(d: dict) -> Answer:
+    """The New York DOS records found by name for the registered owner entities and the latest deed's grantees, each a lead."""
+    if (a := _unavailable(d, "The owner entity")):
+        return a
+    subjects = d["subjects"]
+    if not subjects:
+        return Answer(kind="entities", summary=("There is no entity name to look up: the lot has no corporate registered owner and the latest deed names no entity. "
+                                                "Individuals are not looked up."), caveats=_caveats(d), sources=_sources(d))
+    facts: list[Fact] = []
+    for s in subjects:
+        who = f"{s['name']} ({' and '.join(s['roles'])})"
+        if not s["records"]:
+            facts.append(Fact(statement=(f"{who}: no record in the New York active-entity snapshot under this name (looked up as {s['key']}). That is not a statement that the "
+                                         "entity does not exist: dissolved entities, and entities under a different spelling, are absent."), evidence=[_ev("dos_records", d, s)]))
+            continue
+        for r in s["records"]:
+            kind = r["entityType"].title() if r["entityType"] else "entity type not recorded"
+            sentence = (f"{who} is a lead for DOS record {r['dosId']}, found by the same name: {kind}" + (f", {r['jurisdiction']}" if r["jurisdiction"] else "")
+                        + f", filed {r['filingDate'] or 'on a date not recorded'}. The state forwards legal papers to "
+                        + (r["processName"] or "a name not recorded") + (" (the statutory default name, not a person)" if r["defaultProcessName"] else "")
+                        + (f" at {r['processAddress']}" if r["processAddress"] else "") + ". Registered agent: "
+                        + ((r["agentName"] or "name not recorded") + (f" at {r['agentAddress']}" if r["agentAddress"] else "") if (r["agentName"] or r["agentAddress"]) else "none listed")
+                        + ".")
+            if (r["processAddressEntities"] or 0) > 1:
+                sentence += f" {r['processAddressEntities']:,} entities in the snapshot share this process address."
+            facts.append(Fact(statement=sentence, evidence=[_ev("dos_records", d, s)]))
+    found = sum(1 for s in subjects if s["records"])
+    summary = (f"{_say(len(subjects), 'entity name')} looked up in the New York active-entity snapshot: {found} with a record, {len(subjects) - found} with none. "
+               "A match by name is a lead, not proof that the DOS entity is the owner."
+               + (f" {_say(d['skipped'], 'grantee')} that look like individuals were not looked up." if d["skipped"] else ""))
+    return Answer(kind="entities", summary=summary, facts=facts, caveats=_caveats(d), sources=_sources(d))
+
+
 def not_covered(title: str, why: str) -> Answer:
     """A step the graph cannot answer yet. It says so and what is missing, so the report never looks silent."""
     return Answer(kind="not_covered", summary=f"Not yet covered: {title}. {why}",

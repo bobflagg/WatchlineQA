@@ -126,3 +126,8 @@ Found and fixed:
 - Numbers had no thousands separators ("31299 deeds"); a building with no recorded address printed as "None"; a building list cut at 200 said "200 buildings" and now says "at least 200".
 Not reachable on real data: the picker for several landlord names. No lot is covered by two different landlord names (probed), so it is tested on fakes only.
 Not changed: the owner section for a 237-building lot has 61 bullets (ten buildings shown in full, the rest counted).
+
+- Entity research (Q5, PESP step 5; done 2026-11-25, no model): `watchline/entities/dos.py` (reads the corporate registered owners and the latest deed's grantees, matches them to DosEntity
+  records by name key, all matching records shown and none chosen) and `entity_research` in `watchline/report/sections.py`; the report's "owner entity" section is now real, not "not yet covered". Decisions:
+  matches are shown as leads with no extra pause; names looked up are registered owners and the latest deed's entity-like grantees (individuals are not looked up). Checked against the spec's anchors
+  A and C and the demo lots (`docs/plans/report-demo-verification.md`); the two backup runs were rebuilt and still rebuild byte-for-byte from their decision logs. Not built as an agent tool.

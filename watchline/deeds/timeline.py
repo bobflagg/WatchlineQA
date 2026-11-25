@@ -13,6 +13,7 @@ from typing import Protocol
 from watchline.conditions.conditions import Neo4jConditionsGraph
 from watchline.contacts.contacts import Neo4jContactGraph
 from watchline.deeds.deeds import ACRIS, CAVEAT_MULTI_LOT, CAVEAT_NO_DEED, CAVEAT_NOT_SALE, DEED_TYPES, Neo4jDeedGraph
+from watchline.entities.dos import Neo4jEntityGraph
 from watchline.geosupport.resolution import Answer, Graph, resolve_text
 from watchline.profile.profile import (
     CAVEAT_NOT_IN_GRAPH,
@@ -91,8 +92,8 @@ _IN_PERIOD = ("(:Lot {bbl: $bbl})-[:HAS_DEED]->(d:Deed WHERE d.docType IN $types
               "AND ($since IS NULL OR d.recordedDate >= date($since)) AND ($until IS NULL OR d.recordedDate <= date($until)))")
 
 
-class Neo4jTimelineGraph(Neo4jDeedGraph, Neo4jContactGraph, Neo4jConditionsGraph):
-    """The registration, latest-deed, contact and condition reads plus the timeline reads, so one object serves every tool. Read-only, parameterized, row-limited, with a server-side timeout. No free-form Cypher from callers."""
+class Neo4jTimelineGraph(Neo4jDeedGraph, Neo4jContactGraph, Neo4jConditionsGraph, Neo4jEntityGraph):
+    """The registration, latest-deed, contact, condition and entity reads plus the timeline reads, so one object serves every tool. Read-only, parameterized, row-limited, with a server-side timeout. No free-form Cypher from callers."""
 
     def timeline(self, bbl: str, since: str | None, until: str | None) -> list[dict]:
         """One row per deed, newest recorded first, with up to MAX_NAMES distinct names per side and the party row totals."""

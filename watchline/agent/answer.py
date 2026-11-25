@@ -12,9 +12,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 ModelKind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
-Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "violations", "litigation", "not_covered", "clarification", "not_found", "refusal", "error"]
+Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "violations", "litigation", "entities", "not_covered", "clarification", "not_found", "refusal", "error"]
 ModelSection = Literal["lookup", "lot", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "violations", "violations_rate", "cases", "case_counts", "registered_owners"]   # what the model may cite
-Section = Literal["lookup", "lot", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts", "registered_owners"]
+Section = Literal["lookup", "lot", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts", "registered_owners", "dos_records"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------

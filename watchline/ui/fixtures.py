@@ -4,10 +4,12 @@ from watchline.conditions import conditions as _cond
 from watchline.contacts import contacts as _contacts
 from watchline.deeds import deeds as _deeds
 from watchline.deeds import timeline as _timeline
+from watchline.entities import dos as _dos
 from watchline.identity import checkpoint as _cp
 from watchline.identity import graph as _ig
 from watchline.identity.section import IdentityCheckpoint, to_answer
 from watchline.registration import registration as _reg
+from watchline.report import sections as _sections
 
 _BUILDING = {"bin": "3000001", "address": "1 Example Street", "violations_by_class": {"A": 2, "B": 5, "C": 1}}
 _CAVEATS = [
@@ -80,6 +82,14 @@ _CASE_COUNTS = {"cases": 2, "byType": {"Heat and Hot Water": 1, "Tenant Action/H
 _CASE_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
                  (_cond.CAVEAT_CITED, _cond.CAVEAT_CASE_NOT_FAULT, _cond.CAVEAT_HARASSMENT, _cond.CAVEAT_RESPONDENT_ROLE, _deeds.CAVEAT_NAME_NOT_IDENTITY)]
 
+_ENTITY_VIEW = {"status": "ok", "resolution": {"bbl": "3000010001"}, "lot": {"bbl": "3000010001"}, "skipped": 0, "subjects": [
+    {"name": "EXAMPLE HOUSING LLC", "key": "EXAMPLE HOUSING LLC", "roles": ["registered owner", "latest deed grantee"], "records": [{
+        "dosId": 5000001, "name": "EXAMPLE HOUSING LLC", "entityType": "DOMESTIC LIMITED LIABILITY COMPANY", "jurisdiction": "New York", "filingDate": "2020-10-14",
+        "processName": "EXAMPLE HOUSING LLC", "processAddress": "5 Example Circle, Staten Island, NY, 10304", "agentName": None, "agentAddress": None,
+        "processAddressEntities": 5, "defaultProcessName": False}]},
+    {"name": "EXAMPLE HOLDINGS LLC", "key": "EXAMPLE HOLDINGS LLC", "roles": ["latest deed grantee"], "records": []}],
+    "caveats": [c.as_dict() for c in (_dos.CAVEAT_PROCESS, _deeds.CAVEAT_NAME_NOT_IDENTITY, _dos.CAVEAT_NO_RECORD, _deeds.CAVEAT_SHARED_ADDRESS)], "sources": [_dos.DOS]}
+
 FIXTURES: dict[str, Answer] = {
     "profile": Answer(
         kind="profile", summary="The lot at 1 Example Street, Brooklyn has one registered building with 8 violations cited.",
@@ -138,6 +148,7 @@ FIXTURES: dict[str, Answer] = {
                Fact(statement="There are 2 cases in all: 1 Heat and Hot Water and 1 Tenant Action/Harrassment, both closed.",
                     evidence=[Evidence(section="case_counts", bbl="3000010001", data=_CASE_COUNTS)])],
         caveats=_CASE_CAVEATS, sources=["HPD litigation (data through 2026-07-09)", "HPD registrations (data through 2026-05-29)"]),
+    "entities": _sections.entity_research(_ENTITY_VIEW),
     "timeline": Answer(
         kind="timeline",
         summary="Two deeds are recorded on the lot. One of them is not a sale because its amount is 0.",

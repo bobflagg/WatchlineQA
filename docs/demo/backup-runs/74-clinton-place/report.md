@@ -8,6 +8,7 @@ Tax lot 2032070010 · backup run 2026-11-25 (rehearsal decisions) · landlord re
 - Geosupport (release 25b)
 - PLUTO (release 26v1)
 - HPD registrations (data through 2026-05-29)
+- New York State DOS active entities (data through 2026-07-06)
 - BOR operational network (landlord links)
 - HPD contacts (business addresses on landlord records)
 - HPD registrations (contacts listed on each registration)
@@ -67,10 +68,19 @@ HPD records 74 CLINTON PLACE LLC as registered owner. A registration records who
 
 ### The owner entity (guide step 5)
 
-Not yet covered: Entity research. The New York State record for the owner entity (its type, filing date, registered agent and process address) is not in this report yet. The graph holds New York entities only where they match an owner name, and an out-of-state parent needs a web search by the researcher.
+2 entity names looked up in the New York active-entity snapshot: 2 with a record, 0 with none. A match by name is a lead, not proof that the DOS entity is the owner.
+
+**What the records show**
+- 74 CLINTON HOLDINGS LLC (latest deed grantee) is a lead for DOS record 5349064, found by the same name: Domestic Limited Liability Company, New York, filed 2018-05-29. The state forwards legal papers to MEILYN MARTINEZ at 442-E LORIMER STREET STE# 268, BROOKLYN, NY, 11206. Registered agent: none listed. 36 entities in the snapshot share this process address. _(dos_records)_
+- 74 CLINTON PLACE LLC (registered owner and latest deed grantee) is a lead for DOS record 5788221, found by the same name: Domestic Limited Liability Company, New York, filed 2020-07-15. The state forwards legal papers to 74 CLINTON PLACE LLC at 350 MOTOR PKWY 204, HAUPPAUGE, NY, 11788. Registered agent: none listed. 20 entities in the snapshot share this process address. _(dos_records)_
 
 **Caveats**
-- This report has no section for entity research. Nothing is implied by its absence.
+- The DOS process name and address are where the state forwards legal papers. They do not say who runs the entity, and no officers, managers or members are carried.
+- Name agreement is a comparison of recorded strings, not a finding that a deed grantee and a registered owner are the same party. A difference is not a finding either.
+- A shared address can be a mail drop or a representative's office. It is not evidence that two records are one party.
+
+**Sources**
+- New York State DOS active entities (data through 2026-07-06)
 
 ## How many properties and where?
 
@@ -79,7 +89,7 @@ Not yet covered: Entity research. The New York State record for the owner entity
 YONATAN BAHUMI: as held in the graph, 55 lots and 176 residential units across 6 landlord records. 1 possible link to other landlord records, 0 awaiting a decision. After the researcher's decisions: 56 lots and 179 residential units.
 
 **What the records show**
-- YONATAN BAHUMI and YONATAN BADHUMI are linked by a shared business address and names listed together on an HPD registration. Accepted by the researcher (decided by researcher on 2026-12-01; note: Registration 205148 lists both spellings.). This is the researcher's inference, not a finding in the records. _(links)_
+- YONATAN BAHUMI and YONATAN BADHUMI are linked by a shared business address and names listed together on an HPD registration. Accepted by the researcher (decided by researcher on 2026-12-01; note: Registration 205148 lists both spellings). This is the researcher's inference, not a finding in the records. _(links)_
 - As held in the graph: 55 lots and 176 residential units. After the researcher's decisions: 56 lots and 179 residential units. _(portfolio_effect)_
 
 **Caveats**

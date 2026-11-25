@@ -8,6 +8,7 @@ Tax lot 2030370098 · backup run 2026-11-25 (rehearsal decisions) · landlord re
 - Geosupport (release 25b)
 - PLUTO (release 26v1)
 - HPD registrations (data through 2026-05-29)
+- New York State DOS active entities (data through 2026-07-06)
 - BOR operational network (landlord links)
 - HPD contacts (business addresses on landlord records)
 - HPD registrations (contacts listed on each registration)
@@ -65,10 +66,19 @@ HPD records 2141 WASHINGTON AVE LLC as registered owner. A registration records 
 
 ### The owner entity (guide step 5)
 
-Not yet covered: Entity research. The New York State record for the owner entity (its type, filing date, registered agent and process address) is not in this report yet. The graph holds New York entities only where they match an owner name, and an out-of-state parent needs a web search by the researcher.
+2 entity names looked up in the New York active-entity snapshot: 1 with a record, 1 with none. A match by name is a lead, not proof that the DOS entity is the owner.
+
+**What the records show**
+- 2141 WASHINGTON AVE LLC (registered owner): no record in the New York active-entity snapshot under this name (looked up as 2141 WASHINGTON AVE LLC). That is not a statement that the entity does not exist: dissolved entities, and entities under a different spelling, are absent. _(dos_records)_
+- 2141 WASHINGTON LLC (latest deed grantee) is a lead for DOS record 5656155, found by the same name: Domestic Limited Liability Company, New York, filed 2019-11-14. The state forwards legal papers to 2141 WASHINGTON LLC at 153-08 79TH AVENUE, FLUSHING, NY, 11367. Registered agent: none listed. _(dos_records)_
 
 **Caveats**
-- This report has no section for entity research. Nothing is implied by its absence.
+- The DOS process name and address are where the state forwards legal papers. They do not say who runs the entity, and no officers, managers or members are carried.
+- Name agreement is a comparison of recorded strings, not a finding that a deed grantee and a registered owner are the same party. A difference is not a finding either.
+- No record in the active-entity snapshot is not a statement that the entity does not exist: dissolved entities, and entities under a different spelling, are absent.
+
+**Sources**
+- New York State DOS active entities (data through 2026-07-06)
 
 ## How many properties and where?
 
@@ -77,7 +87,7 @@ Not yet covered: Entity research. The New York State record for the owner entity
 YONATAN BADHUMI: as held in the graph, 1 lot and 3 residential units across 1 landlord record. 1 possible link to other landlord records, 0 awaiting a decision. After the researcher's decisions: 56 lots and 179 residential units.
 
 **What the records show**
-- YONATAN BADHUMI and YONATAN BAHUMI are linked by a shared business address and names listed together on an HPD registration. Accepted by the researcher (decided by researcher on 2026-12-01; note: Registration 205148 lists both spellings and the address matches.). This is the researcher's inference, not a finding in the records. _(links)_
+- YONATAN BADHUMI and YONATAN BAHUMI are linked by a shared business address and names listed together on an HPD registration. Accepted by the researcher (decided by researcher on 2026-12-01; note: Registration 205148 lists both spellings and the address matches). This is the researcher's inference, not a finding in the records. _(links)_
 - As held in the graph: 1 lot and 3 residential units. After the researcher's decisions: 56 lots and 179 residential units. _(portfolio_effect)_
 
 **Caveats**

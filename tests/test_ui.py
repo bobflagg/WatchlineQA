@@ -82,6 +82,14 @@ def test_identity_checkpoint_decided_labels_the_inference_and_shows_the_change()
     assert "link_is_lead" not in {c.code for c in FIXTURES["identity_checkpoint_decided"].caveats}
 
 
+def test_entities_fixture_labels_a_match_as_a_lead_and_a_miss_as_not_absence_and_keeps_every_caveat():
+    text = _text("entities")
+    for c in FIXTURES["entities"].caveats:
+        assert c.text in text
+    assert "is a lead for DOS record 5000001" in text and "That is not a statement that the entity does not exist" in text and "dos_records" in text
+    assert "The state forwards legal papers to EXAMPLE HOUSING LLC" in text
+
+
 def test_violations_fixture_shows_counts_by_class_the_rate_inputs_and_every_caveat():
     text = _text("violations")
     for c in FIXTURES["violations"].caveats:

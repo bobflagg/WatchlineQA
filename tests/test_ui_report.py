@@ -49,7 +49,7 @@ def test_a_lead_pauses_the_page_with_the_sections_so_far_and_the_leads_to_decide
     assert at.selectbox(key="rp_role").options == ["researcher", "organizer", "legal staff"]
     t = page_text(at)
     assert "**ACME OWNER** and **ACME OWNR**" in t and "Used:" in t and "Against: The names differ as recorded" in t
-    assert ":orange-badge[Lead]" in t and ":gray-badge[Not yet covered]" in t          # a lead is labelled as a lead; a missing step is labelled too
+    assert ":orange-badge[Lead]" in t and "is a lead for DOS record 5857246" in t            # a lead is labelled as a lead, in the identity card and in the entity section
     assert not at.get("download_button") and at.button(key="rp_submit").label == "Save my decisions and finish the report"
 
 

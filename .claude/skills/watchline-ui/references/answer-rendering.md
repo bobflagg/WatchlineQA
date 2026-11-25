@@ -45,6 +45,10 @@ layout of the facts but may not drop a caveat, a lead label or the evidence tags
   (After Inquest or After Trial only) uses the Recorded finding style; "No Harassment" and no finding are plain Record. A respondent that matches
   an owner name shows a Lead pill and never reads "the owner". Above the table, counts by type, status and finding as separate figures.
   Evidence sections: `cases`, `case_counts`.
+- **`entities`** (Q5, PESP step 5): one fact per owner or grantee name looked up in the New York DOS active-entity snapshot. A name with a record is a Lead (the same name,
+  never proof of the same party) and shows the DOS id, type, filing date, where the state forwards legal papers, the registered agent if listed, and how many entities share that address. A name
+  without a record says "no record in the snapshot", never "does not exist". Individuals are not looked up, and the section says how many were left out. The process name is where service goes,
+  not who runs the entity; a person's name there is shown only with that role. Evidence section: `dos_records`.
 - **`identity_checkpoint`** (Q22 and Q7 with the Q9 effect; design in `docs/plans/identity-checkpoint.md`): built from templates, no model. One
   fact per candidate link, saying how the two parties are linked and its state: a lead awaiting the researcher's decision, accepted or
   rejected by the researcher (with the role, date and note), already joined by the method, or unsupported. One fact for the portfolio effect:

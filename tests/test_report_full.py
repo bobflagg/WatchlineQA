@@ -20,7 +20,9 @@ BBL = "1000010001"       # what `resolved()` returns
 
 class AllReads:
     """One object serving every read the report makes from the graph, built from the fakes the section tests use."""
-    def __init__(self, deeds=(), timeline=(), contacts=(), groups=(), cases=()):
+    def __init__(self, deeds=(), timeline=(), contacts=(), groups=(), cases=(), owner_names=(("ACME LLC", "ACME LLC"),), grantees=(("A BUYER", "A BUYER"),), dos=None):
+        self.owner_names, self.grantees = [dict(name=n, key=k) for n, k in owner_names], [dict(name=n, key=k) for n, k in grantees]
+        self.dos = [dos_row()] if dos is None else list(dos)
         self.reg = FakeRG(rows=[row()], owners=[owner()])
         self.dg, self.tl = FakeDG(deeds), FakeTG(timeline)
         self.con, self.cond = ContactCG(contacts, rows=[row()]), FakeCG(groups=groups, cases=cases, owners=[dict(name="ACME LLC")])
@@ -36,6 +38,16 @@ class AllReads:
     def violation_groups(self, bbl): return self.cond.violation_groups(bbl)
     def cases(self, bbl): return self.cond.cases(bbl)
     def case_counts(self, bbl): return self.cond.case_counts(bbl)
+    def owner_entities(self, bbl): return self.owner_names
+    def latest_grantees(self, bbl): return self.grantees
+    def dos_records(self, keys): return [r for r in self.dos if r["key"] in keys]
+
+
+def dos_row(key="ACME LLC", dos_id=5857246, name="ACME LLC", **kw):
+    row_ = dict(key=key, dosId=dos_id, name=name, entityType="DOMESTIC LIMITED LIABILITY COMPANY", jurisdiction="New York", filingDate="2020-10-14", processName=name,
+                processAddress="5 CROMWELL CIRCLE", processAddressLine2=None, processCity="STATEN ISLAND", processState="NY", processZip="10304", agentName=None, agentAddress=None,
+                agentAddressLine2=None, agentCity=None, agentState=None, agentZip=None, processAddressEntities=5)
+    return {**row_, **kw}
 
 
 def identity_rows(covering=(("ACME OWNER", BBL),), lead=True):
@@ -78,7 +90,7 @@ def test_a_lot_with_no_lead_runs_straight_through_in_reading_order():
     assert rep["status"] == "ok" and rep["generated_at"] == "2026-12-01 demo" and rep["bbl"] == BBL and rep["landlord"] == "ACME OWNER"
     assert keys(rep) == [k for k, *_ in SECTIONS] == ["building", "owner", "entity", "identity", "deeds", "violations", "litigation", "web"]
     kinds = {s["key"]: s["answer"]["kind"] for s in rep["sections"]}
-    assert kinds == {"building": "profile", "owner": "registration", "entity": "not_covered", "identity": "identity_checkpoint", "deeds": "timeline",
+    assert kinds == {"building": "profile", "owner": "registration", "entity": "entities", "identity": "identity_checkpoint", "deeds": "timeline",
                      "violations": "violations", "litigation": "litigation", "web": "not_covered"}
     assert {s["question"] for s in rep["sections"]} == {"About this building", "Who is my landlord?", "How many properties and where?", "Do they hold or sell?",
                                                        "What are the conditions?", "Is there news?"}
@@ -183,11 +195,17 @@ def test_several_landlord_names_on_the_lot_ask_which_one():
     assert "OTHER NAME" in next(s for s in rep["sections"] if s["key"] == "identity")["answer"]["summary"]
 
 
-@pytest.mark.parametrize("key", ["entity", "web"])
-def test_steps_without_a_tool_are_listed_as_not_covered(key):
+def test_the_step_without_a_tool_is_listed_as_not_covered():
     g_, cfg, _ = make(ig=FakeIG(**identity_rows(lead=False)))
-    sec = next(s for s in g_.invoke(START, cfg)["report"]["sections"] if s["key"] == key)
+    sec = next(s for s in g_.invoke(START, cfg)["report"]["sections"] if s["key"] == "web")
     assert sec["answer"]["kind"] == "not_covered" and sec["answer"]["summary"].startswith("Not yet covered:")
+
+
+def test_the_entity_section_looks_up_the_owner_name_and_leaves_an_individual_grantee_alone():
+    g_, cfg, _ = make(ig=FakeIG(**identity_rows(lead=False)))
+    sec = next(s for s in g_.invoke(START, cfg)["report"]["sections"] if s["key"] == "entity")["answer"]
+    assert sec["kind"] == "entities" and "1 entity name looked up" in sec["summary"] and "1 grantee that look like individuals were not looked up" in sec["summary"]
+    assert "ACME LLC (registered owner) is a lead for DOS record 5857246" in sec["facts"][0]["statement"]
 
 
 # ---- live (no model): the demo address -----------------------------------------------------------------------------------------
@@ -209,7 +227,9 @@ def test_live_2141_washington_avenue_end_to_end(live_report_deps):
     by = {s["key"]: s["answer"] for s in rep["sections"]}
     assert "2141 WASHINGTON AVE LLC" in " ".join(f["statement"] for f in by["owner"]["facts"])
     assert "9 deeds recorded: 7 record an amount of 0; 2 record another amount" in " ".join(f["statement"] for f in by["deeds"]["facts"])
-    assert by["entity"]["kind"] == "not_covered" and by["web"]["kind"] == "not_covered"
+    assert by["entity"]["kind"] == "entities" and by["web"]["kind"] == "not_covered"
+    assert "2141 WASHINGTON AVE LLC (registered owner): no record in the New York active-entity snapshot" in " ".join(f["statement"] for f in by["entity"]["facts"])
+    assert "2141 WASHINGTON LLC (latest deed grantee) is a lead for DOS record 5656155" in " ".join(f["statement"] for f in by["entity"]["facts"])
     # numbers checked against independent queries on 2026-11-25 (docs/plans/report-demo-verification.md)
     t = lambda k: " ".join(f["statement"] for f in by[k]["facts"])      # noqa: E731
     assert "built 1899, building class C0, with 3 residential units and an assessed total of $59,040" in t("building")

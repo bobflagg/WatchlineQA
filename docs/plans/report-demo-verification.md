@@ -17,6 +17,18 @@ byte-identical file. Decisions in these runs are rehearsal decisions (date 2026-
 | Portfolio | anchor YONATAN BADHUMI: 1 lot, 3 units as held; accepting the lead for YONATAN BAHUMI gives 56 lots, 179 units | anchor YONATAN BAHUMI: 55 lots, 176 units (6 records) as held; accepting the lead for YONATAN BADHUMI gives 56 lots, 179 units |
 | The lead | address 4058 BRONX BOULEVARD 1B and registration 205148, which lists BADHUMI as HeadOfficer and BAHUMI as Officer and Shareholder | the same pair, seen from the BAHUMI side |
 
+## Owner entity (DOS) section, checked 2026-11-25 against separate queries
+| Name as recorded | Found as | DOS record |
+|---|---|---|
+| 2141 WASHINGTON AVE LLC (registered owner, 2141 Washington Ave) | no record under this name | none |
+| 2141 WASHINGTON LLC (latest deed grantee, 2020) | record 5656155, filed 2019-11-14 | process name 2141 WASHINGTON LLC at 153-08 79TH AVENUE, FLUSHING, NY 11367; no agent; 1 entity at that address |
+| 74 CLINTON PLACE LLC (registered owner and latest deed grantee) | record 5788221, filed 2020-07-15 | process name the entity itself, 350 MOTOR PKWY 204, HAUPPAUGE, NY 11788; 20 entities share that address |
+| 74 CLINTON HOLDINGS LLC (latest deed grantee, 2021) | record 5349064, filed 2018-05-29 | process name MEILYN MARTINEZ (a person, as the process name) at 442-E LORIMER STREET STE# 268, BROOKLYN; 36 entities share that address |
+| 5413 PLAZA LLC (spec anchor A) | record 5857246, filed 2020-10-14 | its own name, 5 CROMWELL CIRCLE, STATEN ISLAND; 5 entities share that address |
+| 438 52 ST OWNERS CORP (spec anchor C, HPD spelling) | no record; the deed spelling 438 52ND ST OWNERS CORP has record 2733264, filed 2002-02-20 | 300 EAST 2ND ST / APT D, BROOKLYN |
+Note for the talk: the person named as the process name for 74 CLINTON HOLDINGS LLC is shown with that role only ("where the state forwards legal papers"), as the spec's person-name rule says. Decide
+whether to show it on a slide. The registered owner and the grantee of 2141 Washington Avenue differ by one word ("AVE"); the report lists them as separate names and does not treat them as one.
+
 ## Browser walkthrough (2026-11-25, Chrome, `make ui`)
 Both addresses were walked through in a real browser: address form, the sections as they are read, the lead card, Accept with a note, the finished report with the portfolio as held
 next to after the decision (2141 Washington: 1 lot to 56; 74 Clinton: 55 lots to 56), and the two download buttons. No exception box, no console error. Fixes made from what was seen:
