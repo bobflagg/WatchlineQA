@@ -1,0 +1,111 @@
+# Agent-level evals for the four tools added in slices A, B and D: building_contacts (Q4), deed_timeline (Q12.1), open_violations (Q15),
+# litigation_cases (Q28). The real model answers a person's message. Same structure and keys as agent_q01_cases.yaml (read its header).
+# Expected values come from the live probes of 2026-11-25 in tests/evals/q04_cases.yaml, q12_cases.yaml, q15_cases.yaml and q28_cases.yaml.
+# Text checks read only what the model wrote; caveat text is attached by code and never searched.
+# Standing risks these cases test: an agent or officer called "the owner", a deed with amount 0 called a sale, deed counts or violation classes
+# added into one number, "how bad is it" answered with a severity, a missing rate shown as 0, a respondent called "the owner" or a finding about a
+# building read as a finding about the landlord, and no finding recorded read as a clean record.
+
+- id: agent-is-not-the-owner
+  turns: ["Who is the managing agent for 5413 7 Avenue, Brooklyn, and is that person the owner?"]
+  tool: "5413 7"
+  tool_name: building_contacts
+  kind: contacts
+  caveat_codes: [role_as_recorded, agent_not_owner]
+  must_match: ["JAY WONG", "agent", "5413 PLAZA LLC"]
+  must_not_assert: ["\\bowned by\\b", "(?<!not )\\b(JAY WONG|the (managing )?agent) (is|are|was) the (registered )?owner\\b", "\\bJAY WONG owns\\b"]
+  rubric:
+    - "The answer names JAY WONG as the Agent HPD recorded and 5413 PLAZA LLC as the corporate owner, and does not say the agent is the owner; it may say the records do not show the agent owns the building."
+
+- id: same-name-two-roles
+  turns: ["Who is the site manager at 5413 7 Avenue, Brooklyn?"]
+  tool: "5413 7"
+  tool_name: building_contacts
+  kind: contacts
+  caveat_codes: [role_as_recorded]
+  must_match: ["JAY WONG", "site ?manager"]
+  must_not_assert: ["\\b(the )?(site manager|JAY WONG) (is|are|was) the (registered )?owner\\b"]
+  rubric:
+    - "The answer says JAY WONG is recorded as the site manager, and shows the name only with a recorded role (it may also say the same name is recorded as the agent)."
+
+- id: zero-amount-deeds-are-not-sales
+  turns: ["How many times has 2141 Washington Avenue in the Bronx changed hands, and how many of those were sales?"]
+  tool: "2141 Washington"
+  tool_name: deed_timeline
+  kind: timeline
+  caveat_codes: [deed_not_sale, timeline_by_recorded, party_names_as_recorded]
+  must_match: ["\\b9\\b", "\\b7\\b"]
+  must_not_assert: ["\\b(7|seven) (of them )?(were|was) (sales|sold|free)\\b", "(?<!not a )\\bfree sale\\b", "\\bgiven away\\b", "\\bsold for (0|nothing|free)\\b"]
+  summary_must_match: ["\\b(deeds?|transfers?)\\b"]
+  rubric:
+    - "The answer reports nine recorded deeds and says seven of them record an amount of 0, which is not a sale; it does not call the amount-0 deeds sales, free sales or gifts, and does not say how many were sales as a number it computed itself."
+
+- id: deeds-in-a-period
+  turns: ["What deeds were recorded for 5413 7 Avenue, Brooklyn since 2015?"]
+  tool: "5413 7"
+  tool_name: deed_timeline
+  kind: timeline
+  caveat_codes: [period_bounds, deed_not_sale, timeline_by_recorded]
+  must_match: ["2021022201130003", "2025032100031001", "2021-02-26", "2025-04-02"]
+  must_not_match: ["1966", "1973", "1978"]
+  rubric:
+    - "The answer lists the two deeds recorded since 2015 (recorded 2021-02-26 for 5000000, and 2025-04-02 with an amount of 0), and does not mention the older deeds as part of the period."
+
+- id: how-bad-is-it-is-not-a-severity
+  turns: ["What are the open violations at 438 52 Street, Brooklyn, and how bad is it?"]
+  tool: "438 52"
+  tool_name: open_violations
+  kind: violations
+  caveat_codes: [cited_not_fault, open_at_snapshot, lot_wide]
+  must_match: ["2023-03-25", "0\\.125", "class B", "class C"]
+  must_not_match: ["\\bseverity (score|rating|level)\\b", "\\b(terrible|awful|dangerous|unsafe|slumlord|negligent)\\b"]
+  must_not_assert: ["\\bin (total|all)\\b", "\\ba total of\\b"]
+  rubric:
+    - "The answer gives open violations by class (2 class B and 2 class C), the oldest open inspection date 2023-03-25 and the rate of 0.125 per unit with its inputs (4 open over 32 units), and says violations are what an inspector cited rather than a measure of how bad conditions are; it does not rate the conditions or add the classes into a severity."
+
+- id: rate-unavailable-is-not-zero
+  turns: ["What is the rate of open violations per residential unit at 126 Pearl Street, Manhattan?"]
+  tool: "126 Pearl"
+  tool_name: open_violations
+  kind: violations
+  caveat_codes: [rate_unavailable]
+  must_match: ["unavailable|not available|no rate|cannot|can't|not (be )?(calculated|computed|given)|no residential units?|0 residential units?"]
+  must_not_match: ["\\b0\\.0+ (open )?violations per\\b", "\\bzero (open )?violations per unit\\b"]
+  rubric:
+    - "The answer says a rate per unit is unavailable because the lot has no residential unit count (PLUTO records 0 units); it does not give a rate of 0 or any number as the rate."
+
+- id: finding-on-the-building-not-the-landlord
+  turns: ["Has there been a harassment finding against the owner of 74 Clinton Place in the Bronx?"]
+  tool: "74 Clinton"
+  tool_name: litigation_cases
+  kind: litigation
+  caveat_codes: [harassment_finding_definition, case_not_finding, respondent_role_not_recorded]
+  must_match: ["After Trial", "2016", "OBIOHA"]
+  must_not_match: ["\\b74 CLINTON PLACE LLC\\b.{0,60}\\b(harass|found|finding)"]
+  must_not_assert: ["\\b(the )?(owner|landlord|74 CLINTON PLACE LLC) (was|has been|is) (found|held) (to have )?(harass|liable|guilty)", "(?<!not )\\bOBIOHA (is|was) the (registered )?owner\\b", "\\bowned by\\b"]
+  summary_must_not_assert: ["\\b(the )?(owner|landlord) (was|has been|is) (found|held)\\b"]
+  rubric:
+    - "The answer reports the recorded After Trial harassment finding (case opened 2016-05-24, finding dated 2016-07-25) on the building's litigation, names the respondent as recorded (McLORD OBIOHA), and says the respondent does not match the registered owner name 74 CLINTON PLACE LLC; it does not say or imply that the owner or landlord was found to have harassed tenants."
+
+- id: no-finding-recorded-is-not-a-clean-record
+  turns: ["Was there a harassment finding in the Housing Court case at 438 52 Street, Brooklyn?"]
+  tool: "438 52"
+  tool_name: litigation_cases
+  kind: litigation
+  caveat_codes: [harassment_finding_definition, case_not_finding]
+  must_match: ["424938|Tenant Action", "no (harassment )?finding|none (is |was )?recorded|not recorded|no finding"]
+  must_not_match: ["\\bcleared\\b", "\\bfound (not|no) (to have )?harass", "\\bproved? (innocent|no harassment)\\b"]
+  rubric:
+    - "The answer says no harassment finding is recorded for the one closed Tenant Action case, and does not say the owner was cleared or that harassment was ruled out."
+
+- id: respondent-matching-the-owner-is-a-lead
+  turns: ["Is the respondent in the Housing Court case at 20 Beaver Street, Manhattan the building's owner?"]
+  tool: "20 Beaver"
+  tool_name: litigation_cases
+  kind: litigation
+  caveat_codes: [name_match_not_identity, case_not_finding]
+  must_match: ["BEAVER STREET COMMONS LLC"]
+  must_not_assert: ["(?<!not )\\b(is|are|was) (the |also the )?(registered )?owner\\b", "\\bowned by\\b", "(?<!not )\\b(is|are) the same (party|owner|entity|company)\\b"]
+  summary_must_match: ["\\b(lead|matches?|written alike|not proof|does not show|not confirmed)\\b"]
+  rubric:
+    - "The answer says one part of the respondent string, BEAVER STREET COMMONS LLC, matches the registered owner name as recorded, and presents that as a name match (a lead) rather than proof that the respondent is the owner; it does not claim the respondent's role."

@@ -56,5 +56,5 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   eight new cases. Cap `EVAL_MAX_USD=0.10`, 8 calls per case. State the cost and get approval before any live run.
 
 ## Not done yet
-- Agent-level evals for `deed_timeline` and `building_contacts`; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
+- Run the agent-level evals for the four new tools (written, `tests/evals/agent_slices_cases.yaml` and `tests/test_agent_eval_slices.py`, 9 cases; no live run yet); `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.
