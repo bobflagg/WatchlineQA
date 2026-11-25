@@ -41,6 +41,7 @@ CAVEAT_NO_DEED_LINKS = Caveat("deed_links_not_read",
 
 class IdentityGraph(Protocol):
     def records_named(self, name: str) -> list[dict]: ...
+    def landlords_covering(self, bbl: str) -> list[str]: ...
     def records(self, ids: list[int]) -> list[dict]: ...
     def identity_pairs(self, ids: list[int]) -> list[dict]: ...
     def lots(self, ids: list[int]) -> list[dict]: ...
@@ -55,6 +56,11 @@ class Neo4jIdentityGraph(Neo4jRegistrationGraph):
     def records_named(self, name: str) -> list[dict]:
         return self._read("CYPHER 25 MATCH (n:Landlord {name: $name}) RETURN n.nodeId AS nodeId, n.name AS name, "
                           "n.businessAddresses AS businessAddresses ORDER BY nodeId LIMIT $limit", name=name, limit=MAX_RECORDS)
+
+    def landlords_covering(self, bbl: str) -> list[str]:
+        """The distinct landlord names, as recorded, of the records that cover this lot."""
+        return [r["name"] for r in self._read("CYPHER 25 MATCH (n:Landlord)-[:COVERS]->(:Lot {bbl: $bbl}) RETURN DISTINCT n.name AS name ORDER BY name LIMIT $limit",
+                                              bbl=bbl, limit=MAX_RECORDS)]
 
     def records(self, ids: list[int]) -> list[dict]:
         return self._read("CYPHER 25 MATCH (n:Landlord WHERE n.nodeId IN $ids) RETURN n.nodeId AS nodeId, n.name AS name, "

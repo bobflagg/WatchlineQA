@@ -54,3 +54,36 @@ def live_graph():
         pytest.skip(f"Neo4j not reachable: {exc}")
     yield Neo4jIdentityGraph(driver, os.environ["NEO4J_DATABASE"])
     driver.close()
+
+
+@pytest.fixture(scope="session")
+def live_report_deps():
+    """Everything the report reads, on the live Neo4j and the Geosupport sidecar (no model); skips when either is not reachable."""
+    import httpx
+    from dotenv import load_dotenv
+    from neo4j import GraphDatabase
+
+    from watchline.deeds.timeline import Neo4jTimelineGraph
+    from watchline.geosupport.geosupport import Client
+    from watchline.geosupport.resolution import Neo4jGraph
+    from watchline.identity.graph import Neo4jIdentityGraph
+    from watchline.profile.profile import Neo4jProfileGraph
+    from watchline.report.graph import ReportDeps
+    load_dotenv()
+    client = Client()
+    try:
+        client.health()
+    except httpx.HTTPError:
+        pytest.skip(f"Geosupport sidecar not reachable at {client.url}")
+    uri, user, pw = (os.environ.get(k) for k in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"))
+    if not (uri and user and pw):
+        pytest.skip("NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD not set")
+    driver = GraphDatabase.driver(uri, auth=(user, pw))
+    try:
+        driver.verify_connectivity()
+    except Exception as exc:
+        driver.close()
+        pytest.skip(f"Neo4j not reachable: {exc}")
+    db = os.environ["NEO4J_DATABASE"]
+    yield ReportDeps(client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), Neo4jTimelineGraph(driver, db), Neo4jIdentityGraph(driver, db))
+    driver.close()

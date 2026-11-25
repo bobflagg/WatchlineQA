@@ -7,7 +7,7 @@ from langgraph.types import Command
 from test_identity_graph import ADDR, BASE, FakeIG, edge, rec
 
 from watchline.identity.section import decisions_from_json, identity_checkpoint, to_answer
-from watchline.report.graph import PROMPT, build_report_graph, pending
+from watchline.report.graph import PROMPT, build_identity_graph, pending
 
 LID = "ACME OWNER|ACME OWNR"
 
@@ -18,7 +18,7 @@ def d(what="accept", lid=LID, note=None, by="researcher", at="2026-12-01"):
 
 def start(ig=None, name="ACME OWNER", thread="t"):
     ig = ig or FakeIG(**BASE)
-    g = build_report_graph(ig, InMemorySaver())
+    g = build_identity_graph(ig, InMemorySaver())
     cfg = {"configurable": {"thread_id": thread}}
     return g, cfg, ig, g.invoke({"name": name}, cfg)
 
@@ -126,13 +126,13 @@ def test_two_runs_with_the_same_decisions_give_the_same_result():
 def test_a_paused_run_survives_a_new_graph_object_on_the_same_checkpointer():
     saver = InMemorySaver()
     cfg = {"configurable": {"thread_id": "t"}}
-    build_report_graph(FakeIG(**BASE), saver).invoke({"name": "ACME OWNER"}, cfg)
-    r = build_report_graph(FakeIG(**BASE), saver).invoke(Command(resume={"decisions": [d()]}), cfg)     # a restart in the same process
+    build_identity_graph(FakeIG(**BASE), saver).invoke({"name": "ACME OWNER"}, cfg)
+    r = build_identity_graph(FakeIG(**BASE), saver).invoke(Command(resume={"decisions": [d()]}), cfg)     # a restart in the same process
     assert pending(r) == [] and "4 lots" in r["answer"]["summary"]
 
 
 def test_live_bahumi_pause_and_resume(live_graph):
-    g = build_report_graph(live_graph, InMemorySaver())
+    g = build_identity_graph(live_graph, InMemorySaver())
     cfg = {"configurable": {"thread_id": "live"}}
     r = g.invoke({"name": "YONATAN BAHUMI"}, cfg)
     (p,) = pending(r)

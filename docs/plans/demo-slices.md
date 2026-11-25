@@ -85,3 +85,10 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   fallback for `buildings` was tried and dropped, because `test_profile_buildings_and_registrations_do_not_cross` makes that boundary deliberate; The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.
+
+## Report graph build (`docs/plans/report-graph-build.md`)
+- Slice 1 (done): `watchline/report/sections.py`, templated sections for PESP steps 2 to 4 and 8 and a `not_covered` kind; no model.
+- Slice 2 (done): `build_report_graph(deps, checkpointer)` in `watchline/report/graph.py` (the identity-only graph is now `build_identity_graph`). Nodes: resolve, building facts,
+  owner and contacts, deed history, entity research (not covered), landlords, the identity checkpoint with its pause, conditions, web research (not covered), assemble. One change
+  from the plan: an address that needs a borough, a choice of street, or is not found does not pause; the report stops with `needs_input` and the reason, and the page or command
+  asks again with the fix. The lot-with-several-landlord-names picker is a pause. Live check on 2141 Washington Avenue (no model): the lead, 1 lot to 56 lots (3 to 179 units).

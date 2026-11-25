@@ -19,6 +19,9 @@ class FakeIG:
         self.reg_calls = []
         self.calls = []
 
+    def landlords_covering(self, bbl):
+        return sorted({self._r[x["nodeId"]]["name"] for x in self._lots if x["bbl"] == bbl and x["nodeId"] in self._r})
+
     def records_named(self, name):
         self.calls.append("records_named")
         return [r for r in self._r.values() if r["name"] == name]
