@@ -119,3 +119,11 @@ def test_the_takeaway_goes_into_the_download_and_is_labelled_as_the_researchers(
     from watchline.report.export import render_report
     md = render_report(at.session_state["rp_result"]["report"], at.session_state["rp_takeaway"])
     assert "Written by the researcher, not generated:\n\nMy reading of the records." in md
+
+
+def test_one_lot_and_one_unit_are_not_plural_and_a_note_does_not_end_in_a_double_stop():
+    from watchline.identity.section import _state
+    from watchline.ui.report_page import _lots, _units
+    assert (_lots({"lots": 1}), _lots({"lots": 56}), _units({"units": 1}), _units({"units": 179})) == ("1 lot", "56 lots", "1 residential unit", "179 residential units")
+    link = {"state": "accepted", "decision": {"decidedBy": "researcher", "decidedAt": "2026-12-01", "note": "Same office."}}
+    assert "note: Same office)." in _state(link)

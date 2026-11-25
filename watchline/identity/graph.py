@@ -300,7 +300,7 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
 
         def tail(ks: list[dict]) -> str:
             weight = max((e["weight"] for e in ks if e.get("weight") is not None), default=None)
-            return f"{len(ks)} link{'s' if len(ks) != 1 else ''}" + (f", weight {weight:g}" if weight is not None else "")
+            return f"{len(ks)} link{'s' if len(ks) != 1 else ''}" + (f", weight {weight:.2f}" if weight is not None else "")
 
         if ks := [e for e in mine if e["type"] == "CONNECTED_BY_ADDRESS"]:
             kinds.append("address")

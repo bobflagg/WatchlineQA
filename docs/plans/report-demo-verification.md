@@ -17,6 +17,18 @@ byte-identical file. Decisions in these runs are rehearsal decisions (date 2026-
 | Portfolio | anchor YONATAN BADHUMI: 1 lot, 3 units as held; accepting the lead for YONATAN BAHUMI gives 56 lots, 179 units | anchor YONATAN BAHUMI: 55 lots, 176 units (6 records) as held; accepting the lead for YONATAN BADHUMI gives 56 lots, 179 units |
 | The lead | address 4058 BRONX BOULEVARD 1B and registration 205148, which lists BADHUMI as HeadOfficer and BAHUMI as Officer and Shareholder | the same pair, seen from the BAHUMI side |
 
+## Browser walkthrough (2026-11-25, Chrome, `make report-ui`)
+Both addresses were walked through in a real browser: address form, the sections as they are read, the lead card, Accept with a note, the finished report with the portfolio as held
+next to after the decision (2141 Washington: 1 lot to 56; 74 Clinton: 55 lots to 56), and the two download buttons. No exception box, no console error. Fixes made from what was seen:
+"1 lots" in the metric cards and the decision text, a misleading up-arrow on the unit counts, a doubled stop after a note, and the network "weight" shown to five decimals.
+Not changed: the grey section tags under each fact (`links`, `portfolio_effect`, ...) are the answer contract's evidence labels, and the Streamlit "Deploy" menu shows in the corner.
+
+## Found while reading 74 Clinton Place
+The one harassment finding there (case 284822, After Trial, 2016) names the respondent `McLORD OBIOHA`. The deed history on the same lot lists `OBIOHA, MCLORD` as the party who
+received the building in 2006 and sold it in 2018 and again in 2021 (to `74 CLINTON HOLDINGS LLC`, then on to `74 CLINTON PLACE LLC`, the registered owner). The names are written in a
+different order, so the report treats them as unmatched and says so; it is a lead, not proof. Read together, the finding was recorded years before the current owners acquired the building.
+Do not present it as a finding about the current owner or the BAHUMI parties.
+
 ## Still to check by hand before the talk
 - The Public Advocate's 19 Bronx buildings against the 55 BAHUMI lots (working choice, `report-graph.md`), and the "Worst Landlords" list context, which is never shown as a graph answer.
 - Whether the audience should see 74 Clinton Place's finding at all: it is a finding on a case at the building whose respondent is an individual, not a BAHUMI party and not the registered owner.

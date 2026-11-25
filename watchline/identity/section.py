@@ -101,7 +101,7 @@ def _counts(f: dict) -> str:
 
 def _state(link: dict) -> str:
     d = link["decision"]
-    who = f" (decided by {d['decidedBy']} on {d['decidedAt']}" + (f"; note: {d['note']}" if d.get("note") else "") + ")" if d else ""
+    who = f" (decided by {d['decidedBy']} on {d['decidedAt']}" + (f"; note: {d['note'].strip().rstrip('.')}" if d.get("note") else "") + ")" if d else ""
     return {"awaiting": "A lead, awaiting the researcher's decision.",
             "accepted": f"Accepted by the researcher{who}. This is the researcher's inference, not a finding in the records.",
             "rejected": f"Rejected by the researcher{who}.",

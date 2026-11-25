@@ -21,6 +21,14 @@ INTRO = ("A report on one building address, built from the Watchline records by 
          "Leads are connections the records suggest; you decide whether to accept each one, and your decisions are saved with the report.")
 
 
+def _lots(f: dict) -> str:
+    return f"{f['lots']} lot{'s' if f['lots'] != 1 else ''}"
+
+
+def _units(f: dict) -> str:
+    return f"{f['units']} residential unit{'s' if f['units'] != 1 else ''}"
+
+
 def _config() -> dict:
     return {"configurable": {"thread_id": st.session_state.rp_thread}}
 
@@ -90,7 +98,7 @@ def _show_pause(prompt: dict, today: str) -> None:
         return
     held = prompt["portfolio_effect"]["as_held"]
     st.subheader("Your decision on the leads")
-    st.markdown(f"As held in the graph, the portfolio is **{held['lots']} lots** and **{held['units']} residential units**. Each lead below is a connection the records "
+    st.markdown(f"As held in the graph, the portfolio is **{_lots(held)}** and **{_units(held)}**. Each lead below is a connection the records "
                 "suggest, not a finding. Accepting one adds the other party's lots to the portfolio as your own inference.")
     for i, ln in enumerate(prompt["links"]):
         _show_lead(i, ln)
@@ -108,8 +116,10 @@ def _show_final(report: dict) -> None:
     eff = (report.get("checkpoint") or {}).get("portfolio_effect")
     if eff:
         a, b = st.columns(2)
-        a.metric("Portfolio as held in the graph", f"{eff['as_held']['lots']} lots", f"{eff['as_held']['units']} residential units", delta_color="off", border=True)
-        b.metric("After your decisions", f"{eff['as_decided']['lots']} lots", f"{eff['as_decided']['units']} residential units", delta_color="off", border=True)
+        for col, label, f in ((a, "Portfolio as held in the graph", eff["as_held"]), (b, "After your decisions", eff["as_decided"])):
+            with col:
+                st.metric(label, _lots(f), border=True)
+                st.caption(_units(f))
     _show_sections(report["sections"])
     st.header("Your takeaway", divider="gray")
     st.text_area("Written in your own words; it is saved in the report and labelled as yours", key="rp_takeaway")
