@@ -40,7 +40,8 @@ _TIMELINE = [
     {"documentId": "BK_7820000000001", "docType": "DEED", "docDate": "1978-08-08", "recordedDate": "1978-08-08", "amount": 0,
      "notSale": True, "otherLots": 1075, "grantors": ["CITY OF EXAMPLE", "CITY OF EXAMPL"], "grantorRows": 27,
      "grantees": ["CITY OF EXAMPLE"], "granteeRows": 14}]
-_TIMELINE_COUNTS = {"deeds": 2, "notSale": 1, "amountZero": 1, "byType": {"DEED": 2}, "since": None, "until": None}
+_TIMELINE_COUNTS = {"deeds": 2, "notSale": 1, "amountZero": 1, "withAmount": 1, "byType": {"DEED": 2}, "since": None, "until": None,
+                    "plain": "2 deeds recorded. Counted as not a sale (an amount of 0, or a correction deed): 1. Recording an amount of 0: 1. Recording an amount (not a correction deed): 1."}
 _TIMELINE_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
                      (_timeline.CAVEAT_ORDER, _timeline.CAVEAT_PARTY_NAMES, _deeds.CAVEAT_NOT_SALE, _deeds.CAVEAT_MULTI_LOT)]
 

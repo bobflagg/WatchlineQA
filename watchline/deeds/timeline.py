@@ -63,6 +63,7 @@ class Counts:
     deeds: int
     notSale: int
     amountZero: int
+    withAmount: int                 # deeds that record an amount above 0 and are not correction deeds, counted here so no one has to subtract
     byType: tuple[tuple[str, int], ...]
 
 
@@ -108,7 +109,7 @@ class Neo4jTimelineGraph(Neo4jDeedGraph, Neo4jContactGraph, Neo4jConditionsGraph
 
     def deed_counts(self, bbl: str, since: str | None, until: str | None) -> list[dict]:
         """Deeds in the period grouped by type and whether the amount is 0, so counts do not depend on the list cap."""
-        return self._read(f"CYPHER 25 MATCH {_IN_PERIOD} RETURN d.docType AS docType, coalesce(d.amount = 0, false) AS zero, count(*) AS n "
+        return self._read(f"CYPHER 25 MATCH {_IN_PERIOD} RETURN d.docType AS docType, coalesce(d.amount = 0, false) AS zero, d.amount IS NULL AS missing, count(*) AS n "
                           "ORDER BY docType, zero LIMIT $limit",
                           bbl=bbl, types=list(DEED_TYPES), since=since, until=until, limit=MAX_GROUPS)
 
@@ -120,6 +121,7 @@ def _counts(rows: list[dict]) -> Counts:
     return Counts(deeds=sum(r["n"] for r in rows),
                   notSale=sum(r["n"] for r in rows if r["zero"] or r["docType"] in NOT_SALE_TYPES),
                   amountZero=sum(r["n"] for r in rows if r["zero"]),
+                  withAmount=sum(r["n"] for r in rows if not r["zero"] and not r.get("missing") and r["docType"] not in NOT_SALE_TYPES),
                   byType=tuple(sorted(by_type.items())))
 
 

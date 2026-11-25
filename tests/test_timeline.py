@@ -52,7 +52,7 @@ def codes(t):
 def test_counts_separate_deeds_not_sales_and_zero_amounts():
     t = run([trow("D1", amount=5000000), trow("D2", amount=0), trow("D3", typ="CORRD", amount=10), trow("D4", typ="DEEDO", amount=0)])
     c = t.counts
-    assert (c.deeds, c.notSale, c.amountZero) == (4, 3, 2)     # D3 is a correction deed with an amount: not a sale, not a zero
+    assert (c.deeds, c.notSale, c.amountZero, c.withAmount) == (4, 3, 2, 1)     # D3 is a correction deed with an amount: not a sale, not a zero, not "with an amount"
     assert dict(c.byType) == {"CORRD": 1, "DEED": 2, "DEEDO": 1}
     assert {"deed_not_sale", "deed_correction_type", "timeline_by_recorded", "party_names_as_recorded"} <= codes(t)
 
@@ -190,3 +190,18 @@ def test_bad_period_bounds_are_invalid_input_and_nothing_is_read(since, until, w
 
 def test_good_period_bounds_including_equal_dates_pass():
     assert run([trow()], since="2020-01-01", until="2020-01-01").since == "2020-01-01"
+
+
+def test_with_amount_is_counted_in_code_and_a_missing_amount_is_not_an_amount():
+    rows = [dict(docType="DEED", zero=False, missing=False, n=3), dict(docType="DEED", zero=True, missing=False, n=7),
+            dict(docType="DEED", zero=False, missing=True, n=2), dict(docType="CORRD", zero=False, missing=False, n=1)]
+    c = TL._counts(rows)
+    assert (c.deeds, c.notSale, c.amountZero, c.withAmount) == (13, 8, 7, 3)
+
+
+def test_the_tool_gives_a_plain_sentence_so_nobody_subtracts():
+    out = tool([trow("D1", amount=0), trow("D2", amount=900)]).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    c = out["timeline_counts"]
+    assert c["withAmount"] == 1 and c["plain"] == ("2 deeds recorded. Counted as not a sale (an amount of 0, or a correction deed): 1. "
+                                                    "Recording an amount of 0: 1. Recording an amount (not a correction deed): 1.")
+    assert "withAmount" in " ".join(tool().description.split()) and "compute nothing" in " ".join(tool().description.split())

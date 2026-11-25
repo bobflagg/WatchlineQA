@@ -63,7 +63,7 @@ def check(out: dict, expect: dict):
         assert [d["documentId"] for d in out["timeline"]] == expect["ids"]
     if "counts" in expect:
         c = out["timeline_counts"]
-        assert {k: c[k] for k in ("deeds", "notSale", "amountZero", "byType")} == expect["counts"]
+        assert {k: c[k] for k in ("deeds", "notSale", "amountZero", "withAmount", "byType")} == expect["counts"]
     for doc, n in expect.get("other_lots", {}).items():
         assert deeds[doc]["otherLots"] == n
     for doc, names in expect.get("grantees", {}).items():

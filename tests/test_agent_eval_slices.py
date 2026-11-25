@@ -259,3 +259,10 @@ def test_the_lot_section_lets_a_fact_cite_the_lots_own_values_in_any_tools_answe
     nolot = assemble(ModelAnswer(kind="not_found", summary="x", facts=[ModelFact(statement="y", evidence=[EvidenceRef(section="lot")])]),
                      [{"status": "ok", "resolution": {"bbl": "1"}, "lot": None}])
     assert nolot.facts[0].unresolved                                      # no lot, nothing to cite
+
+
+def test_the_prompt_gives_the_amount_count_and_keeps_respondent_questions_to_one_tool():
+    from watchline.agent.agent import system_prompt
+    text = " ".join(system_prompt().split())
+    assert "quote `withAmount`" in text and "say outright that a deed with an amount of 0 is not a sale" in text
+    assert "`litigation_cases` is enough" in text and "do not also call `registered_owner`, `deed_vs_owner` or `building_contacts`" in text
