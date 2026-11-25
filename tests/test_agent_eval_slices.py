@@ -196,6 +196,16 @@ def test_a_hedge_of_the_form_not_a_finding_that_excuses_the_same_party_phrase():
     assert check_deterministic({"must_not_assert": c["must_not_assert"]}, claim, claim)
 
 
+def test_a_denial_that_the_records_say_which_respondent_is_the_owner_is_a_hedge():
+    """The second live run (2026-11-25) wrote this sentence; it denies the claim the pattern looks for."""
+    c = case("respondent-matching-the-owner-is-a-lead")
+    said = ("The respondent BEAVER STREET COMMONS LLC matches the registered owner name Beaver Street Commons LLC by a normalized name comparison "
+            "(rule N1); this is a lead, not a confirmed identity, and the records do not record which respondent is the owner.")
+    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, fake_turn(said), fake_turn(said)) == []
+    claim = "The records record that the respondent is the owner."
+    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, fake_turn(claim), fake_turn(claim))
+
+
 def test_the_model_can_point_at_the_owner_names_in_a_litigation_answer():
     from test_agent_tools import FakeClient, FakeGraph, resolved
     from test_conditions import FakeCG

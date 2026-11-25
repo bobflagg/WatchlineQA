@@ -59,7 +59,7 @@ Reply on the first line with exactly PASS or FAIL, then one short sentence of re
 
 # A match is allowed only inside a sentence that says what the lot does NOT mean or what the assistant cannot say,
 # for example "This does not mean the lot has no buildings." A bare "not" elsewhere in the sentence is not enough.
-HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label|show|establish|prove|indicate|confirm(?:ed|ation)?\s+(?:that|whether|to be)|finding\s+(?:that|of))\b", re.I)
+HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label|show|establish|prove|indicate|confirm(?:ed|ation)?\s+(?:that|whether|to be)|finding\s+(?:that|of)|record(?:s|ed)?\s+(?:which|whether|that))\b", re.I)
 # "not confirmation that ..." / "not confirmed to be ..." excuse a phrase; "has not been confirmed elsewhere" does not (it says nothing about the phrase).
 
 SENTENCE_END = re.compile(r"[.!?](?=\s+[A-Z\"'(]|\s*$)|\n")

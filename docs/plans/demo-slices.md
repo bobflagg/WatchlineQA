@@ -59,5 +59,8 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
 - Agent-level evals for the four new tools (`tests/evals/agent_slices_cases.yaml`, `tests/test_agent_eval_slices.py`, 9 cases). First live run 2026-11-25
   (Haiku 5.5 agent and judge, judge on, cap $0.10, 8 calls per case): 5 passed, 4 failed, estimated cost $0.0123 (29 calls). Failures were three prompt gaps
   (the model cited another tool's section: `deeds`, `characteristics`, `owners`), one subtracted count, and one checker false positive ("not a finding that").
-  Fixed, not yet rerun; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
+  Fixed and the 4 failed cases rerun (same cap, judge on, $0.0071, 15 calls): 3 passed; the fourth (`respondent-matching-the-owner-is-a-lead`) failed only on
+  a checker false positive ("the records do not record which respondent is the owner" is a denial); the checker now treats "not record which/whether/that" as a
+  hedge (tested offline against the recorded sentence). That case has not been rerun. The amount-0 case passes but the model still writes "the other 2"
+  (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.
