@@ -113,3 +113,16 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
 - Report page samples (2026-11-25): a pulldown in the sidebar, shown only on the report page, runs the report on a sample address like a typed one (`REPORT_SAMPLES` in
   `watchline/ui/samples.py`: 2141 Washington Avenue, 74 Clinton Place, 5413 7 Avenue, each run end to end on the live graph by `test_live_every_sample_address_builds_a_report`;
   a help tooltip says what each shows). Checked in Chrome: the chat page has its two pulldowns, the report page has this one.
+
+## Stress test of the report (2026-11-25, no model)
+Ten awkward lots were run end to end on the live graph and the nine that resolve were also run in the browser: the lot with the most buildings (67-02 Springfield Boulevard, 237), the
+most deeds (102 West 57 Street, 31,299), the biggest landlord anchors (45 Duffield Street, 384 lots; 992 Lenox Road, 225), a building with 2,329 violations (805 Fairmount Place), one with 126
+cases (16 Richman Plaza), a BIN shared by four lots (32-38 61 Street), a lot HPD does not register (82 Wall Street), and a Queens address Geosupport cannot find (134 Jewel Avenue: it stops
+with the reason). Runs take under a second; the page shows a finished report in under two seconds (up to about 10,000 px tall, 115 bullets, for the 237-building lot).
+Found and fixed:
+- **A crash** on a lot with no HPD-registered building (82 Wall Street): the violations and cases templates assumed a rate and counts exist. They now say no building is registered.
+- **A failing section ended the whole report.** Each section (and the identity step) now becomes an error section ("could not be built ... a fault in the report, not an answer about the
+  address") and the rest of the report is built.
+- Numbers had no thousands separators ("31299 deeds"); a building with no recorded address printed as "None"; a building list cut at 200 said "200 buildings" and now says "at least 200".
+Not reachable on real data: the picker for several landlord names. No lot is covered by two different landlord names (probed), so it is tested on fakes only.
+Not changed: the owner section for a 237-building lot has 61 bullets (ten buildings shown in full, the rest counted).

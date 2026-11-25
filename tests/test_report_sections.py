@@ -196,3 +196,39 @@ def test_one_lot_and_one_unit_are_not_plural():
     from watchline.identity.section import _counts
     assert _counts({"lots": 1, "units": 1, "unitsMissing": 0}) == "1 lot and 1 residential unit"
     assert _counts({"lots": 56, "units": 179, "unitsMissing": 0}) == "56 lots and 179 residential units"
+
+
+def test_a_lot_with_no_hpd_building_says_so_for_violations_and_cases_instead_of_failing():
+    v = T.violations_to_dict(build_violations(answer(), FakeCG(buildings=[], groups=[])))
+    lt = T.litigation_to_dict(build_litigation(answer(), FakeCG(buildings=[], cases=[])))
+    assert v["violations_rate"] is None and lt["case_counts"] is None              # the shapes that used to break the templates
+    a, b = S.violations_section(v), S.litigation_section(lt)
+    assert a.kind == b.kind == "not_found" and not a.facts and not b.facts
+    assert "the lot has no HPD-registered building listed" in a.summary and "not a statement that conditions are good" in a.summary
+    assert b.summary.startswith("No Housing Court cases can be read") and {"no_hpd_building", "registered_no_building"} & {c.code for c in a.caveats}
+
+
+def test_big_numbers_get_thousands_separators():
+    rows = [dict(docType="DEED", zero=True, missing=False, n=10758), dict(docType="DEED", zero=False, missing=False, n=20537)]
+    tl, _ = deed_views([trow("D1")])
+    from watchline.deeds.timeline import _counts as deed_counts
+    tl["timeline_counts"].update(deeds=31295, amountZero=10758, withAmount=20537, plain=T.timeline_plain(deed_counts(rows)))
+    a = S.deed_history(tl)
+    assert a.summary.startswith("31,295 deeds recorded on the lot") and "10,758 record an amount of 0" in a.summary
+    assert tl["timeline_counts"]["plain"].startswith("31,295 deeds recorded: 10,758 record an amount of 0; 20,537 record another amount;")
+    from watchline.identity.section import _counts
+    assert _counts({"lots": 1234, "units": 5779, "unitsMissing": 0}) == "1,234 lots and 5,779 residential units"
+
+
+def test_a_building_with_no_recorded_address_is_not_printed_as_none():
+    v = facts_view()
+    v["buildings"][0]["address"] = None
+    t = text(S.building_facts(v))
+    assert "an address not recorded (BIN 1)" in t and "None" not in t
+
+
+def test_a_building_list_cut_at_its_limit_is_called_at_least():
+    v = facts_view()
+    v["buildings_listed_is_lower_bound"] = True
+    a = S.building_facts(v)
+    assert "and at least 2 buildings listed by HPD." in a.summary

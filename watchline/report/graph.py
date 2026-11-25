@@ -175,6 +175,7 @@ class FullState(ReportState, total=False):
     needs_input: dict | None       # the report stopped: the address needs a borough, a choice of street, or is not in the graph
     parts: Annotated[dict, _merge]   # section key -> Answer (JSON)
     landlord_names: list[str]
+    identity_error: bool           # the identity step failed; its section says so and the report goes on
     checkpoint: dict | None        # the identity checkpoint after the decisions (JSON view), for the portfolio footprint
     report: dict
 
@@ -190,6 +191,26 @@ def resolution_from_state(d: dict) -> Resolution:
 
 def _part(a: Answer) -> dict:
     return {"answer": a.model_dump()}
+
+
+def _failed(title: str, exc: Exception) -> Answer:
+    """A section that raised becomes a section that says so; the rest of the report is built anyway."""
+    return Answer(kind="error", summary=(f"The {title.lower()} section could not be built ({type(exc).__name__}). The rest of the report is unaffected. "
+                                         "This is a fault in the report, not an answer about the address."),
+                  caveats=[CaveatOut(code="section_failed", text="This section is missing because of a fault, not because the records have nothing to show.")])
+
+
+def _guarded(key: str, title: str):
+    """Decorator for a node that builds one section: an exception becomes an error section instead of ending the run."""
+    def wrap(fn):
+        def run(state):
+            try:
+                return fn(state)
+            except Exception as exc:  # noqa: BLE001
+                return {"parts": {key: _part(_failed(title, exc))}}
+        run.__name__ = fn.__name__
+        return run
+    return wrap
 
 
 def build_report_graph(deps: ReportDeps, checkpointer: BaseCheckpointSaver | None = None):
@@ -225,14 +246,17 @@ def build_report_graph(deps: ReportDeps, checkpointer: BaseCheckpointSaver | Non
     def res(state: FullState) -> Resolution:
         return resolution_from_state(state["resolution"])
 
+    @_guarded("building", "The building")
     def building_facts(state: FullState) -> dict:
         return {"parts": {"building": _part(S.building_facts(T.profile_to_dict(build_profile(res(state), deps.pg))))}}
 
+    @_guarded("owner", "Registered owner and contacts")
     def owner_and_contacts(state: FullState) -> dict:
         r = res(state)
         reg, con = T.registrations_to_dict(build_registrations(r, deps.rg)), T.contacts_to_dict(build_contacts(r, deps.rg))
         return {"parts": {"owner": _part(S.owner_and_contacts(reg, con))}}
 
+    @_guarded("deeds", "Deed history")
     def deed_history(state: FullState) -> dict:
         r = res(state)
         tl, cmp = T.timeline_to_dict(build_timeline(r, deps.rg)), T.deeds_to_dict(build_comparison(r, deps.rg, deps.rg))
@@ -244,10 +268,15 @@ def build_report_graph(deps: ReportDeps, checkpointer: BaseCheckpointSaver | Non
                                                                            "an owner name, and an out-of-state parent needs a web search by the researcher."))}}
 
     def landlords(state: FullState) -> dict:
-        names = ig.landlords_covering(res(state).bbl)
+        try:
+            names = ig.landlords_covering(res(state).bbl)
+        except Exception as exc:  # noqa: BLE001
+            return {"landlord_names": [], "identity_error": True, "parts": {"identity": _part(_failed("Related landlord records and the portfolio", exc))}}
         return {"landlord_names": names, **({"name": names[0]} if len(names) == 1 else {})}
 
     def after_landlords(state: FullState) -> str:
+        if state.get("identity_error"):
+            return "conditions"
         n = len(state["landlord_names"])
         return "no_landlord" if n == 0 else "propose" if n == 1 else "choose_landlord"
 
@@ -268,10 +297,15 @@ def build_report_graph(deps: ReportDeps, checkpointer: BaseCheckpointSaver | Non
         return "choose_landlord" if state.get("error") else "propose"
 
     def propose(state: FullState) -> dict:
-        r = identity_checkpoint(ig, state["name"], [])
-        return {"proposal": checkpoint_to_dict(r), "parts": {"identity": _part(to_answer(r))}, "decisions": [], "error": None}
+        try:
+            r = identity_checkpoint(ig, state["name"], [])
+            return {"proposal": checkpoint_to_dict(r), "parts": {"identity": _part(to_answer(r))}, "decisions": [], "error": None}
+        except Exception as exc:  # noqa: BLE001
+            return {"identity_error": True, "decisions": [], "parts": {"identity": _part(_failed("Related landlord records and the portfolio", exc))}}
 
     def needs_decision(state: FullState) -> str:
+        if state.get("identity_error"):
+            return "conditions"
         p = state["proposal"]
         return "decide" if p["status"] == "ok" and any(x["state"] == "awaiting" for x in p["links"]) else "finish_identity"
 
@@ -298,8 +332,14 @@ def build_report_graph(deps: ReportDeps, checkpointer: BaseCheckpointSaver | Non
 
     def conditions(state: FullState) -> dict:
         r = res(state)
-        return {"parts": {"violations": _part(S.violations_section(T.violations_to_dict(build_violations(r, deps.rg)))),
-                          "litigation": _part(S.litigation_section(T.litigation_to_dict(build_litigation(r, deps.rg))))}}
+        parts = {}
+        for key, title, build in (("violations", "Violations", lambda: S.violations_section(T.violations_to_dict(build_violations(r, deps.rg)))),
+                                  ("litigation", "Housing Court cases", lambda: S.litigation_section(T.litigation_to_dict(build_litigation(r, deps.rg))))):
+            try:
+                parts[key] = _part(build())
+            except Exception as exc:  # noqa: BLE001
+                parts[key] = _part(_failed(title, exc))
+        return {"parts": parts}
 
     def web_research(state: FullState) -> dict:
         return {"parts": {"web": _part(S.not_covered("Web research", "Searching the news and the web for the owner names and addresses is a step for the researcher; "
@@ -328,9 +368,9 @@ def build_report_graph(deps: ReportDeps, checkpointer: BaseCheckpointSaver | Non
     g.add_edge("owner_and_contacts", "deed_history")
     g.add_edge("deed_history", "entity_research")
     g.add_edge("entity_research", "landlords")
-    g.add_conditional_edges("landlords", after_landlords, {"no_landlord": "no_landlord", "propose": "propose", "choose_landlord": "choose_landlord"})
+    g.add_conditional_edges("landlords", after_landlords, {"no_landlord": "no_landlord", "propose": "propose", "choose_landlord": "choose_landlord", "conditions": "conditions"})
     g.add_conditional_edges("choose_landlord", after_choose, {"choose_landlord": "choose_landlord", "propose": "propose"})
-    g.add_conditional_edges("propose", needs_decision, {"decide": "decide", "finish_identity": "finish_identity"})
+    g.add_conditional_edges("propose", needs_decision, {"decide": "decide", "finish_identity": "finish_identity", "conditions": "conditions"})
     g.add_conditional_edges("decide", after_decide, {"decide": "decide", "finish_identity": "finish_identity"})
     g.add_edge("no_landlord", "conditions")
     g.add_edge("finish_identity", "conditions")

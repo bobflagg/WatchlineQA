@@ -251,3 +251,88 @@ def test_live_every_sample_address_builds_a_report(live_report_deps):
         else:
             (p,) = pending(r)
             assert [x["linkId"] for x in p["links"]] == [expected_lead[address]], address
+
+
+# ---- a section that fails does not end the report -------------------------------------------------------------------------------
+
+class Breaks(AllReads):
+    """Reads that raise, to see what the report does when one of its sections cannot be built."""
+    def __init__(self, *broken, **kw):
+        super().__init__(**kw)
+        self.broken = broken
+
+    def _maybe(self, name):
+        if name in self.broken:
+            raise RuntimeError(f"{name} failed")
+
+    def timeline(self, bbl, since, until):
+        self._maybe("timeline")
+        return super().timeline(bbl, since, until)
+
+    def contacts(self, bbl):
+        self._maybe("contacts")
+        return super().contacts(bbl)
+
+    def violation_groups(self, bbl):
+        self._maybe("violation_groups")
+        return super().violation_groups(bbl)
+
+
+def broken_report(*broken, ig=None):
+    g_, cfg, _ = make(ig=ig if ig is not None else FakeIG(**identity_rows(lead=False)),
+                      reads=Breaks(*broken, deeds=[drow()], timeline=[trow()], contacts=[crow()], groups=[g()], cases=[case()]))
+    return g_.invoke(START, cfg)["report"]
+
+
+@pytest.mark.parametrize("broken, key, title", [(("timeline",), "deeds", "deed history"), (("contacts",), "owner", "registered owner and contacts"),
+                                                (("violation_groups",), "violations", "violations")])
+def test_a_section_that_raises_becomes_an_error_section_and_the_rest_of_the_report_is_built(broken, key, title):
+    rep = broken_report(*broken)
+    assert rep["status"] == "ok" and [s["key"] for s in rep["sections"]] == [k for k, *_ in SECTIONS]
+    bad = next(s for s in rep["sections"] if s["key"] == key)["answer"]
+    assert bad["kind"] == "error" and f"The {title} section could not be built (RuntimeError)" in bad["summary"] and "a fault in the report" in bad["summary"]
+    assert [c["code"] for c in bad["caveats"]] == ["section_failed"]
+    others = [s["answer"]["kind"] for s in rep["sections"] if s["key"] != key]
+    assert "error" not in others                                                      # nothing else was lost
+    from watchline.report.export import render_report
+    assert "could not be built (RuntimeError)" in render_report(rep)
+
+
+def test_a_failure_of_the_landlord_read_ends_the_identity_step_only():
+    class BadIG(FakeIG):
+        def landlords_covering(self, bbl):
+            raise RuntimeError("no landlords")
+    rep = broken_report(ig=BadIG(**identity_rows()))
+    ident = next(s for s in rep["sections"] if s["key"] == "identity")["answer"]
+    assert rep["status"] == "ok" and ident["kind"] == "error" and "could not be built (RuntimeError)" in ident["summary"]
+    assert {"violations", "litigation", "web"} <= {s["key"] for s in rep["sections"]}
+
+
+def test_a_failure_while_proposing_the_checkpoint_ends_the_identity_step_only():
+    class BadProposal(FakeIG):
+        def records_named(self, name):
+            raise RuntimeError("no records")
+    g_, cfg, _ = make(ig=BadProposal(**identity_rows()))
+    r = g_.invoke(START, cfg)
+    assert pending(r) == [] and next(s for s in r["report"]["sections"] if s["key"] == "identity")["answer"]["kind"] == "error"
+    assert "violations" in [s["key"] for s in r["report"]["sections"]]
+
+
+def test_live_awkward_lots_build_a_report_without_failing(live_report_deps):
+    """Stress cases found on the live graph 2026-11-25 (no model): the lot with the most buildings, the most deeds, a lot HPD does not register, and a very large violation count.
+    Each must give a report with no section that failed; the checks name what each case is for, not exact counts that change with the data."""
+    cases = {"67-02 Springfield Boulevard, Queens": "at least 200 buildings", "102 West 57 Street, Manhattan": "deeds recorded on the lot",
+             "82 Wall Street, Manhattan": "0 buildings listed by HPD", "805 Fairmount Place, Bronx": "open violations"}
+    for n, (address, phrase) in enumerate(cases.items()):
+        g_ = build_report_graph(live_report_deps, InMemorySaver())
+        cfg = {"configurable": {"thread_id": f"awkward{n}"}}
+        r = g_.invoke({"text": address, "generated_at": "stress"}, cfg)
+        while pending(r):
+            r = g_.invoke(Command(resume={"decisions": []}), cfg)
+        rep = r["report"]
+        assert rep["status"] == "ok", address
+        assert [s["key"] for s in rep["sections"]] == [k for k, *_ in SECTIONS], address
+        assert not [s["key"] for s in rep["sections"] if s["answer"]["kind"] == "error"], address          # no section failed
+        assert phrase in " ".join(s["answer"]["summary"] for s in rep["sections"]), (address, phrase)
+        from watchline.report.export import render_report
+        assert "None" not in render_report(rep).replace("none (no landlord", ""), address                   # a missing value is never printed as None

@@ -37,7 +37,11 @@ def _sources(*views: dict) -> list[str]:
 
 
 def _say(n: int, one: str, many: str | None = None) -> str:
-    return f"{n} {one if n == 1 else (many or one + 's')}"
+    return f"{n:,} {one if n == 1 else (many or one + 's')}"
+
+
+def _addr(b: dict) -> str:
+    return b.get("address") or "an address not recorded"
 
 
 def _join(items: list[str]) -> str:
@@ -58,6 +62,14 @@ def _unavailable(d: dict, what: str) -> Answer | None:
         why = (d.get("caveats") or [{"text": "the lot is not in the graph"}])[0]["text"]
         return Answer(kind="not_found", summary=f"{what} is not available: {why}", caveats=_caveats(d), sources=_sources(d))
     return None
+
+
+def _no_buildings(d: dict, what: str) -> Answer | None:
+    """A lot with no HPD-registered building has nothing to read: say so, without implying that conditions are fine."""
+    if d.get("violations_rate", True) is not None and d.get("case_counts", True) is not None:
+        return None
+    return Answer(kind="not_found", summary=(f"No {what} can be read: the lot has no HPD-registered building listed. {what[0].upper() + what[1:]} exist only for HPD-registered "
+                                             "buildings, so this is not a statement that conditions are good."), caveats=_caveats(d), sources=_sources(d))
 
 
 def not_covered(title: str, why: str) -> Answer:
@@ -84,17 +96,17 @@ def building_facts(d: dict) -> Answer:
                              + ". The units and the assessed total belong to the lot, not to any one building."),
                   evidence=[_ev("characteristics", d, d["characteristics"])]),
              Fact(statement=("HPD registrations list " + _say(hpd or 0, "building") + (", at least that many" if d.get("buildings_listed_is_lower_bound") else "")
-                             + "; PLUTO counts " + (str(pluto) if pluto is not None else "no number of buildings")
+                             + "; PLUTO counts " + (f"{pluto:,}" if pluto is not None else "no number of buildings")
                              + ". These are two sources and they can differ."), evidence=[_ev("counts", d, d["counts"])])]
     shown = d["buildings"][:MAX_BUILDINGS_SHOWN]
     if shown:
-        listing = "; ".join(f"{b['address']} (BIN {b['bin']}){' (the address typed)' if b['addressed'] else ''}" for b in shown)
-        more = f" and {(hpd or len(d['buildings'])) - len(shown)} more" if (hpd or len(d["buildings"])) > len(shown) else ""
+        listing = "; ".join(f"{_addr(b)} (BIN {b['bin']}){' (the address typed)' if b['addressed'] else ''}" for b in shown)
+        more = f" and {(hpd or len(d['buildings'])) - len(shown):,} more" if (hpd or len(d["buildings"])) > len(shown) else ""
         facts.append(Fact(statement=f"The buildings HPD lists for the lot: {listing}{more}.", evidence=[_ev("buildings", d, d["buildings"])]))
     where = r.get("returned") or r["input"]
     summary = (f"{where} is tax lot {r['bbl']}"
                + (f", with {_say(units, 'residential unit')} (a lot-wide figure)" if units is not None else "")
-               + f" and {_say(hpd or 0, 'building')} listed by HPD.")
+               + f" and {'at least ' if d.get('buildings_listed_is_lower_bound') else ''}{_say(hpd or 0, 'building')} listed by HPD.")
     return Answer(kind="profile", summary=summary, facts=facts, caveats=_caveats(d), sources=_sources(d))
 
 
@@ -112,14 +124,14 @@ def owner_and_contacts(reg: dict, contacts: dict) -> Answer:
         cb = contact_by_bin.get(b["bin"], {})
         by_reg = {g["registrationId"]: g for g in cb.get("registrations", [])}
         if not b["registrations"]:
-            facts.append(Fact(statement=f"{b['address']} (BIN {b['bin']}) has no HPD registration in the data. That says nothing about who owns it.",
+            facts.append(Fact(statement=f"{_addr(b)} (BIN {b['bin']}) has no HPD registration in the data. That says nothing about who owns it.",
                               evidence=[_ev("registrations", reg, b, b["bin"])]))
         for g in b["registrations"]:
             owners = [f"{o['name'] or 'a name not recorded'} ({o['contactType']})" for o in g["owners"]]
             owners_seen += [o["name"] for o in g["owners"] if o["name"]]
             dates = (f"last registered {g['lastRegistered']}" if g["lastRegistered"] else "no last-registered date") + (
                 f", registration ending {g['registrationEnd']}" if g["registrationEnd"] else "")
-            facts.append(Fact(statement=(f"{b['address']} (BIN {b['bin']}), registration {g['registrationId']} ({dates}): registered owner as recorded: "
+            facts.append(Fact(statement=(f"{_addr(b)} (BIN {b['bin']}), registration {g['registrationId']} ({dates}): registered owner as recorded: "
                                          f"{_join(owners) if owners else 'none recorded'}."), evidence=[_ev("registrations", reg, b, b["bin"])]))
             people = by_reg.get(g["registrationId"], {}).get("contacts", [])
             for c in people[:MAX_CONTACTS_SHOWN]:
@@ -131,7 +143,7 @@ def owner_and_contacts(reg: dict, contacts: dict) -> Answer:
                 facts.append(Fact(statement=f"{len(people) - MAX_CONTACTS_SHOWN} more contacts are recorded on registration {g['registrationId']}; they are in the evidence.",
                                   evidence=[_ev("contacts", contacts, cb, b["bin"])]))
     if len(reg["registration_buildings"]) > len(shown):
-        facts.append(Fact(statement=f"{len(reg['registration_buildings']) - len(shown)} more buildings are listed; they are in the evidence.",
+        facts.append(Fact(statement=f"{len(reg['registration_buildings']) - len(shown):,} more buildings are listed; they are in the evidence.",
                           evidence=[_ev("registrations", reg, reg["registration_buildings"])]))
     owners = list(dict.fromkeys(owners_seen))
     summary = (f"HPD records {_join(owners[:3])}{' and others' if len(owners) > 3 else ''} as registered owner. A registration records who registered the building, "
@@ -168,14 +180,14 @@ def deed_history(timeline: dict, comparison: dict | None = None) -> Answer:
         line = f"Deed {x['documentId']}, recorded {x['recordedDate']} ({x['docType']}), {amount}; from {_party(x['grantors'], x['grantorRows'])} to {_party(x['grantees'], x['granteeRows'])}{other}"
         facts.append(Fact(statement=line if line.endswith(".") else line + ".", evidence=[_ev("timeline", timeline, x)]))      # a name may already end in a period (N.A.)
     if len(deeds) > MAX_ITEMS_SHOWN:
-        facts.append(Fact(statement=f"{len(deeds) - MAX_ITEMS_SHOWN} older deeds are listed in the evidence.", evidence=[_ev("timeline", timeline, deeds)]))
+        facts.append(Fact(statement=f"{len(deeds) - MAX_ITEMS_SHOWN:,} older deeds are listed in the evidence.", evidence=[_ev("timeline", timeline, deeds)]))
     if comparison and comparison.get("comparison"):
         facts.append(_latest_deed_against_owner(comparison))
     elif comparison and comparison.get("deeds"):
         facts.append(Fact(statement="The latest deed could not be compared with a registered owner: HPD records none for this lot.", evidence=[_ev("deeds", comparison, comparison["deeds"])]))
     newest = deeds[0]
     summary = (f"{_say(c['deeds'], 'deed')} recorded on the lot, the latest on {newest['recordedDate']}. A deed records a transfer of title, not a sale; "
-               f"{c['amountZero']} record an amount of 0.")
+               f"{c['amountZero']:,} record an amount of 0.")
     return Answer(kind="timeline", summary=summary, facts=facts, caveats=_caveats(timeline, comparison or {}), sources=_sources(timeline, comparison or {}))
 
 
@@ -196,28 +208,28 @@ def _latest_deed_against_owner(cmp: dict) -> Fact:
 
 def violations_section(d: dict) -> Answer:
     """Open and closed violations by class, the oldest open inspection and the open count per unit, with the class counts beside it."""
-    if (a := _unavailable(d, "The violations")):
+    if (a := _unavailable(d, "The violations")) or (a := _no_buildings(d, "violations")):
         return a
     rate = d["violations_rate"]
     facts: list[Fact] = []
     for b in d["violations"][:MAX_BUILDINGS_SHOWN]:
         if not b["groups"]:
-            facts.append(Fact(statement=f"{b['address']} (BIN {b['bin']}) has no violation recorded. That is not a statement that conditions are good.",
+            facts.append(Fact(statement=f"{_addr(b)} (BIN {b['bin']}) has no violation recorded. That is not a statement that conditions are good.",
                               evidence=[_ev("violations", d, b, b["bin"])]))
             continue
         open_ = [f"class {g['violationClass']}: {g['n']}" for g in b["groups"] if g["status"] == "Open"]
         closed = [f"class {g['violationClass']}: {g['n']}" for g in b["groups"] if g["status"] != "Open"]
-        facts.append(Fact(statement=(f"{b['address']} (BIN {b['bin']}): open violations {_join(open_) if open_ else 'none'}"
+        facts.append(Fact(statement=(f"{_addr(b)} (BIN {b['bin']}): open violations {_join(open_) if open_ else 'none'}"
                                      + (f"; the oldest open inspection was on {b['oldestOpen']}" if b["oldestOpen"] else "")
                                      + (f"; closed violations {_join(closed)}" if closed else "") + "."), evidence=[_ev("violations", d, b, b["bin"])]))
     if len(d["violations"]) > MAX_BUILDINGS_SHOWN:
-        facts.append(Fact(statement=f"{len(d['violations']) - MAX_BUILDINGS_SHOWN} more buildings are in the evidence.", evidence=[_ev("violations", d, d["violations"])]))
+        facts.append(Fact(statement=f"{len(d['violations']) - MAX_BUILDINGS_SHOWN:,} more buildings are in the evidence.", evidence=[_ev("violations", d, d["violations"])]))
     if rate["perUnit"] is not None:
         by_class = _join([f"class {c['violationClass']} {c['perUnit']:g}" for c in rate["byClass"]]) if rate["byClass"] else "no open violations in any class"
-        text = (f"Open violations per residential unit: {rate['perUnit']:g} ({rate['open']} open over {rate['units']} units, pooled across the lot's buildings); "
+        text = (f"Open violations per residential unit: {rate['perUnit']:g} ({rate['open']:,} open over {rate['units']:,} units, pooled across the lot's buildings); "
                 f"by class: {by_class}. The units are a lot-wide figure.")
     else:
-        text = f"The rate per unit is unavailable (the lot has no residential unit count, or the building list was cut). Open violations counted: {rate['open']}."
+        text = f"The rate per unit is unavailable (the lot has no residential unit count, or the building list was cut). Open violations counted: {rate['open']:,}."
     facts.append(Fact(statement=text, evidence=[_ev("violations_rate", d, rate)]))
     summary = (f"{_say(rate['open'], 'open violation')} on the lot's buildings. Violations are what an inspector cited, not findings of fault or a measure of how bad conditions are."
                if rate["open"] else "No open violation is recorded for the lot's buildings. That is not a statement that conditions are good.")
@@ -226,13 +238,13 @@ def violations_section(d: dict) -> Answer:
 
 def litigation_section(d: dict) -> Answer:
     """Housing Court cases brought against the lot's buildings, any recorded harassment finding, and how each respondent compares with the owner names."""
-    if (a := _unavailable(d, "The litigation")):
+    if (a := _unavailable(d, "The litigation")) or (a := _no_buildings(d, "Housing Court cases")):
         return a
     c = d["case_counts"]
     if not c["cases"]:
         return Answer(kind="litigation", summary="No Housing Court case is recorded for the lot's buildings. That does not mean none was ever brought.",
                       caveats=_caveats(d), sources=_sources(d))
-    kv = lambda m: _join([f"{k}: {v}" for k, v in m.items()])    # noqa: E731
+    kv = lambda m: _join([f"{k}: {v:,}" for k, v in m.items()])    # noqa: E731
     facts = [Fact(statement=f"Cases by type: {kv(c['byType'])}. By status: {kv(c['byStatus'])}. By harassment finding: {kv(c['byFinding'])}.",
                   evidence=[_ev("case_counts", d, c)])]
     findings = [x for x in d["cases"] if x["isHarassmentFinding"]]
@@ -245,7 +257,7 @@ def litigation_section(d: dict) -> Answer:
         facts.append(Fact(statement=(f"Case {x['litigationId']} ({x['caseType']}, opened {x['caseOpenDate'] or 'on a date not recorded'}, {x['caseStatus']}); "
                                      f"no harassment finding recorded. {_respondent(x)}"), evidence=[_ev("cases", d, x)]))
     if c["cases"] > len(d["cases"]):
-        facts.append(Fact(statement=f"{c['cases'] - len(d['cases'])} more cases are counted above and not listed.", evidence=[_ev("case_counts", d, c)]))
+        facts.append(Fact(statement=f"{c['cases'] - len(d['cases']):,} more cases are counted above and not listed.", evidence=[_ev("case_counts", d, c)]))
     summary = (f"HPD recorded {_say(c['cases'], 'Housing Court case')} on the lot's buildings, brought by the city, not findings of fault. "
                + (f"{_say(len(findings), 'case')} {'carries' if len(findings) == 1 else 'carry'} a recorded harassment finding (After Inquest or After Trial)." if findings
                   else "No harassment finding (After Inquest or After Trial) is recorded."))

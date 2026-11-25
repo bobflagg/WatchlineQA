@@ -249,9 +249,9 @@ def litigation_to_dict(x: Litigation, max_cases: int = MAX_CASES_OUT) -> dict[st
 
 def timeline_plain(c) -> str:
     """The counts in one plain sentence, written by code, so no one has to add or subtract them."""
-    return (f"{c.deeds} deed{'s' if c.deeds != 1 else ''} recorded: {c.amountZero} record an amount of 0; {c.withAmount} record another amount; "
-            f"{c.correctionDeeds} are correction deeds with an amount other than 0; {c.amountMissing} have no amount recorded. "
-            f"Counted as not a sale (an amount of 0, or a correction deed): {c.notSale}.")
+    return (f"{c.deeds:,} deed{'s' if c.deeds != 1 else ''} recorded: {c.amountZero:,} record an amount of 0; {c.withAmount:,} record another amount; "
+            f"{c.correctionDeeds:,} are correction deeds with an amount other than 0; {c.amountMissing:,} have no amount recorded. "
+            f"Counted as not a sale (an amount of 0, or a correction deed): {c.notSale:,}.")
 
 
 def timeline_to_dict(x: DeedTimeline) -> dict[str, Any]:
