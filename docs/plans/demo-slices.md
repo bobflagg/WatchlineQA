@@ -61,6 +61,6 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   (the model cited another tool's section: `deeds`, `characteristics`, `owners`), one subtracted count, and one checker false positive ("not a finding that").
   Fixed and the 4 failed cases rerun (same cap, judge on, $0.0071, 15 calls): 3 passed; the fourth (`respondent-matching-the-owner-is-a-lead`) failed only on
   a checker false positive ("the records do not record which respondent is the owner" is a denial); the checker now treats "not record which/whether/that" as a
-  hedge (tested offline against the recorded sentence). That case has not been rerun. The amount-0 case passes but the model still writes "the other 2"
+  hedge (tested offline against the recorded sentence). Rerun alone ($0.0018, 5 calls, judge on): passed. All 9 cases have now passed in a live run (across three runs, about $0.021 in total). The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.
