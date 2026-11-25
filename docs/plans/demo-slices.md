@@ -78,6 +78,7 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   unless the sentence denies giving one; the prompt's section mapping is a per-tool list. Full rerun of the 9 after those fixes ($0.0139, 35 calls, judge on): 8 passed; `finding-on-the-building-not-the-landlord` failed (the model opened with "Yes, … against the buildings" to a
   question about the owner). A deterministic check for an opening yes and a prompt line were added; rerun alone ($0.0020, 3 calls): still failed the opening-yes check (the judge passed it; the answer
   was precise after the "Yes"), so the model ignored the prompt line; a general summary rule (do not begin with yes or no when the records cannot establish it) was added and the case rerun
-  ($0.0020): the model still opens with "Yes, one case on the building … records a harassment finding" (accurate about the building; the judge passed it), so the check still fails; The amount-0 case passes but the model still writes "the other 2"
+  ($0.0020): the model still opens with "Yes, one case on the building … records a harassment finding" (accurate about the building; the judge passed it), so the check still failed. The check was then narrowed (an opening yes fails only if its first clause says "against" or names the owner or landlord); tested offline against both live
+  answers (the earlier "Yes, … litigation against the buildings" fails, the accurate one passes); not rerun live; The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.

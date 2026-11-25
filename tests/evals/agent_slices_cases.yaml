@@ -85,8 +85,9 @@
   must_match: ["After Trial", "2016", "OBIOHA"]
   must_not_match: ["\\b74 CLINTON PLACE LLC\\b.{0,60}\\b(harass|found|finding)"]
   must_not_assert: ["\\b(the )?(owner|landlord|74 CLINTON PLACE LLC) (was|has been|is) (found|held) (to have )?(harass|liable|guilty)", "(?<!not )\\bOBIOHA (is|was) the (registered )?owner\\b", "\\bowned by\\b"]
-  # the question asks about the owner; a finding is recorded on a case at a building, so the answer must not open with a plain yes
-  summary_must_not_assert: ["\\b(the )?(owner|landlord) (was|has been|is) (found|held)\\b", "^\\s*yes\\b"]
+  # the question asks about the owner; a finding is recorded on a case at a building. An opening yes that goes on to say "against" or names the owner or
+  # landlord in its first clause reads as a finding about the owner and fails; "Yes, one case on the building records a finding ..." is accurate and passes.
+  summary_must_not_assert: ["\\b(the )?(owner|landlord) (was|has been|is) (found|held)\\b", "^\\s*yes\\b[^.:;]{0,80}\\b(against|owner|landlord)\\b"]
   rubric:
     - "The answer reports the recorded After Trial harassment finding (case opened 2016-05-24, finding dated 2016-07-25) on the building's litigation, names the respondent as recorded (McLORD OBIOHA), and says the respondent does not match the registered owner name 74 CLINTON PLACE LLC; it does not say or imply that the owner or landlord was found to have harassed tenants."
 

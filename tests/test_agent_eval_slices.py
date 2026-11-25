@@ -108,8 +108,14 @@ def test_the_harassment_patterns_catch_a_finding_about_the_owner_and_allow_the_b
     c = case("finding-on-the-building-not-the-landlord")
     bad = fake_turn("Yes, the owner was found to have harassed tenants after a trial in 2016.")
     assert check_deterministic({"must_not_assert": c["must_not_assert"], "summary_must_not_assert": c["summary_must_not_assert"]}, bad, bad)
-    yes = fake_turn("Yes, the records show a harassment finding in litigation against the buildings at 74 Clinton Place.")      # the live answer of 2026-11-25
-    assert any("summary asserts forbidden" in m for m in check_deterministic({"summary_must_not_assert": c["summary_must_not_assert"]}, yes, yes))
+    keys = {"summary_must_not_assert": c["summary_must_not_assert"]}
+    for bad in ("Yes, the records show one harassment finding in litigation against the buildings at 74 Clinton Place.",      # the live answer that read as a finding about the owner
+                "Yes, the owner has a harassment finding.", "Yes, the landlord was found to have harassed tenants."):
+        assert any("summary asserts forbidden" in m for m in check_deterministic(keys, fake_turn(bad), fake_turn(bad))), bad
+    accurate = fake_turn("Yes, one case on the building at 74 Clinton Place (BBL 2032070010) records a harassment finding of After Trial: case 284822, opened "
+                         "2016-05-24, finding dated 2016-07-25, with a penalty of 5200. The respondent as recorded on that case is McLORD OBIOHA, who is not matched "
+                         "to the registered owner by name; the records do not show whether this respondent is the owner or landlord.")   # the live answer of the last rerun
+    assert check_deterministic(keys, accurate, accurate) == []
     ok = fake_turn("A case on the building has a recorded harassment finding, After Trial, dated 2016. The respondent, McLORD OBIOHA, "
                    "does not match the registered owner name; the records do not say the owner was found to have harassed anyone.")
     assert check_deterministic({"must_not_assert": c["must_not_assert"], "summary_must_not_assert": c["summary_must_not_assert"]}, ok, ok) == []
