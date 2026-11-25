@@ -28,8 +28,12 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   `identity_checkpoint`, no model, UI fixtures and tests). Step 4: `watchline/report/graph.py`, a LangGraph workflow (propose, pause with `interrupt()`, finish) that
   takes the researcher's decisions on resume and saves them as the JSON log; no model. Next for the report graph: the other PESP sections as
   nodes, report export, and the narrative layer.
-- **D. Conditions, Q15 and Q28 (after C).** Counts by class and status, never summed. Harassment finding only for After Inquest or After Trial.
-  Q27 complaints later.
+- **D. Conditions, Q15 and Q28 (done).** `watchline/conditions/conditions.py`; tools `open_violations` (kind `violations`, sections `violations` and
+  `violations_rate`) and `litigation_cases` (kind `litigation`, sections `cases` and `case_counts`). Counts by class, status and type, never summed;
+  harassment finding only for After Inquest or After Trial; a respondent matching an owner name is a lead. Evals `tests/evals/q15_cases.yaml`,
+  `q28_cases.yaml`. Not built: Q15.3 pest violations (needs the pest order-code list), Q27 complaints.
+  Demo note: the one harassment finding on the BAHUMI lot 74 Clinton Place (After Trial, 2016, penalty 5200) names an individual respondent, not a
+  BAHUMI party and not the registered owner (74 CLINTON PLACE LLC). It is a finding on the building. Do not present it as a finding about the landlord.
 
 ## Live probe (read-only, 2026-11-25)
 - `Violation.status`: `Close`, `Open`. `violationClass`: `A`, `B`, `C`, `I` (all eight combinations exist).

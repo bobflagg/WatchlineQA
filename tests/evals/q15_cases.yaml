@@ -1,0 +1,59 @@
+# Q15 eval cases (open violations), run through the open_violations tool (what the model sees).
+# Values were probed against the live graph on 2026-11-25 (not taken from the spec); candidates until a snapshot is frozen.
+# input keys: address, borough, zip_code
+# expect keys: status, bbl, groups ({bin-agnostic "class status": [n, oldest]}), oldest_open, rate ({open, units, perUnit}),
+#   caveat_codes (all present), caveat_codes_absent
+
+- id: anchor-c-open-by-class
+  question: Q15.1 Q15.2
+  why: Anchor C. Four open violations, 2 class B and 2 class C, oldest open inspection 2023-03-25, 32 units, 0.125 per unit. Closed ones stay separate.
+  input: {address: "438 52 Street, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008070024"
+    groups: {"A Close": [1, "2024-04-08"], "B Close": [3, "2023-11-01"], "B Open": [2, "2023-03-25"], "C Close": [2, "2023-03-23"], "C Open": [2, "2023-03-25"]}
+    oldest_open: "2023-03-25"
+    rate: {open: 4, units: 32, perUnit: 0.125}
+    caveat_codes: [cited_not_fault, open_at_snapshot, lot_wide, rate_lot_wide_units]
+    caveat_codes_absent: [rate_unavailable, no_violations_recorded]
+
+- id: anchor-a-three-classes-open
+  question: Q15.1 Q15.2
+  why: Anchor A has open violations in classes A, B and C. They are reported by class, never as one score. The oldest open is a class B from 2022.
+  input: {address: "5413 7 Avenue, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008260002"
+    groups: {"A Open": [3, "2026-06-24"], "B Close": [1, "2022-10-20"], "B Open": [12, "2022-10-20"], "C Open": [3, "2024-01-03"], "I Close": [1, "2024-11-27"]}
+    oldest_open: "2022-10-20"
+    rate: {open: 18, units: 32, perUnit: 0.562}
+
+- id: bronx-lot-with-three-units
+  question: Q15.1 Q15.2
+  why: A small lot (the BAHUMI portfolio lot at 74 Clinton Place) with 15 open violations over 3 units. The rate is shown with its inputs, not as a severity.
+  input: {address: "74 Clinton Place, Bronx"}
+  expect:
+    status: ok
+    bbl: "2032070010"
+    groups: {"A Close": [1, "2024-04-02"], "A Open": [1, "2026-03-25"], "B Close": [2, "2015-10-27"], "B Open": [7, "2015-05-11"], "C Open": [7, "2016-03-31"], "I Close": [1, "2023-11-15"]}
+    oldest_open: "2015-05-11"
+    rate: {open: 15, units: 3, perUnit: 5.0}
+
+- id: zero-units-gives-no-rate
+  question: Q15.2
+  why: The lot has 0 residential units (PLUTO) and one closed class I violation. There is no open violation, and the rate per unit is unavailable, not zero.
+  input: {address: "126 Pearl Street, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1000310010"
+    groups: {"I Close": [1, "2024-12-03"]}
+    rate: {open: 0, units: 0, perUnit: null}
+    caveat_codes: [rate_unavailable]
+    caveat_codes_absent: [rate_lot_wide_units]
+
+- id: needs-borough
+  question: Q15
+  why: An address with no borough or ZIP is a question, not a guess.
+  input: {address: "438 52 Street"}
+  expect:
+    status: needs_borough

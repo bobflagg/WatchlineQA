@@ -10,6 +10,7 @@ from typing import Any
 
 from langchain.tools import tool
 
+from watchline.conditions.conditions import Litigation, Violations, litigation_cases, open_violations
 from watchline.contacts.contacts import Contacts, building_contacts
 from watchline.deeds.deeds import DeedComparison, deed_vs_owner
 from watchline.deeds.timeline import DeedTimeline, deed_timeline
@@ -36,6 +37,7 @@ CAVEAT_REGISTRATION_BUILDINGS_CAPPED = CaveatTemplate("buildings_capped",
 ADDRESS_KEYS = ("mailingAddress", "addressLine2", "zip")   # the second line is reported apart from the match
 MAX_DEEDS_OUT = 10
 MAX_CONTACTS_OUT = 200
+MAX_CASES_OUT = 30
 MAX_OWNERS_OUT = 25
 MAX_PAIRS_OUT = 100
 CAVEAT_DEEDS_CAPPED = CaveatTemplate("deeds_capped", "Showing {shown} of {total} deeds recorded on the latest date; the rest are omitted from this output.")
@@ -43,6 +45,7 @@ CAVEAT_OWNERS_CAPPED = CaveatTemplate("owners_capped", "Showing {shown} of {tota
 CAVEAT_COMPARISON_CAPPED = CaveatTemplate("comparison_capped",
                                           "Showing {shown} of {total} grantee and owner comparisons; the rest are omitted from this output.")
 CAVEAT_CONTACTS_CAPPED = CaveatTemplate("contacts_capped", "Showing the first {shown} contacts; the rest are omitted from this output.")
+CAVEAT_CASES_CAPPED = CaveatTemplate("cases_capped", "Showing the {shown} most recently opened of {total} cases; the rest are omitted from this output. case_counts covers all {total}.")
 CAVEAT_NAMES_CAPPED = Caveat("party_names_capped",
                              ("For at least one deed, only the first distinct party names are listed. The row totals (grantorRows, "
                               "granteeRows) count every party row recorded, including repeats and spelling variants."))
@@ -194,6 +197,52 @@ def contacts_to_dict(x: Contacts, max_buildings: int = MAX_BUILDINGS_OUT, max_co
         out["caveats"].append(CAVEAT_REGISTRATION_BUILDINGS_CAPPED.format(shown=len(shown), total=len(x.buildings)).as_dict())
     if cut:
         out["caveats"].append(CAVEAT_CONTACTS_CAPPED.format(shown=max_contacts).as_dict())
+    return out
+
+
+def violations_to_dict(x: Violations, max_buildings: int = MAX_BUILDINGS_OUT) -> dict[str, Any]:
+    """JSON-safe view of Violations. Counts stay by building, class and status; `violations_rate` is open violations over the lot's units."""
+    r = x.resolution
+    out: dict[str, Any] = {
+        "status": "error" if r.outcome is Match.UNAVAILABLE else "ok",
+        "resolution": _resolution_dict(r),
+        "lot": x.lot,
+        "violations": [],
+        "violations_rate": None if x.rate is None else {"open": x.rate.open, "units": x.rate.units, "perUnit": x.rate.perUnit,
+                                                         "unitsSource": x.rate.unitsSource},
+        "caveats": [c.as_dict() for c in x.caveats],
+        "sources": [GEOSUPPORT, *x.sources],
+    }
+    shown = sorted(x.buildings, key=lambda b: not b.addressed)[:max_buildings]
+    out["violations"] = [{"bin": b.bin, "address": b.address, "addressed": b.addressed, "oldestOpen": b.oldestOpen,
+                          "groups": [{"violationClass": g.violationClass, "status": g.status, "n": g.n, "oldest": g.oldest} for g in b.groups]}
+                         for b in shown]
+    if len(x.buildings) > len(shown):
+        out["caveats"].append(CAVEAT_REGISTRATION_BUILDINGS_CAPPED.format(shown=len(shown), total=len(x.buildings)).as_dict())
+    return out
+
+
+def litigation_to_dict(x: Litigation, max_cases: int = MAX_CASES_OUT) -> dict[str, Any]:
+    """JSON-safe view of Litigation. Cases are as recorded; `case_counts` covers every case and is by type, status and finding, never combined."""
+    r = x.resolution
+    c = x.counts
+    out: dict[str, Any] = {
+        "status": "error" if r.outcome is Match.UNAVAILABLE else "ok",
+        "resolution": _resolution_dict(r),
+        "lot": x.lot,
+        "cases": [{
+            "bin": k.bin, "litigationId": k.litigationId, "caseType": k.caseType, "caseOpenDate": k.caseOpenDate, "caseStatus": k.caseStatus,
+            "openJudgement": k.openJudgement, "harassmentFinding": k.harassmentFinding, "findingDate": k.findingDate, "penalty": k.penalty,
+            "isHarassmentFinding": k.isHarassmentFinding, "respondent": k.respondent, "respondentMatch": k.match,
+            "matches": [{"part": m.part, "owner": m.owner, "outcome": m.outcome, "rule": m.rule} for m in k.matches],
+        } for k in x.cases[:max_cases]],
+        "case_counts": None if c is None else {"cases": c.cases, "byType": dict(c.byType), "byStatus": dict(c.byStatus), "byFinding": dict(c.byFinding)},
+        "registered_owners": list(x.owners),
+        "caveats": [cv.as_dict() for cv in x.caveats],
+        "sources": [GEOSUPPORT, *x.sources],
+    }
+    if len(x.cases) > max_cases:
+        out["caveats"].append(CAVEAT_CASES_CAPPED.format(shown=max_cases, total=c.cases if c else len(x.cases)).as_dict())
     return out
 
 
@@ -417,3 +466,76 @@ def make_building_contacts_tool(client, graph: Graph, cg):
 
     building_contacts_tool.name = "building_contacts"
     return building_contacts_tool
+
+
+def make_open_violations_tool(client, graph: Graph, cg):
+    """Bind the open-violations lookup to its clients. `cg` is a Neo4jConditionsGraph. Returns a LangChain tool."""
+
+    @tool(parse_docstring=True)
+    def open_violations_tool(address: str, borough: str | None = None, zip_code: str | int | None = None) -> dict:
+        """List the HPD violations of the buildings on a New York City street address's tax lot, by building, class (A, B, C, I) and status
+        (Open or Close), with the oldest inspection date of each group, and the open violations per residential unit of the lot.
+
+        Call this for questions about open violations, how long they have been open, or the rate per unit. A violation is what an inspector
+        cited, not a finding of fault or a measure of conditions. Report counts by class and status; never add classes into one severity
+        number. Open means open at the snapshot date. Units are lot-wide, so the rate pools every listed building; if perUnit is null, say
+        the rate is unavailable. Violations exist only for HPD-registered buildings; none recorded is not a clean record. The returned
+        caveats are attached to your answer for you; do not restate them. Check status first: ok means a lookup was made (read resolution.outcome for exact, variant, ambiguous or not_found); needs_borough means ask the user for the borough or ZIP; invalid_input means the text was not an address; error means an outage or fault, not an answer about the address.
+
+        Args:
+            address: House number and street as the user typed it, optionally with a borough, ZIP or neighborhood.
+            borough: Manhattan, Brooklyn, Queens, Bronx or Staten Island, when the user gave it separately.
+            zip_code: Five-digit ZIP, when the user gave it separately.
+        """
+        try:
+            zip5 = None if zip_code is None else str(zip_code).strip()
+            try:
+                x = open_violations(client, graph, cg, address, borough=borough, zip5=zip5)
+            except BoroughRequired as e:
+                return {"status": "needs_borough", "message": f"{e}. Ask the user for the borough or ZIP; do not guess."}
+            except ValueError as e:
+                return {"status": "invalid_input", "message": str(e)}
+            return violations_to_dict(x)
+        except Exception as e:  # noqa: BLE001  same rule as the other tools: the model gets an answer, never a stack trace
+            caveat = ERROR_CAVEAT.format(kind=type(e).__name__)
+            return {"status": "error", "message": caveat.text, "caveats": [caveat.as_dict()], "sources": []}
+
+    open_violations_tool.name = "open_violations"
+    return open_violations_tool
+
+
+def make_litigation_cases_tool(client, graph: Graph, cg):
+    """Bind the litigation lookup to its clients. `cg` is a Neo4jConditionsGraph. Returns a LangChain tool."""
+
+    @tool(parse_docstring=True)
+    def litigation_cases_tool(address: str, borough: str | None = None, zip_code: str | int | None = None) -> dict:
+        """List the Housing Court cases HPD brought against the buildings on a New York City street address's tax lot: type, open date, status,
+        open judgement, harassment finding and its date, penalty and the respondent as recorded, with counts by type, status and finding
+        for all cases.
+
+        Call this for questions about litigation, Housing Court actions, harassment findings or who was named as respondent. A case is an
+        action brought, not a finding of fault. Only a harassment finding of After Inquest or After Trial (isHarassmentFinding true) is a
+        harassment finding; No Harassment is a recorded outcome of none, and no finding recorded is neither. A respondent that matches a
+        registered owner by name (respondentMatch lead) is a lead, never proof of the same party; none means no part matched; roles are
+        not recorded. Never call a respondent "the owner". The returned caveats are attached to your answer for you; do not restate them. Check status first: ok means a lookup was made (read resolution.outcome for exact, variant, ambiguous or not_found); needs_borough means ask the user for the borough or ZIP; invalid_input means the text was not an address; error means an outage or fault, not an answer about the address.
+
+        Args:
+            address: House number and street as the user typed it, optionally with a borough, ZIP or neighborhood.
+            borough: Manhattan, Brooklyn, Queens, Bronx or Staten Island, when the user gave it separately.
+            zip_code: Five-digit ZIP, when the user gave it separately.
+        """
+        try:
+            zip5 = None if zip_code is None else str(zip_code).strip()
+            try:
+                x = litigation_cases(client, graph, cg, address, borough=borough, zip5=zip5)
+            except BoroughRequired as e:
+                return {"status": "needs_borough", "message": f"{e}. Ask the user for the borough or ZIP; do not guess."}
+            except ValueError as e:
+                return {"status": "invalid_input", "message": str(e)}
+            return litigation_to_dict(x)
+        except Exception as e:  # noqa: BLE001  same rule as the other tools: the model gets an answer, never a stack trace
+            caveat = ERROR_CAVEAT.format(kind=type(e).__name__)
+            return {"status": "error", "message": caveat.text, "caveats": [caveat.as_dict()], "sources": []}
+
+    litigation_cases_tool.name = "litigation_cases"
+    return litigation_cases_tool

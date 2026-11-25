@@ -82,6 +82,21 @@ def test_identity_checkpoint_decided_labels_the_inference_and_shows_the_change()
     assert "link_is_lead" not in {c.code for c in FIXTURES["identity_checkpoint_decided"].caveats}
 
 
+def test_violations_fixture_shows_counts_by_class_the_rate_inputs_and_every_caveat():
+    text = _text("violations")
+    for c in FIXTURES["violations"].caveats:
+        assert c.text in text                                   # cited-not-fault and lot-wide cannot be dropped
+    assert "4 open violations over 32 residential units, 0.125 per unit" in text and "violations_rate" in text
+    assert "severity" not in " ".join(f.statement for f in FIXTURES["violations"].facts).lower()
+
+
+def test_litigation_fixture_separates_the_finding_from_the_lead_and_keeps_every_caveat():
+    text = _text("litigation")
+    for c in FIXTURES["litigation"].caveats:
+        assert c.text in text
+    assert "has a harassment finding, After Trial" in text and "This is a lead." in text and "case_counts" in text
+
+
 def test_timeline_fixture_shows_counts_caveats_and_the_section_tags():
     at = AppTest.from_function(_page)
     at.session_state["name"] = "timeline"

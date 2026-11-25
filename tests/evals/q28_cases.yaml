@@ -1,0 +1,60 @@
+# Q28 eval cases (litigation), run through the litigation_cases tool (what the model sees).
+# Values were probed against the live graph on 2026-11-25 (not taken from the spec); candidates until a snapshot is frozen.
+# input keys: address, borough, zip_code
+# expect keys: status, bbl, counts ({cases, byType, byStatus, byFinding}), owners, cases ({litigationId: [type, opened, status, finding, findingDate, penalty, isFinding, match]}),
+#   respondents ({litigationId: respondent string}), lead_parts ({litigationId: [[part, owner, outcome, rule]]}),
+#   caveat_codes (all present), caveat_codes_absent
+
+- id: anchor-c-one-case-two-respondents
+  question: Q28.1 Q28.2
+  why: Anchor C. One closed Tenant Action with two respondents in one string, no harassment finding recorded. The owner is HPD's "438 52 ST OWNERS CORP", so
+       the respondent differs as recorded and is not matched.
+  input: {address: "438 52 Street, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008070024"
+    counts: {cases: 1, byType: {"Tenant Action": 1}, byStatus: {CLOSED: 1}, byFinding: {"none recorded": 1}}
+    owners: ["438 52 ST OWNERS CORP"]
+    cases: {"424938": ["Tenant Action", "2023-05-15", CLOSED, null, null, null, false, none]}
+    respondents: {"424938": "438 52 STREET OWNERS CORPORATION,SAHIT HADZOVIC"}
+    caveat_codes: [case_not_finding, harassment_finding_definition, respondent_role_not_recorded]
+    caveat_codes_absent: [name_match_not_identity, no_cases_recorded]
+
+- id: bronx-lot-with-one-harassment-finding
+  question: Q28.1
+  why: The BAHUMI portfolio lot at 74 Clinton Place has 8 closed cases and one After Trial harassment finding (2016, penalty 5200). The respondent on every case is
+       an individual who is not the registered owner (74 CLINTON PLACE LLC), so nothing is matched. The finding belongs to the building, not to the BAHUMI parties.
+  input: {address: "74 Clinton Place, Bronx"}
+  expect:
+    status: ok
+    bbl: "2032070010"
+    counts:
+      cases: 8
+      byType: {Comprehensive: 1, "Heat and Hot Water": 4, "Lead False Certification": 1, "Tenant Action": 1, "Tenant Action/Harrassment": 1}
+      byStatus: {CLOSED: 8}
+      byFinding: {"After Trial": 1, "none recorded": 7}
+    owners: ["74 CLINTON PLACE LLC"]
+    cases: {"284822": ["Tenant Action/Harrassment", "2016-05-24", CLOSED, "After Trial", "2016-07-25", 5200, true, none]}
+    respondents: {"284822": "McLORD OBIOHA"}
+    caveat_codes: [harassment_finding_definition, case_not_finding]
+    caveat_codes_absent: [name_match_not_identity]
+
+- id: respondent-matches-the-owner-name-as-a-lead
+  question: Q28.2
+  why: One of four respondent parts equals the registered owner name after N1. That is a lead, with the part and the rule shown.
+  input: {address: "20 Beaver Street, Manhattan"}
+  expect:
+    status: ok
+    bbl: "1000110010"
+    counts: {cases: 1, byType: {"Heat and Hot Water": 1}, byStatus: {CLOSED: 1}, byFinding: {"none recorded": 1}}
+    owners: ["Beaver Street Commons LLC"]
+    cases: {"465340": ["Heat and Hot Water", "2025-03-17", CLOSED, null, null, null, false, lead]}
+    lead_parts: {"465340": [["BEAVER STREET COMMONS LLC", "Beaver Street Commons LLC", exact_normalized, N1]]}
+    caveat_codes: [name_match_not_identity, owners_from_all_registrations]
+
+- id: needs-borough
+  question: Q28
+  why: An address with no borough or ZIP is a question, not a guess.
+  input: {address: "438 52 Street"}
+  expect:
+    status: needs_borough

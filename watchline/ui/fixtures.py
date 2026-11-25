@@ -1,5 +1,6 @@
 """Hand-built answers, one per kind, for looking at the page without the model, the graph or the sidecar."""
 from watchline.agent.answer import Answer, CaveatOut, Evidence, Fact
+from watchline.conditions import conditions as _cond
 from watchline.contacts import contacts as _contacts
 from watchline.deeds import deeds as _deeds
 from watchline.deeds import timeline as _timeline
@@ -59,6 +60,24 @@ _LINK = _cp.Link(_MAIN, _NEAR, "address", (_cp.Evidence(
 _INPUTS = _ig.Inputs("ok", "EXAMPLE OWNER", _MAIN, (_LINK,), caveats=(_ig.CAVEAT_NO_DEED_LINKS, _ig.CAVEAT_MASK_AS_SPELLED))
 _DECISION = _cp.Decision(_LINK.linkId, "accept", "researcher", "2026-12-01", "Same office, same registered agent.")
 
+_VIOLATIONS = [{"bin": "3000001", "address": "1 Example Street", "addressed": True, "oldestOpen": "2023-03-25", "groups": [
+    {"violationClass": "B", "status": "Open", "n": 2, "oldest": "2023-03-25"}, {"violationClass": "C", "status": "Open", "n": 2, "oldest": "2024-02-01"},
+    {"violationClass": "A", "status": "Close", "n": 1, "oldest": "2019-01-01"}]}]
+_RATE = {"open": 4, "units": 32, "perUnit": 0.125, "unitsSource": "PLUTO (release 26v1), lot-wide"}
+_VIOLATION_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
+                      (_cond.CAVEAT_CITED, _cond.CAVEAT_OPEN_AT_SNAPSHOT, _cond.CAVEAT_LOT_WIDE, _cond.CAVEAT_RATE)]
+_CASES = [{"bin": "3000001", "litigationId": 100001, "caseType": "Tenant Action/Harrassment", "caseOpenDate": "2016-05-24", "caseStatus": "CLOSED",
+           "openJudgement": "NO", "harassmentFinding": "After Trial", "findingDate": "2016-07-25", "penalty": 5200, "isHarassmentFinding": True,
+           "respondent": "EXAMPLE PERSON", "respondentMatch": "none", "matches": []},
+          {"bin": "3000001", "litigationId": 100002, "caseType": "Heat and Hot Water", "caseOpenDate": "2017-10-31", "caseStatus": "CLOSED",
+           "openJudgement": "NO", "harassmentFinding": None, "findingDate": None, "penalty": None, "isHarassmentFinding": False,
+           "respondent": "EXAMPLE HOUSING LLC", "respondentMatch": "lead",
+           "matches": [{"part": "EXAMPLE HOUSING LLC", "owner": "EXAMPLE HOUSING LLC", "outcome": "exact_normalized", "rule": "N1"}]}]
+_CASE_COUNTS = {"cases": 2, "byType": {"Heat and Hot Water": 1, "Tenant Action/Harrassment": 1}, "byStatus": {"CLOSED": 2},
+                "byFinding": {"After Trial": 1, "none recorded": 1}}
+_CASE_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
+                 (_cond.CAVEAT_CITED, _cond.CAVEAT_CASE_NOT_FAULT, _cond.CAVEAT_HARASSMENT, _cond.CAVEAT_RESPONDENT_ROLE, _deeds.CAVEAT_NAME_NOT_IDENTITY)]
+
 FIXTURES: dict[str, Answer] = {
     "profile": Answer(
         kind="profile", summary="The lot at 1 Example Street, Brooklyn has one registered building with 8 violations cited.",
@@ -98,6 +117,25 @@ FIXTURES: dict[str, Answer] = {
         caveats=_CONTACT_CAVEATS, sources=["HPD registrations (data through 2026-05-29)"]),
     "identity_checkpoint": to_answer(IdentityCheckpoint(_INPUTS, _cp.build_checkpoint(_MAIN, [_LINK]))),
     "identity_checkpoint_decided": to_answer(IdentityCheckpoint(_INPUTS, _cp.build_checkpoint(_MAIN, [_LINK], [_DECISION]))),
+    "violations": Answer(
+        kind="violations",
+        summary="The lot has 4 open violations, 2 in class B and 2 in class C, against 32 residential units. The oldest open inspection is 2023-03-25.",
+        facts=[Fact(statement="The building has 2 open class B and 2 open class C violations, and 1 closed class A violation.",
+                    evidence=[Evidence(section="violations", bbl="3000010001", data=_VIOLATIONS)]),
+               Fact(statement="That is 4 open violations over 32 residential units, 0.125 per unit.",
+                    evidence=[Evidence(section="violations_rate", bbl="3000010001", data=_RATE)])],
+        caveats=_VIOLATION_CAVEATS, sources=["HPD violations (data through 2026-07-02)", "PLUTO (release 26v1)"]),
+    "litigation": Answer(
+        kind="litigation",
+        summary="HPD recorded 2 Housing Court cases against the lot's building. One has a recorded harassment finding, After Trial.",
+        facts=[Fact(statement="Case 100001 (Tenant Action/Harrassment, opened 2016-05-24, closed) has a harassment finding, After Trial, dated "
+                              "2016-07-25, with a penalty of 5200. The respondent is EXAMPLE PERSON, as recorded.",
+                    evidence=[Evidence(section="cases", bbl="3000010001", data=_CASES)]),
+               Fact(statement="Case 100002's respondent, EXAMPLE HOUSING LLC, matches a registered owner name as recorded. This is a lead.",
+                    evidence=[Evidence(section="cases", bbl="3000010001", data=_CASES)]),
+               Fact(statement="There are 2 cases in all: 1 Heat and Hot Water and 1 Tenant Action/Harrassment, both closed.",
+                    evidence=[Evidence(section="case_counts", bbl="3000010001", data=_CASE_COUNTS)])],
+        caveats=_CASE_CAVEATS, sources=["HPD litigation (data through 2026-07-09)", "HPD registrations (data through 2026-05-29)"]),
     "timeline": Answer(
         kind="timeline",
         summary="Two deeds are recorded on the lot. One of them is not a sale because its amount is 0.",

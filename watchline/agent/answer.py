@@ -11,8 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "clarification", "not_found", "refusal", "error"]
-Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect"]
+Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
+Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ class ModelFact(BaseModel):
 class ModelAnswer(BaseModel):
     """The answer to the user. Caveats and sources are attached automatically from the tool results; do not write them."""
     kind: Kind = Field(description=(
-        "profile: a lot was found and profiled. registration: HPD registrations and registered owners were looked up for a lot. ownership_comparison: the most recent deed(s) and their grantees were compared with the HPD registered owners. timeline: every recorded deed of a lot was listed with its dates, amount, grantors and grantees. contacts: the HPD contacts of each registration (agent, officers, site manager and so on) were listed with their recorded roles. clarification: you need the borough or ZIP, a house number and street, or a choice "
+        "profile: a lot was found and profiled. registration: HPD registrations and registered owners were looked up for a lot. ownership_comparison: the most recent deed(s) and their grantees were compared with the HPD registered owners. timeline: every recorded deed of a lot was listed with its dates, amount, grantors and grantees. violations: open and closed violations of a lot's buildings by class, with the oldest open inspection and the rate per unit. litigation: Housing Court cases of a lot's buildings with respondents and any harassment finding. violations: open and closed violations of a lot's buildings by class, with the oldest open inspection and the rate per unit. litigation: Housing Court cases of a lot's buildings with respondents and any harassment finding. contacts: the HPD contacts of each registration (agent, officers, site manager and so on) were listed with their recorded roles. clarification: you need the borough or ZIP, a house number and street, or a choice "
         "among candidate streets. not_found: no lot matched. refusal: you were asked to judge fault or for something outside the "
         "records. error: the lookup failed."))
     summary: str = Field(description="One to three plain sentences that answer the question asked. No caveats; they are attached.")
@@ -109,7 +109,7 @@ def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evi
             for b in blist:
                 if b.get("bin") == ref.bin:
                     return Evidence(section=ref.section, bin=ref.bin, bbl=_bbl(out), data=b), i
-        elif ref.section in ("deeds", "owners", "comparison", "timeline", "timeline_counts"):
+        elif ref.section in ("deeds", "owners", "comparison", "timeline", "timeline_counts", "violations", "violations_rate", "cases", "case_counts"):
             lst = out.get(ref.section)                    # [] is evidence of absence, so only a missing key skips the result
             if lst is not None and out.get("resolution") and out.get("lot") is not None:   # absence needs a lot that was read
                 return Evidence(section=ref.section, bbl=_bbl(out), data=lst), i
@@ -192,7 +192,8 @@ def render_markdown(a: Answer) -> str:
 # ---- a guard against numbers the records never gave ---------------------------------------------------------------------
 
 _DATA_KEYS = ("resolution", "lot", "characteristics", "counts", "buildings", "buildings_listed", "totals_across_all_listed_buildings",
-              "registration_buildings", "contact_buildings", "deeds", "owners", "comparison", "timeline", "timeline_counts")
+              "registration_buildings", "contact_buildings", "deeds", "owners", "comparison", "timeline", "timeline_counts",
+              "violations", "violations_rate", "cases", "case_counts")
 _WORDS = {w: str(n) for n, w in enumerate(
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen "
     "nineteen twenty".split())}

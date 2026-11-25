@@ -27,6 +27,8 @@ from watchline.agent.tools import (
     make_building_profile_tool,
     make_deed_timeline_tool,
     make_deed_vs_owner_tool,
+    make_litigation_cases_tool,
+    make_open_violations_tool,
     make_registered_owner_tool,
 )
 
@@ -77,6 +79,9 @@ def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel | None
             tools.append(make_deed_vs_owner_tool(client, graph, rg))
         if hasattr(rg, "contacts"):
             tools.append(make_building_contacts_tool(client, graph, rg))
+        if hasattr(rg, "violation_groups"):
+            tools.append(make_open_violations_tool(client, graph, rg))
+            tools.append(make_litigation_cases_tool(client, graph, rg))
         if hasattr(rg, "timeline"):
             tools.append(make_deed_timeline_tool(client, graph, rg))
     return create_deep_agent(

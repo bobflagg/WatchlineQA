@@ -38,6 +38,13 @@ layout of the facts but may not drop a caveat, a lead label or the evidence tags
 - **`contacts`** (Q4): one row per contact with its recorded role and title, shown as "Name, as Managing Agent". A
   person never appears without the role. Roles are Record, not Lead. A shared business address shows a Lead pill with the note that
   it is not evidence of identity.
+- **`violations`** (Q15): per building, counts by class (A, B, C, I) and status (Open, Close) with the oldest open inspection date, then the rate
+  as three figures (open violations, the lot's residential units, per unit), or "rate unavailable". These are Record, never Lead. Never add
+  classes into one number or colour by severity. Evidence sections: `violations`, `violations_rate`.
+- **`litigation`** (Q28): a table of cases (type, opened, status, finding with its date, penalty, respondent as recorded). A harassment finding
+  (After Inquest or After Trial only) uses the Recorded finding style; "No Harassment" and no finding are plain Record. A respondent that matches
+  an owner name shows a Lead pill and never reads "the owner". Above the table, counts by type, status and finding as separate figures.
+  Evidence sections: `cases`, `case_counts`.
 - **`identity_checkpoint`** (Q22 and Q7 with the Q9 effect; design in `docs/plans/identity-checkpoint.md`): built from templates, no model. One
   fact per candidate link, saying how the two parties are linked and its state: a lead awaiting the researcher's decision, accepted or
   rejected by the researcher (with the role, date and note), already joined by the method, or unsupported. One fact for the portfolio effect:
