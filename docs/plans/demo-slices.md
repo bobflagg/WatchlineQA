@@ -108,3 +108,5 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   "Deploy" menu is hidden (`toolbarMode = "minimal"` in `.streamlit/config.toml`). The app is one navigation (`st.navigation`, `watchline/ui/app.py`) over two pages in `watchline/ui/app_pages/`:
   Chat and Landlord report (`make ui`; `report_app.py` and `make report-ui` are gone). Sidebar sample queries added for the four new tools (Q4, Q12, Q15, Q28), using addresses the agent
   evals were written on.
+- Sidebar (2026-11-25): the logo, then the links to the Chat and Landlord report pages, then the page's own widgets, then the author footer, drawn once by `app.py` through
+  `watchline/ui/sidebar.py`, so the logo and footer stay on both pages (`st.navigation(..., position="hidden")` with `st.page_link`). Checked in Chrome.

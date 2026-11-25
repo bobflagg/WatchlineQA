@@ -224,3 +224,30 @@ def test_the_report_page_says_why_when_the_graph_cannot_be_reached(monkeypatch):
     at.run()
     at.switch_page("app_pages/report.py").run()
     assert not at.exception and at.error[0].value == "Cannot start: no database in this test" and not at.title
+
+
+def _sidebar_order(at):
+    return [c.type for c in at.sidebar if c.type in ("image", "page_link", "selectbox", "button")]
+
+
+def test_the_page_links_sit_below_the_logo_and_above_the_chat_widgets():
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    assert not at.exception and _sidebar_order(at) == ["image", "page_link", "page_link", "selectbox", "selectbox", "button"]
+    assert [p.label for p in at.sidebar.get("page_link")] == ["Chat", "Landlord report"]
+
+
+def test_the_logo_and_the_links_stay_when_the_report_page_is_chosen(monkeypatch):
+    import streamlit as st
+    from test_report_export import deps as fake_deps
+
+    from watchline.agent import chat
+    st.cache_resource.clear()
+    d = fake_deps()
+    monkeypatch.setattr(chat, "connect_all", lambda: (d.client, d.graph, d.pg, d.rg, d.ig, lambda: None))
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    at.switch_page("app_pages/report.py").run()
+    assert not at.exception and at.title[0].value == "Landlord report"
+    assert _sidebar_order(at) == ["image", "page_link", "page_link"]                       # the chat's pulldowns are gone, the logo and the links are not
+    assert any("wl-footer" in h.value for h in at.sidebar.get("html"))                      # and so is the footer
