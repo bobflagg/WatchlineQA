@@ -146,12 +146,19 @@ class StartupError(Exception):
 
 def connect():
     """Real clients from the environment. Returns (client, graph, profile_graph, registration_graph, close). Raises StartupError."""
+    client, graph, pg, rg, _ig, close = connect_all()
+    return client, graph, pg, rg, close
+
+
+def connect_all():
+    """Like `connect`, plus the identity graph the report reads: (client, graph, profile_graph, registration_graph, identity_graph, close)."""
     import httpx
     from neo4j import GraphDatabase
 
     from watchline.deeds.timeline import Neo4jTimelineGraph
     from watchline.geosupport.geosupport import Client
     from watchline.geosupport.resolution import Neo4jGraph
+    from watchline.identity.graph import Neo4jIdentityGraph
     from watchline.profile.profile import Neo4jProfileGraph
 
     load_dotenv(find_dotenv(usecwd=True))
@@ -171,7 +178,7 @@ def connect():
     except httpx.HTTPError:
         driver.close()
         raise StartupError(f"The Geosupport sidecar is not reachable at {client.url} (start it with `make sidecar`).") from None
-    return client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), Neo4jTimelineGraph(driver, db), driver.close
+    return client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), Neo4jTimelineGraph(driver, db), Neo4jIdentityGraph(driver, db), driver.close
 
 
 def converse(agent, config: dict, read=input, write=print) -> None:

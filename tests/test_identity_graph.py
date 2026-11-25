@@ -401,3 +401,9 @@ def test_the_overflow_line_counts_registrations_not_items_and_says_when_only_lot
     two = [reg(100 + n, "2030370098", "ACME OWNER", "Officer", "ACME OWNR", "Agent") for n in range(3)]
     (ln,) = build_inputs(FakeIG(**BASE, registrations=two), "ACME OWNER").links
     assert [e.text for e in ln.evidence if e.kind == "shared_contact"][-1] == "1 more registration also lists both names."
+
+
+def test_addresses_that_differ_only_in_case_are_one_item_of_evidence():
+    base = dict(BASE, records=[rec(1, "ACME OWNER", ADDR), rec(2, "ACME OWNER"), rec(3, "ACME OWNR", ADDR.replace("Bronx", "BRONX"), ADDR)])
+    (ln,) = build_inputs(FakeIG(**base), "ACME OWNER").links
+    assert [e.kind for e in ln.evidence] == ["shared_address"]

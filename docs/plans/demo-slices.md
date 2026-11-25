@@ -92,3 +92,6 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   owner and contacts, deed history, entity research (not covered), landlords, the identity checkpoint with its pause, conditions, web research (not covered), assemble. One change
   from the plan: an address that needs a borough, a choice of street, or is not found does not pause; the report stops with `needs_input` and the reason, and the page or command
   asks again with the fix. The lot-with-several-landlord-names picker is a pause. Live check on 2141 Washington Avenue (no model): the lead, 1 lot to 56 lots (3 to 179 units).
+- Slice 3 (done): `watchline/report/export.py` (Markdown under the five PESP questions, decisions table, the researcher's takeaway labelled as theirs; `report.md` and
+  `decisions.json` in `build/reports/<address slug>/`) and `watchline/report/run.py` with `make report ADDRESS="..." [DECISIONS=file.json LANDLORD=name LABEL=text]`.
+  Live check, no model: 2141 Washington Avenue run twice with the same decisions file gives byte-identical reports (184 lines).

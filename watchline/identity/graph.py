@@ -254,7 +254,8 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
     cut = cut or _full(lots)
 
     def addresses(ids: set[int]) -> list[str]:
-        return sorted({a for i in ids for a in (recs.get(i, {}).get("businessAddresses") or [])})
+        found = {a for i in ids for a in (recs.get(i, {}).get("businessAddresses") or [])}
+        return sorted({a.upper(): a for a in sorted(found)}.values())      # one per spelling, whatever its case
 
     streets = sorted({s for g in [anchor_ids, *others] for a in addresses(g) for s in filter(None, (_street_zip(a)[0], _street_zip(a)[2]))})
     masks: dict[str, list[dict]] = {}
