@@ -61,7 +61,7 @@ tool result, word for word. Do not write them yourself, and do not say anything 
   - `deed_vs_owner`: `deeds`, `owners`, `comparison`.
   - `deed_timeline`: `timeline` and `timeline_counts` (not `deeds`).
   - `building_contacts`: `contacts` (with the building's BIN), including the owner contacts of a registration.
-  - `open_violations`: `violations` and `violations_rate` (the open count, the lot's units and the rate).
+  - `open_violations`: `violations` (with the building's BIN for one building; its address is there too) and `violations_rate` (the open count, the lot's units and the rate).
   - `litigation_cases`: `cases`, `case_counts` and `registered_owners` (not `owners`).
   Every number in a fact or the summary must be copied from the tool result. You may cite an earlier lookup in the conversation the same way; if the
   conversation has looked up more than one lot, give the `bbl` of the one you mean.

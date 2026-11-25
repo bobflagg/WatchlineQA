@@ -22,7 +22,7 @@ Section = Literal["lookup", "lot", "resolution", "characteristics", "counts", "b
 class EvidenceRef(BaseModel):
     section: ModelSection = Field(description="Which part of the tool result the statement rests on.")
     bin: str | None = Field(default=None, description=(
-        "The building's BIN, to point at one building under section 'buildings', 'registrations' or 'contacts'. Without it, the section "
+        "The building's BIN, to point at one building under section 'buildings', 'registrations', 'contacts' or 'violations'. Without it, the section "
         "means the whole list (use that to say no building or no registration is listed)."))
     bbl: str | None = Field(default=None, description=(
         "The tax lot (BBL) the data is about. Give it when the conversation has looked up more than one lot."))
@@ -105,6 +105,10 @@ def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evi
         elif ref.section == "lot":                            # the lot's own values (year built, class, units), as a tool lists them
             if out.get("lot") is not None and out.get("resolution"):
                 return Evidence(section="lot", bbl=_bbl(out), data=out["lot"]), i
+        elif ref.section == "violations" and ref.bin is not None:
+            for b in out.get("violations") or []:
+                if b.get("bin") == ref.bin and out.get("resolution"):
+                    return Evidence(section="violations", bin=ref.bin, bbl=_bbl(out), data=b), i
         elif ref.section in ("registrations", "contacts"):
             blist = out.get("registration_buildings" if ref.section == "registrations" else "contact_buildings")
             if blist is None or not out.get("resolution"):
@@ -175,7 +179,7 @@ def assemble(model: ModelAnswer, tool_results: list[dict], earlier: list[dict] =
 
 
 def _tag(ev: Evidence | EvidenceRef) -> str:
-    return f"{ev.section} BIN {ev.bin}" if ev.bin and ev.section in ("buildings", "registrations", "contacts") else ev.section
+    return f"{ev.section} BIN {ev.bin}" if ev.bin and ev.section in ("buildings", "registrations", "contacts", "violations") else ev.section
 
 
 def render_markdown(a: Answer) -> str:

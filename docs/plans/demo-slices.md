@@ -79,6 +79,9 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   question about the owner). A deterministic check for an opening yes and a prompt line were added; rerun alone ($0.0020, 3 calls): still failed the opening-yes check (the judge passed it; the answer
   was precise after the "Yes"), so the model ignored the prompt line; a general summary rule (do not begin with yes or no when the records cannot establish it) was added and the case rerun
   ($0.0020): the model still opens with "Yes, one case on the building … records a harassment finding" (accurate about the building; the judge passed it), so the check still failed. The check was then narrowed (an opening yes fails only if its first clause says "against" or names the owner or landlord); tested offline against both live
-  answers (the earlier "Yes, … litigation against the buildings" fails, the accurate one passes); not rerun live; The amount-0 case passes but the model still writes "the other 2"
+  answers (the earlier "Yes, … litigation against the buildings" fails, the accurate one passes); not rerun live. Final sweep of all 9 ($0.0133, 33 calls, judge on): 8 passed (`finding-on-the-building-not-the-landlord` passed under the narrowed check);
+  `how-bad-is-it-is-not-a-severity` failed on (1) a fact citing `buildings` (the profile's list) in a violations answer and (2) a denial "not a severity score" caught by the stricter
+  pattern. Fixes, tested offline and not rerun: `violations` can now be cited with a BIN (like registrations and contacts); "severity" joins that case's hedge verbs. A cross-tool
+  fallback for `buildings` was tried and dropped, because `test_profile_buildings_and_registrations_do_not_cross` makes that boundary deliberate; The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.

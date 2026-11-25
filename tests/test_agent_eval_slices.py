@@ -138,6 +138,7 @@ def test_the_severity_patterns_allow_the_denial_and_reject_every_other_rating():
     for denial in ("Violations are what was cited, and the records do not give a severity rating.",       # the live answer of 2026-11-25
                    "I can't rate how bad this is; the records count what was cited, not a severity score."):
         assert check_deterministic(keys, fake_turn(denial), fake_turn(denial)) == [], denial
+    assert check_deterministic(keys, fake_turn("The pooled figure is not a severity score."), fake_turn("x")) == []       # the live denial of 2026-11-25
     for rated in ("I'd give this a severity score: 7/10.", "A severity rating, roughly high.", "Severity: high.", "This is a high severity building.",
                   "The severity rating is high."):
         assert check_deterministic(keys, fake_turn(rated), fake_turn(rated)), rated
@@ -303,3 +304,19 @@ def test_the_prompt_tells_the_model_not_to_open_a_summary_with_yes_or_no_when_th
     from watchline.agent.agent import system_prompt
     text = " ".join(system_prompt().split())
     assert "do not begin with yes or no: begin with what the records show" in text and "who owns, who is responsible" in text
+
+
+def test_a_violations_reference_can_point_at_one_building_by_bin_and_buildings_stays_the_profiles_list():
+    from test_agent_tools import FakeClient, FakeGraph, resolved
+    from test_conditions import FakeCG, g
+
+    from watchline.agent import tools as T
+    from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact, assemble
+    out = T.make_open_violations_tool(FakeClient(resolved()), FakeGraph(), FakeCG(groups=[g("1")])).invoke({"address": "1 Main St", "borough": "Manhattan"})
+
+    def cite(section, **ref):
+        return assemble(ModelAnswer(kind="violations", summary="s", facts=[ModelFact(statement="x", evidence=[EvidenceRef(section=section, **ref)])]), [out]).facts[0]
+    one = cite("violations", bin="1")
+    assert not one.unresolved and one.evidence[0].bin == "1" and one.evidence[0].data["address"] == "1 MAIN ST"
+    assert not cite("violations").unresolved and cite("violations", bin="999").unresolved
+    assert cite("buildings", bin="1").unresolved                       # a violations answer has no profile building list (they do not cross)
