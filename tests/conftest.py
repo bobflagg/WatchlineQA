@@ -33,3 +33,24 @@ def pytest_terminal_summary(terminalreporter):
         terminalreporter.write_sep("-", "estimated model spend (see build/agent-eval/usage-*.json)")
         terminalreporter.write_line(f"Judge: {'ON' if USE_JUDGE else 'off'}   max calls/case: {guard.max_calls}")
         terminalreporter.write_line(guard.summary())
+
+
+@pytest.fixture(scope="session")
+def live_graph():
+    """A read-only identity graph on the live Neo4j (no model); skips when the database is not reachable."""
+    from dotenv import load_dotenv
+    from neo4j import GraphDatabase
+
+    from watchline.identity.graph import Neo4jIdentityGraph
+    load_dotenv()
+    uri, user, pw = (os.environ.get(k) for k in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"))
+    if not (uri and user and pw):
+        pytest.skip("NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD not set")
+    driver = GraphDatabase.driver(uri, auth=(user, pw))
+    try:
+        driver.verify_connectivity()
+    except Exception as exc:
+        driver.close()
+        pytest.skip(f"Neo4j not reachable: {exc}")
+    yield Neo4jIdentityGraph(driver, os.environ["NEO4J_DATABASE"])
+    driver.close()

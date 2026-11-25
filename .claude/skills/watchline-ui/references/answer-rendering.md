@@ -38,9 +38,14 @@ layout of the facts but may not drop a caveat, a lead label or the evidence tags
 - **`contacts`** (Q4): one row per contact with its recorded role and title, shown as "Name, as Managing Agent". A
   person never appears without the role. Roles are Record, not Lead. A shared business address shows a Lead pill with the note that
   it is not evidence of identity.
-- **Identity checkpoint** (Q22, Q7 with the Q9 effect, planned, design only; see `docs/plans/identity-checkpoint.md`): each name-match link is a
-  Lead card with its evidence, shows its decision state (Awaiting decision, Accepted, Rejected) as a pill, and a counts strip that
-  shows the portfolio count before and after the researcher's decisions, each labelled with the decisions it assumes.
+- **`identity_checkpoint`** (Q22 and Q7 with the Q9 effect; design in `docs/plans/identity-checkpoint.md`): built from templates, no model. One
+  fact per candidate link, saying how the two parties are linked and its state: a lead awaiting the researcher's decision, accepted or
+  rejected by the researcher (with the role, date and note), already joined by the method, or unsupported. One fact for the portfolio effect:
+  the footprint as held in the graph next to the footprint after the researcher's decisions, always both, each as lots and residential
+  units. An accepted link is labelled the researcher's inference, never a finding. Evidence sections: `links`, `portfolio_effect`,
+  `decisions`. Today it uses the generic renderer. Planned: each link as a Lead card with its evidence (each item marked Used or Set aside),
+  a state pill (Awaiting decision, Accepted, Rejected), and a before and after counts strip. Decisions are read from the report's JSON log;
+  the page does not write them yet.
 
 ## Names and people
 Show a person's name only with the role it was recorded in, and only in the answer that needs it.

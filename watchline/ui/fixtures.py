@@ -3,6 +3,9 @@ from watchline.agent.answer import Answer, CaveatOut, Evidence, Fact
 from watchline.contacts import contacts as _contacts
 from watchline.deeds import deeds as _deeds
 from watchline.deeds import timeline as _timeline
+from watchline.identity import checkpoint as _cp
+from watchline.identity import graph as _ig
+from watchline.identity.section import IdentityCheckpoint, to_answer
 from watchline.registration import registration as _reg
 
 _BUILDING = {"bin": "3000001", "address": "1 Example Street", "violations_by_class": {"A": 2, "B": 5, "C": 1}}
@@ -48,6 +51,14 @@ _CONTACTS = {"bin": "3000001", "address": "1 Example Street", "addressed": True,
 _CONTACT_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
                     (_contacts.CAVEAT_ROLE_AS_RECORDED, _contacts.CAVEAT_AGENT_NOT_OWNER, _deeds.CAVEAT_SHARED_ADDRESS)]
 
+_MAIN = _cp.Party("EXAMPLE OWNER", tuple(_cp.Lot(f"3000000{i:03d}", 3) for i in range(10)), records=3)
+_NEAR = _cp.Party("EXAMPLE OWNR", (_cp.Lot("3000009999", 4),))
+_LINK = _cp.Link(_MAIN, _NEAR, "address", (_cp.Evidence(
+    "shared_address", "Business address as recorded on both parties: 9 Office Rd, Bronx, NY 10466. Joined by a shared business address (3 links, weight 5.44).",
+    _ig.SOURCE_HPD),))
+_INPUTS = _ig.Inputs("ok", "EXAMPLE OWNER", _MAIN, (_LINK,), caveats=(_ig.CAVEAT_NO_DEED_LINKS, _ig.CAVEAT_MASK_AS_SPELLED))
+_DECISION = _cp.Decision(_LINK.linkId, "accept", "researcher", "2026-12-01", "Same office, same registered agent.")
+
 FIXTURES: dict[str, Answer] = {
     "profile": Answer(
         kind="profile", summary="The lot at 1 Example Street, Brooklyn has one registered building with 8 violations cited.",
@@ -85,6 +96,8 @@ FIXTURES: dict[str, Answer] = {
                Fact(statement="PAT EXAMPLE is also recorded as the SiteManager, with no address.",
                     evidence=[Evidence(section="contacts", bin="3000001", bbl="3000010001", data=_CONTACTS)])],
         caveats=_CONTACT_CAVEATS, sources=["HPD registrations (data through 2026-05-29)"]),
+    "identity_checkpoint": to_answer(IdentityCheckpoint(_INPUTS, _cp.build_checkpoint(_MAIN, [_LINK]))),
+    "identity_checkpoint_decided": to_answer(IdentityCheckpoint(_INPUTS, _cp.build_checkpoint(_MAIN, [_LINK], [_DECISION]))),
     "timeline": Answer(
         kind="timeline",
         summary="Two deeds are recorded on the lot. One of them is not a sale because its amount is 0.",

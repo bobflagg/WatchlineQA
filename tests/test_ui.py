@@ -55,6 +55,33 @@ def test_contacts_fixture_shows_roles_caveats_and_the_building_tag():
         assert any(role in f.statement for role in ("Agent", "HeadOfficer", "SiteManager"))
 
 
+def _text(name):
+    at = AppTest.from_function(_page)
+    at.session_state["name"] = name
+    at.run()
+    assert not at.exception
+    return " ".join(m.value for m in at.markdown) + " " + " ".join(c.value for c in at.caption)
+
+
+def test_identity_checkpoint_awaiting_shows_the_lead_the_held_numbers_and_every_caveat():
+    text = _text("identity_checkpoint")
+    for c in FIXTURES["identity_checkpoint"].caveats:
+        assert c.text in text                                   # the lead, shared-address and run-local caveats cannot be dropped
+    assert "A lead, awaiting the researcher's decision." in text
+    assert "10 lots and 30 residential units" in text and "No decision has been made yet." in text
+    assert "links" in text and "portfolio_effect" in text      # the evidence tags name their sections
+
+
+def test_identity_checkpoint_decided_labels_the_inference_and_shows_the_change():
+    text = _text("identity_checkpoint_decided")
+    assert "Accepted by the researcher" in text and "the researcher's inference, not a finding in the records" in text
+    assert "After the researcher's decisions: 11 lots and 34 residential units" in text
+    assert "As held in the graph: 10 lots and 30 residential units" in text              # the held numbers stay visible next to the decided ones
+    for c in FIXTURES["identity_checkpoint_decided"].caveats:
+        assert c.text in text
+    assert "link_is_lead" not in {c.code for c in FIXTURES["identity_checkpoint_decided"].caveats}
+
+
 def test_timeline_fixture_shows_counts_caveats_and_the_section_tags():
     at = AppTest.from_function(_page)
     at.session_state["name"] = "timeline"

@@ -11,8 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "clarification", "not_found", "refusal", "error"]
-Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts"]
+Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "clarification", "not_found", "refusal", "error"]
+Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------

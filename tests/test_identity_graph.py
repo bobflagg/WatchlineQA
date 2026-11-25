@@ -1,9 +1,7 @@
 """Identity checkpoint, step 2: parties and candidate links from graph rows. Fake rows for the logic; live (no model) for the demo names."""
-import os
 
-import pytest
 from dotenv import load_dotenv
-from neo4j import GraphDatabase, Query
+from neo4j import Query
 
 from watchline.identity import graph as G
 from watchline.identity.checkpoint import Decision, build_checkpoint
@@ -169,21 +167,6 @@ def test_neo4j_identity_graph_reads_are_parameterized_limited_and_timed_out():
 
 
 # ---- live (no model): the demo names, looked up by name ----------------------------------------------------------------
-
-@pytest.fixture(scope="module")
-def live_graph():
-    uri, user, pw = (os.environ.get(k) for k in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"))
-    if not (uri and user and pw):
-        pytest.skip("NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD not set")
-    driver = GraphDatabase.driver(uri, auth=(user, pw))
-    try:
-        driver.verify_connectivity()
-    except Exception as exc:
-        driver.close()
-        pytest.skip(f"Neo4j not reachable: {exc}")
-    yield G.Neo4jIdentityGraph(driver, os.environ["NEO4J_DATABASE"])
-    driver.close()
-
 
 def test_live_bahumi_and_the_badhumi_checkpoint(live_graph):
     """Probed 2026-11-25: BAHUMI is 6 records joined by identity, 55 lots, 176 units; BADHUMI is 1 record, 1 lot, 3 units, linked by address."""

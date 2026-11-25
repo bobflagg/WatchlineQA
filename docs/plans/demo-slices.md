@@ -23,8 +23,9 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
 - **C. Identity checkpoint, Q22 and Q7 with the Q9 effect (next, after the design note's open questions are answered).** Accept or reject the
   BADHUMI link and the portfolio count changes (55 lots and 176 units as held; 56 and 179 if accepted). Decisions are an input and the
   graph never changes. Build order is in the design note.
-- **C steps 1 and 2 (done).** `watchline/identity/checkpoint.py` (pure links, decisions, portfolio effect) and `watchline/identity/graph.py`
-  (graph reads and `build_inputs`). Steps 3 (contract wiring and UI) and 4 (LangGraph checkpoint) remain.
+- **C steps 1 to 3 (done).** `watchline/identity/checkpoint.py` (pure links, decisions, portfolio effect) and `watchline/identity/graph.py`
+  (graph reads and `build_inputs`). `watchline/identity/section.py` adds the section, its JSON view, the decision log file and the templated Answer (kind
+  `identity_checkpoint`, no model, UI fixtures and tests). Step 4 (LangGraph checkpoint) remains.
 - **D. Conditions, Q15 and Q28 (after C).** Counts by class and status, never summed. Harassment finding only for After Inquest or After Trial.
   Q27 complaints later.
 
