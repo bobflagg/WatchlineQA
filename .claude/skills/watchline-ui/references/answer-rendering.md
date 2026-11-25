@@ -39,7 +39,7 @@ layout of the facts but may not drop a caveat, a lead label or the evidence tags
   person never appears without the role. Roles are Record, not Lead. A shared business address shows a Lead pill with the note that
   it is not evidence of identity.
 - **`violations`** (Q15): per building, counts by class (A, B, C, I) and status (Open, Close) with the oldest open inspection date, then the rate
-  as three figures (open violations, the lot's residential units, per unit), or "rate unavailable". These are Record, never Lead. Never add
+  as figures (open violations, the lot's residential units, per unit), always with the same figure for each class beside the pooled one, or "rate unavailable". These are Record, never Lead. Never add
   classes into one number or colour by severity. Evidence sections: `violations`, `violations_rate`.
 - **`litigation`** (Q28): a table of cases (type, opened, status, finding with its date, penalty, respondent as recorded). A harassment finding
   (After Inquest or After Trial only) uses the Recorded finding style; "No Harassment" and no finding are plain Record. A respondent that matches

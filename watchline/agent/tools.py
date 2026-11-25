@@ -209,6 +209,7 @@ def violations_to_dict(x: Violations, max_buildings: int = MAX_BUILDINGS_OUT) ->
         "lot": x.lot,
         "violations": [],
         "violations_rate": None if x.rate is None else {"open": x.rate.open, "units": x.rate.units, "perUnit": x.rate.perUnit,
+                                                         "byClass": [{"violationClass": k, "open": n, "perUnit": p} for k, n, p in x.rate.byClass],
                                                          "unitsSource": x.rate.unitsSource},
         "caveats": [c.as_dict() for c in x.caveats],
         "sources": [GEOSUPPORT, *x.sources],
@@ -478,8 +479,8 @@ def make_open_violations_tool(client, graph: Graph, cg):
 
         Call this for questions about open violations, how long they have been open, or the rate per unit. A violation is what an inspector
         cited, not a finding of fault or a measure of conditions. Report counts by class and status; never add classes into one severity
-        number. Open means open at the snapshot date. Units are lot-wide, so the rate pools every listed building; if perUnit is null, say
-        the rate is unavailable. Violations exist only for HPD-registered buildings; none recorded is not a clean record. The returned
+        number. Open means open at the snapshot date. Units are lot-wide, so the rate pools every listed building; always give the figure for each class
+        (violations_rate.byClass) beside the pooled one; if perUnit is null, say the rate is unavailable. Violations exist only for HPD-registered buildings; none recorded is not a clean record. The returned
         caveats are attached to your answer for you; do not restate them. Check status first: ok means a lookup was made (read resolution.outcome for exact, variant, ambiguous or not_found); needs_borough means ask the user for the borough or ZIP; invalid_input means the text was not an address; error means an outage or fault, not an answer about the address.
 
         Args:

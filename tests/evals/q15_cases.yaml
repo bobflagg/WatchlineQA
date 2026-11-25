@@ -14,6 +14,7 @@
     groups: {"A Close": [1, "2024-04-08"], "B Close": [3, "2023-11-01"], "B Open": [2, "2023-03-25"], "C Close": [2, "2023-03-23"], "C Open": [2, "2023-03-25"]}
     oldest_open: "2023-03-25"
     rate: {open: 4, units: 32, perUnit: 0.125}
+    by_class: {B: [2, 0.062], C: [2, 0.062]}
     caveat_codes: [cited_not_fault, open_at_snapshot, lot_wide, rate_lot_wide_units]
     caveat_codes_absent: [rate_unavailable, no_violations_recorded]
 

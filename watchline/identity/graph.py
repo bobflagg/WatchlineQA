@@ -114,18 +114,25 @@ def _mask_reason(addr: str, masks: dict[str, list[dict]]) -> str | None:
     return None
 
 
+def _full(rows: list) -> bool:
+    """True when a read returned as many rows as its limit, so it may have been cut."""
+    return len(rows) >= MAX_GROUPS
+
+
 def _closure(ig: IdentityGraph, seed: set[int]) -> tuple[set[int], bool]:
     """The records joined to the seed by identity edges, and whether the size or round limit cut it."""
-    seen, frontier = set(seed), set(seed)
+    seen, frontier, cut = set(seed), set(seed), False
     for _ in range(MAX_ROUNDS):
         if not frontier:
-            return seen, False
-        new = {r["peerId"] for r in ig.identity_pairs(sorted(frontier))} - seen
+            return seen, cut
+        pairs = ig.identity_pairs(sorted(frontier))
+        cut = cut or _full(pairs)
+        new = {r["peerId"] for r in pairs} - seen
         seen |= new
         frontier = new
         if len(seen) >= MAX_RECORDS:
             return seen, True
-    return seen, bool(frontier)
+    return seen, cut or bool(frontier)
 
 
 def _party(key: str, ids: set[int], recs: dict[int, dict], lots: list[dict]) -> Party:
@@ -164,11 +171,13 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
         ids = sorted(set().union(*groups))
         recs = {r["nodeId"]: r for r in ig.records(ids)}
         lots = ig.lots(ids)
+        cut = cut or _full(lots)
         cands = tuple(sorted((_key(g, recs), len(_party("", g, recs, lots).lots)) for g in groups))
-        return Inputs("ambiguous_name", name, candidates=cands, caveats=tuple(caveats))
+        return Inputs("ambiguous_name", name, candidates=cands, caveats=tuple([*caveats, *([CAVEAT_CUT] if cut else [])]))
 
     anchor_ids = groups[0]
     edges = ig.lead_edges(sorted(anchor_ids))
+    cut = cut or _full(edges)
     other_ids = {e["toId"] for e in edges}
     others: list[set[int]] = []
     placed: set[int] = set()
@@ -187,6 +196,7 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
     every = sorted(anchor_ids | set().union(*others)) if others else sorted(anchor_ids)
     recs = {r["nodeId"]: r for r in ig.records(every)}
     lots = ig.lots(every)
+    cut = cut or _full(lots)
 
     def addresses(ids: set[int]) -> list[str]:
         return sorted({a for i in ids for a in (recs.get(i, {}).get("businessAddresses") or [])})
@@ -200,11 +210,16 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
     parties = [(_party(_key(g, recs), g, recs, lots), g) for g in others]
     seen_keys = {anchor.key}
     fixed = []
-    for p, g in sorted(parties, key=lambda t: (t[0].key, t[0].lots[0].bbl if t[0].lots else "")):
-        if p.key in seen_keys:                                   # same name on a different group: tell them apart by a lot, not an id
-            p = Party(f"{p.key} [lot {p.lots[0].bbl if p.lots else 'none'}]", p.lots, p.records)
-        seen_keys.add(p.key)
-        fixed.append((p, g))
+    for p, g in sorted(parties, key=lambda t: (t[0].key, t[0].lots[0].bbl if t[0].lots else "", len(t[0].lots), t[0].records)):
+        base = p.key
+        if base in seen_keys:                                    # same name on a different group: tell them apart by a lot, not an id
+            base = f"{p.key} [lot {p.lots[0].bbl if p.lots else 'none'}]"
+        key, n = base, 1
+        while key in seen_keys:                                  # still the same (same first lot, or no lot): number them in the fixed order
+            n += 1
+            key = f"{base} #{n}"
+        seen_keys.add(key)
+        fixed.append((Party(key, p.lots, p.records) if key != p.key else p, g))
 
     anchor_addr = {_street_zip(a)[:2] for a in addresses(anchor_ids)}
     links: list[Link] = []

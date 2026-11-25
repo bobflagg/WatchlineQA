@@ -77,6 +77,8 @@ def test_live_eval_q15(live, case):
         assert got == {k: list(v) for k, v in expect["groups"].items()}, got
     if "oldest_open" in expect:
         assert [b["oldestOpen"] for b in out["violations"]] == [expect["oldest_open"]]
+    if "by_class" in expect:
+        assert {r["violationClass"]: [r["open"], r["perUnit"]] for r in out["violations_rate"]["byClass"]} == expect["by_class"]
     if "rate" in expect:
         assert {k: out["violations_rate"][k] for k in ("open", "units", "perUnit")} == expect["rate"]
     if out["status"] == "ok" and out["lot"] is not None:
@@ -103,3 +105,12 @@ def test_live_eval_q28(live, case):
         assert [[m["part"], m["owner"], m["outcome"], m["rule"]] for m in by_id[lid]["matches"]] == parts
     for k in by_id.values():                              # only After Inquest or After Trial is ever a harassment finding
         assert k["isHarassmentFinding"] == (k["harassmentFinding"] in ("After Inquest", "After Trial"))
+
+
+def test_live_undated_cases_are_listed_after_dated_ones(live):
+    """2132 Wallace Avenue (Bronx) has cases with no open date; they must not appear as the newest."""
+    out = live["litigation"].invoke({"address": "2132 Wallace Avenue, Bronx"})
+    dates = [k["caseOpenDate"] for k in out["cases"]]
+    assert dates and any(d is None for d in dates) and dates[0] is not None
+    first_none = dates.index(None)
+    assert all(d is None for d in dates[first_none:]) and dates[:first_none] == sorted(dates[:first_none], reverse=True)

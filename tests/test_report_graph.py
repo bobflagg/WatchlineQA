@@ -4,7 +4,7 @@ import json
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
-from test_identity_graph import BASE, FakeIG, rec
+from test_identity_graph import ADDR, BASE, FakeIG, edge, rec
 
 from watchline.identity.section import decisions_from_json, identity_checkpoint, to_answer
 from watchline.report.graph import PROMPT, build_report_graph, pending
@@ -73,11 +73,38 @@ def test_a_bad_answer_goes_back_to_the_same_pause_with_the_reason(bad):
     assert pending(r) == [] and "4 lots" in r["answer"]["summary"]
 
 
-def test_an_unknown_link_id_is_reported_in_the_answer_not_applied():
+@pytest.mark.parametrize("bad, why", [(d(lid="NOPE|NOPE|address"), "no link has the id"), (d("approve"), "must be accept or reject"),
+                                      (d("yes"), "must be accept or reject")])
+def test_a_bad_decision_value_or_an_unknown_link_goes_back_to_the_same_pause(bad, why):
     g, cfg, _, _ = start()
-    r = g.invoke(Command(resume={"decisions": [d(lid="NOPE|NOPE|address")]}), cfg)
-    assert any("was not applied" in f["statement"] for f in r["answer"]["facts"])
-    assert "4 lots" not in r["answer"]["summary"]
+    (p,) = pending(g.invoke(Command(resume={"decisions": [bad]}), cfg))
+    assert why in p["error"] and "decision_log" not in g.get_state(cfg).values
+
+
+def test_a_link_with_only_set_aside_evidence_cannot_be_accepted_at_the_pause():
+    # two candidates: one usable (address ADDR, so the run pauses) and one whose only shared address is on the mail-drop list
+    other = "9 MAIL DROP ST, Albany, NY 12207"
+    base = dict(BASE, records=[rec(1, "ACME OWNER", ADDR, other), rec(2, "ACME OWNER"), rec(3, "ACME OWNR", ADDR), rec(4, "ACME OWNX", other)],
+                lots=BASE["lots"] + [dict(nodeId=4, bbl="4000000001", unitsRes=2)], edges=[edge(1, 3), edge(1, 4)])
+    masks = [dict(list="maildrop", address="9 MAIL DROP ST", degree=None, kind="registered_agent", zip5="12207", status="unreviewed")]
+    ig = FakeIG(**base, masks=masks)
+    g, cfg, _, r = start(ig)
+    (p,) = pending(r)
+    assert [x["linkId"] for x in p["links"]] == [LID]                   # only the usable lead is offered
+    r = g.invoke(Command(resume={"decisions": [d(lid="ACME OWNER|ACME OWNX|address")]}), cfg)
+    (p,) = pending(r)
+    assert "only set-aside evidence" in p["error"]
+
+
+def test_the_graph_changing_between_pause_and_resume_is_said_in_the_answer():
+    ig = FakeIG(**BASE)
+    g, cfg, _, _ = start(ig)
+    ig._edges = []                                                    # the graph moved on while the researcher decided
+    r = g.invoke(Command(resume={"decisions": []}), cfg)
+    assert "graph_changed_since_proposal" in {c["code"] for c in r["answer"]["caveats"]}
+    g2, cfg2, _, _ = start(thread="same")
+    r2 = g2.invoke(Command(resume={"decisions": []}), cfg2)
+    assert "graph_changed_since_proposal" not in {c["code"] for c in r2["answer"]["caveats"]}
 
 
 def test_no_links_or_an_unknown_name_never_pause():

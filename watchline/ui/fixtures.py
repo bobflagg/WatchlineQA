@@ -63,7 +63,8 @@ _DECISION = _cp.Decision(_LINK.linkId, "accept", "researcher", "2026-12-01", "Sa
 _VIOLATIONS = [{"bin": "3000001", "address": "1 Example Street", "addressed": True, "oldestOpen": "2023-03-25", "groups": [
     {"violationClass": "B", "status": "Open", "n": 2, "oldest": "2023-03-25"}, {"violationClass": "C", "status": "Open", "n": 2, "oldest": "2024-02-01"},
     {"violationClass": "A", "status": "Close", "n": 1, "oldest": "2019-01-01"}]}]
-_RATE = {"open": 4, "units": 32, "perUnit": 0.125, "unitsSource": "PLUTO (release 26v1), lot-wide"}
+_RATE = {"open": 4, "units": 32, "perUnit": 0.125, "unitsSource": "PLUTO (release 26v1), lot-wide",
+         "byClass": [{"violationClass": "B", "open": 2, "perUnit": 0.062}, {"violationClass": "C", "open": 2, "perUnit": 0.062}]}
 _VIOLATION_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
                       (_cond.CAVEAT_CITED, _cond.CAVEAT_OPEN_AT_SNAPSHOT, _cond.CAVEAT_LOT_WIDE, _cond.CAVEAT_RATE)]
 _CASES = [{"bin": "3000001", "litigationId": 100001, "caseType": "Tenant Action/Harrassment", "caseOpenDate": "2016-05-24", "caseStatus": "CLOSED",
@@ -122,7 +123,7 @@ FIXTURES: dict[str, Answer] = {
         summary="The lot has 4 open violations, 2 in class B and 2 in class C, against 32 residential units. The oldest open inspection is 2023-03-25.",
         facts=[Fact(statement="The building has 2 open class B and 2 open class C violations, and 1 closed class A violation.",
                     evidence=[Evidence(section="violations", bbl="3000010001", data=_VIOLATIONS)]),
-               Fact(statement="That is 4 open violations over 32 residential units, 0.125 per unit.",
+               Fact(statement="That is 4 open violations over 32 residential units, 0.125 per unit (class B 0.062, class C 0.062).",
                     evidence=[Evidence(section="violations_rate", bbl="3000010001", data=_RATE)])],
         caveats=_VIOLATION_CAVEATS, sources=["HPD violations (data through 2026-07-02)", "PLUTO (release 26v1)"]),
     "litigation": Answer(

@@ -172,3 +172,21 @@ def test_summing_deed_counts_is_an_ungrounded_number():
     out = tool([trow("D1", amount=0), trow("D2", amount=900), trow("D3", amount=0)]).invoke({"address": "1 Main St", "borough": "Manhattan"})
     assert ungrounded_numbers("3 deeds, 2 not sales", [out]) == []
     assert ungrounded_numbers("5 deeds in total", [out]) == ["5"]
+
+
+# ---- the period bounds are checked before anything is read ----------------------------------------------------------------
+
+@pytest.mark.parametrize("since, until, why", [("2019", None, "YYYY-MM-DD"), ("last year", None, "YYYY-MM-DD"), ("2020-1-5", None, "YYYY-MM-DD"),
+                                               (None, "20200105", "YYYY-MM-DD"), ("2020-02-30", None, "not a real date"),
+                                               ("2021-01-01", "2020-01-01", "since is after until")])
+def test_bad_period_bounds_are_invalid_input_and_nothing_is_read(since, until, why):
+    tg = FakeTG([trow()])
+    with pytest.raises(ValueError, match=why):
+        build_timeline(answer(), tg, since=since, until=until)
+    assert tg.asked == []
+    out = tool([trow()]).invoke({"address": "1 Main St", "borough": "Manhattan", "since": since, "until": until})
+    assert out["status"] == "invalid_input" and why in out["message"]
+
+
+def test_good_period_bounds_including_equal_dates_pass():
+    assert run([trow()], since="2020-01-01", until="2020-01-01").since == "2020-01-01"

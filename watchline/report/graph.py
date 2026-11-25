@@ -16,7 +16,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
-from watchline.identity.checkpoint import Decision
+from watchline.identity.checkpoint import DECISIONS, Decision
 from watchline.identity.graph import IdentityGraph
 from watchline.identity.section import (
     checkpoint_to_dict,
@@ -64,7 +64,15 @@ def build_report_graph(ig: IdentityGraph, checkpointer: BaseCheckpointSaver | No
         try:
             if not isinstance(answer, dict) or not isinstance(answer.get("decisions"), list):
                 raise ValueError('answer with {"decisions": [...]}; an empty list leaves every link awaiting')
-            _decisions(answer["decisions"])                     # validate the shape; the objects are built again in `finish`
+            new = _decisions(answer["decisions"])               # validate the shape; the objects are built again in `finish`
+            states = {x["linkId"]: x["state"] for x in p["links"]}
+            for d in new:
+                if d.decision not in DECISIONS:
+                    raise ValueError(f"decision {d.decision!r} on {d.linkId!r} must be accept or reject")
+                if d.linkId not in states:
+                    raise ValueError(f"no link has the id {d.linkId!r}; the links are {sorted(states)}")
+                if d.decision == "accept" and states[d.linkId] == "unsupported":
+                    raise ValueError(f"{d.linkId!r} has only set-aside evidence, so it cannot be accepted")
         except (ValueError, TypeError) as e:
             return {"error": str(e)}
         return {"decisions": [*state.get("decisions", []), *answer["decisions"]], "error": None}
@@ -74,7 +82,14 @@ def build_report_graph(ig: IdentityGraph, checkpointer: BaseCheckpointSaver | No
 
     def finish(state: ReportState) -> dict:
         r = identity_checkpoint(ig, state["name"], _decisions(state.get("decisions", [])))
-        return {"answer": to_answer(r).model_dump(), "decision_log": decisions_to_json(_decisions(state.get("decisions", [])))}
+        answer = to_answer(r).model_dump()
+        before = {x["linkId"] for x in state["proposal"].get("links", [])}
+        now = {x.linkId for x in r.checkpoint.links} if r.checkpoint else set()
+        if before != now:                                          # the graph changed between the pause and the resume
+            answer["caveats"].append({"code": "graph_changed_since_proposal", "text": (
+                "The graph changed between the proposal and the resume: the links now differ from the ones the decisions were made against. "
+                "Check the links and decisions again.")})
+        return {"answer": answer, "decision_log": decisions_to_json(_decisions(state.get("decisions", [])))}
 
     g = StateGraph(ReportState)
     g.add_node("propose", propose)

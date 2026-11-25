@@ -22,6 +22,7 @@ from watchline.profile.profile import (
     CAVEAT_RELATED,
     CAVEAT_TRUNCATED,
     HARASSMENT_FINDINGS,
+    MAX_BUILDINGS,
     MAX_GROUPS,
     PLUTO,
     Caveat,
@@ -40,7 +41,9 @@ OPEN = "Open"                                                      # Violation.s
 CAVEAT_OPEN_AT_SNAPSHOT = Caveat("open_at_snapshot", "Open means open at the data's snapshot date. Close covers closed and dismissed; finer status is not stored.")
 CAVEAT_RATE = Caveat("rate_lot_wide_units",
                      ("The rate divides the open violations of every building listed for the lot by the lot's residential units (a PLUTO lot value). "
-                      "It does not say how conditions differ between buildings or classes, and it is not a severity score."))
+                      "The pooled figure adds the open violations of every class; the figure for each class is given beside it. It is not a severity score."))
+CAVEAT_RATE_INCOMPLETE = Caveat("rate_incomplete",
+                                ("More buildings are listed than this answer can read, so the open count is incomplete and no rate per unit is given."))
 CAVEAT_RATE_UNAVAILABLE = Caveat("rate_unavailable", "The lot has no residential unit count, or a count of zero, so no rate per unit is given.")
 CAVEAT_NO_VIOLATIONS = Caveat("no_violations_recorded", "No violation is recorded for the listed buildings. That is not a statement that conditions are good.")
 CAVEAT_CASE_NOT_FAULT = Caveat("case_not_finding",
@@ -79,8 +82,8 @@ class Neo4jConditionsGraph(Neo4jProfileGraph, Neo4jRegistrationGraph):
         rows = self._read("CYPHER 25 MATCH (:Lot {bbl: $bbl})-[:HAS_BUILDING]->(b:Building)-[:HAS_LITIGATION]->(t:Litigation) "
                           "RETURN b.bin AS bin, t.litigationId AS litigationId, t.caseType AS caseType, t.caseOpenDate AS caseOpenDate, "
                           "t.caseStatus AS caseStatus, t.openJudgement AS openJudgement, t.harassmentFinding AS harassmentFinding, "
-                          "t.findingDate AS findingDate, t.penalty AS penalty, t.respondent AS respondent, t.respondentKeys AS respondentKeys "
-                          "ORDER BY caseOpenDate DESC, litigationId DESC LIMIT $limit", bbl=bbl, limit=MAX_CASES)
+                          "t.findingDate AS findingDate, t.penalty AS penalty, t.respondent AS respondent, t.respondentKeys AS respondentKeys, "
+                          "t.caseOpenDate IS NULL AS noDate ORDER BY noDate, caseOpenDate DESC, litigationId DESC LIMIT $limit", bbl=bbl, limit=MAX_CASES)
         return [{**r, "caseOpenDate": _iso(r["caseOpenDate"]), "findingDate": _iso(r["findingDate"])} for r in rows]
 
     def case_counts(self, bbl: str) -> list[dict]:
@@ -111,9 +114,10 @@ class BuildingViolations:
 
 @dataclass(frozen=True)
 class Rate:
-    open: int                       # open violations of every listed building
+    open: int                       # open violations of every listed building, pooled across classes
     units: int | None               # PLUTO residential units of the lot
-    perUnit: float | None           # None when units is missing or 0
+    perUnit: float | None           # None when units is missing or 0, or the building list was cut
+    byClass: tuple[tuple[str, int, float | None], ...] = ()   # the same by class: (class, open, per unit), so the pooled figure never stands alone
     unitsSource: str = f"{PLUTO}, lot-wide"
 
 
@@ -165,8 +169,20 @@ def build_violations(resolution: Answer, cg: ConditionsGraph) -> Violations:
         min((g.oldest for g in by_bin.get(b["bin"], ()) if g.status == OPEN and g.oldest), default=None)) for b in blds)
     n_open = sum(g.n for b in buildings for g in b.groups if g.status == OPEN)
     units = lot.get("unitsRes")
-    rate = Rate(n_open, units, round(n_open / units, 3) if units else None)
-    caveats += [CAVEAT_CITED, CAVEAT_OPEN_AT_SNAPSHOT, CAVEAT_LOT_WIDE, CAVEAT_RATE if rate.perUnit is not None else CAVEAT_RATE_UNAVAILABLE]
+    capped = len(blds) >= MAX_BUILDINGS                       # buildings past the cap were not read, so the count and the rate are incomplete
+    open_by_class: dict[str, int] = {}
+    for b in buildings:
+        for g in b.groups:
+            if g.status == OPEN:
+                open_by_class[g.violationClass] = open_by_class.get(g.violationClass, 0) + g.n
+    def per(n: int) -> float | None:
+        return round(n / units, 3) if units and not capped else None
+
+    rate = Rate(n_open, units, per(n_open), tuple((k, n, per(n)) for k, n in sorted(open_by_class.items())))
+    caveats += [CAVEAT_CITED, CAVEAT_OPEN_AT_SNAPSHOT, CAVEAT_LOT_WIDE,
+                CAVEAT_RATE_INCOMPLETE if capped else CAVEAT_RATE if rate.perUnit is not None else CAVEAT_RATE_UNAVAILABLE]
+    if capped:
+        caveats.append(CAVEAT_TRUNCATED)
     if not rows:
         caveats.append(CAVEAT_NO_VIOLATIONS)
     if len(rows) >= MAX_GROUPS:
@@ -268,12 +284,13 @@ def build_litigation(resolution: Answer, cg: ConditionsGraph) -> Litigation:
                         _tally(grouped, lambda g: g["caseStatus"] or "status not recorded"),
                         _tally(grouped, lambda g: g["harassmentFinding"] or "none recorded"))
     if not counts.cases:
-        return Litigation(resolution, lot=lot, counts=counts, owners=owners, caveats=tuple(dict.fromkeys([*caveats, CAVEAT_NO_CASES])),
+        capped = [CAVEAT_TRUNCATED] if len(blds) >= MAX_BUILDINGS else []
+        return Litigation(resolution, lot=lot, counts=counts, owners=owners, caveats=tuple(dict.fromkeys([*caveats, CAVEAT_NO_CASES, *capped])),
                           sources=(HPD_LITIGATION, HPD_REGISTRATIONS))
     caveats += [CAVEAT_CITED, CAVEAT_CASE_NOT_FAULT, CAVEAT_HARASSMENT, CAVEAT_RESPONDENT_ROLE, CAVEAT_DATE_ERRORS]
     if any(c.matches for c in cases):
         caveats += [CAVEAT_NAME_NOT_IDENTITY, CAVEAT_OWNERS_ALL_REGISTRATIONS]
-    if counts.cases > len(cases):
+    if counts.cases > len(cases) or len(grouped) >= MAX_GROUPS or len(blds) >= MAX_BUILDINGS:
         caveats.append(CAVEAT_TRUNCATED)
     return Litigation(resolution, lot=lot, cases=tuple(cases), counts=counts, owners=owners, caveats=tuple(dict.fromkeys(caveats)),
                       sources=(HPD_LITIGATION, HPD_REGISTRATIONS))

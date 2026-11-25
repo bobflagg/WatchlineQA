@@ -5,7 +5,9 @@ separate strings, never merged). The counts come from a separate grouped read, s
 list is capped. A deed is counted as "not a sale" when its amount is 0 or its type is a correction or confirmatory deed (CORRD, CONDEED);
 the answer never calls any deed a sale of the building. Nothing is attributed to a current owner (that is Q12.3, not built).
 """
+import re
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Protocol
 
 from watchline.conditions.conditions import Neo4jConditionsGraph
@@ -121,8 +123,25 @@ def _counts(rows: list[dict]) -> Counts:
                   byType=tuple(sorted(by_type.items())))
 
 
+def _check_period(since: str | None, until: str | None) -> None:
+    """Both bounds must be YYYY-MM-DD dates, and since may not be after until. Raises ValueError, which the tool returns as invalid_input."""
+    parsed = []
+    for name, v in (("since", since), ("until", until)):
+        if v is None:
+            continue
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
+            raise ValueError(f"{name} must be a date written YYYY-MM-DD, not {v!r}")
+        try:
+            parsed.append(date.fromisoformat(v))
+        except ValueError:
+            raise ValueError(f"{name} {v!r} is not a real date") from None
+    if len(parsed) == 2 and parsed[0] > parsed[1]:
+        raise ValueError("since is after until")
+
+
 def build_timeline(resolution: Answer, tg: TimelineGraph, since: str | None = None, until: str | None = None) -> DeedTimeline:
     """Pure given the graph rows. The resolution decides whether there is anything to read."""
+    _check_period(since, until)
     caveats = _match_caveats(resolution)
     unresolved = _unresolved_caveat(resolution)
     lot = tg.lot(resolution.bbl) if unresolved is None and resolution.bbl else None

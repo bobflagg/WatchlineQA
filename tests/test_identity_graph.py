@@ -192,3 +192,25 @@ def test_live_berkovics_identity_group_spans_several_names(live_graph):
     assert i.status == "ok" and i.anchor.key == "ALBERT LABOZ / AMNON SHALHOV / MOSES BERKOVICS"
     assert (i.anchor.records, len(i.anchor.lots), sum(x.unitsRes or 0 for x in i.anchor.lots)) == (8, 48, 1628)
     assert not any(e.setAside for ln in i.links for e in ln.evidence)
+
+
+# ---- link ids stay unique, and a cut read is flagged ---------------------------------------------------------------------
+
+def test_groups_with_one_name_and_one_first_lot_or_no_lot_still_get_distinct_link_ids():
+    for lots in ([lot(2, "3000000001", 3), lot(3, "3000000001", 3)], []):
+        base = dict(records=[rec(1, "ACME OWNER", ADDR), rec(2, "SAME NAME", ADDR), rec(3, "SAME NAME", ADDR)], identity=[],
+                    lots=[lot(1, "2000000001", 3), *lots], edges=[edge(1, 2), edge(1, 3)])
+        ids = sorted(x.linkId for x in build_inputs(FakeIG(**base), "ACME OWNER").links)
+        assert len(ids) == 2 and len(set(ids)) == 2
+        build_checkpoint(*(lambda i: (i.anchor, i.links))(build_inputs(FakeIG(**base), "ACME OWNER")))     # no duplicate-id error
+
+
+def test_reads_cut_at_the_row_limit_are_flagged(monkeypatch):
+    monkeypatch.setattr(G, "MAX_GROUPS", 3)
+    many = [lot(1, f"20000000{i:02d}", 3) for i in range(5)]
+    i = build_inputs(FakeIG(**dict(BASE, lots=many)), "ACME OWNER")
+    assert "identity_party_cut" in {c.code for c in i.caveats}
+    monkeypatch.setattr(G, "MAX_GROUPS", 1000)
+    assert "identity_party_cut" not in {c.code for c in build_inputs(FakeIG(**BASE), "ACME OWNER").caveats}
+    monkeypatch.setattr(G, "MAX_GROUPS", 1)
+    assert "identity_party_cut" in {c.code for c in build_inputs(FakeIG(**dict(BASE, edges=[edge(1, 3)])), "ACME OWNER").caveats}   # edges, pairs

@@ -57,6 +57,42 @@ def test_open_violations_by_class_oldest_open_and_the_rate_per_unit():
     assert {"cited_not_fault", "open_at_snapshot", "lot_wide", "rate_lot_wide_units"} <= codes(v)
 
 
+def test_the_pooled_rate_always_comes_with_the_rate_for_each_class():
+    v = build_violations(answer(), FakeCG(lot=dict(LOT, unitsRes=10), groups=[g("1", "A", "Open", 3), g("1", "C", "Open", 2), g("2", "C", "Open", 1), g("1", "A", "Close", 9)]))
+    assert v.rate.byClass == (("A", 3, 0.3), ("C", 3, 0.3)) and (v.rate.open, v.rate.perUnit) == (6, 0.6)
+    assert "adds the open violations of every class" in next(c.text for c in v.caveats if c.code == "rate_lot_wide_units")
+
+
+def test_more_buildings_than_can_be_read_flags_the_count_and_gives_no_rate():
+    many = [dict(bin=str(i), address=f"{i} MAIN ST") for i in range(P.MAX_BUILDINGS)]
+    v = build_violations(answer(), FakeCG(buildings=many, groups=[g("1", "A", "Open", 3)]))
+    assert v.rate.open == 3 and v.rate.perUnit is None and all(p is None for _, _, p in v.rate.byClass)
+    assert {"rate_incomplete", "truncated"} <= codes(v) and "rate_lot_wide_units" not in codes(v)
+    assert "truncated" in codes(build_litigation(answer(), FakeCG(buildings=many, cases=[case()])))
+    assert "truncated" in codes(build_litigation(answer(), FakeCG(buildings=many, cases=[])))
+
+
+def test_case_counts_cut_at_the_group_limit_are_flagged(monkeypatch):
+    monkeypatch.setattr(C, "MAX_GROUPS", 2)
+    rows = [dict(caseType="A", caseStatus="CLOSED", harassmentFinding=None, n=1), dict(caseType="B", caseStatus="CLOSED", harassmentFinding=None, n=1)]
+    assert "truncated" in codes(build_litigation(answer(), FakeCG(cases=[case()], counts=rows)))
+
+
+def test_cases_are_read_with_undated_cases_last():
+    seen = []
+
+    class Res:
+        records = []
+
+    class Drv:
+        def execute_query(self, q, params, **kw):
+            seen.append(q.text)
+            return Res()
+
+    C.Neo4jConditionsGraph(Drv(), "watchline").cases("2042920024")
+    assert "ORDER BY noDate, caseOpenDate DESC" in seen[0]
+
+
 def test_the_oldest_open_date_is_per_building_and_the_rate_pools_every_listed_building():
     v = build_violations(answer(), FakeCG(groups=[g("1", "A", "Open", 3, "2022-05-01"), g("2", "C", "Open", 1, "2019-02-02"), g("2", "C", "Close", 9, "2001-01-01")]))
     assert {b.bin: b.oldestOpen for b in v.buildings} == {"1": "2022-05-01", "2": "2019-02-02"}
@@ -152,7 +188,8 @@ def test_tool_names_and_descriptions_tell_the_model_the_rules():
 def test_violations_tool_output_has_counts_by_class_and_no_total_or_score_keys():
     out = vtool(groups=[g("1", "A", "Open", 3), g("1", "B", "Open", 1)]).invoke(ARGS)
     assert out["status"] == "ok" and [(x["violationClass"], x["n"]) for x in out["violations"][0]["groups"]] == [("A", 3), ("B", 1)]
-    assert out["violations_rate"] == {"open": 4, "units": 24, "perUnit": 0.167, "unitsSource": "PLUTO (release 26v1), lot-wide"}
+    assert out["violations_rate"] == {"open": 4, "units": 24, "perUnit": 0.167, "unitsSource": "PLUTO (release 26v1), lot-wide",
+                                      "byClass": [{"violationClass": "A", "open": 3, "perUnit": 0.125}, {"violationClass": "B", "open": 1, "perUnit": 0.042}]}
     assert not {"score", "severity", "total", "grade"} & (set(out["violations"][0]) | set(out["violations_rate"]))
 
 

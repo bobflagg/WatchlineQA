@@ -250,3 +250,21 @@ def test_an_empty_deed_list_is_not_evidence_when_no_lot_was_read(deed_result):
     deed_result.update(deeds=[], lot=None)
     a = assemble(model(fact("No deed is recorded.", ("deeds", None))), [deed_result])
     assert a.facts[0].unresolved and not a.facts[0].evidence
+
+
+# ---- review fixes: what the model may choose, and what grounds a number ------------------------------------------------------
+
+def test_the_model_cannot_choose_the_template_only_kind_and_the_schema_says_each_kind_once():
+    from pydantic import ValidationError
+
+    from watchline.agent.answer import ModelAnswer
+    with pytest.raises(ValidationError):
+        ModelAnswer(kind="identity_checkpoint", summary="x")
+    desc = ModelAnswer.model_fields["kind"].description
+    assert desc.count("violations:") == 1 and desc.count("litigation:") == 1 and desc.count("contacts:") == 1 and desc.count("timeline:") == 1
+
+
+def test_numbers_in_a_registered_owner_name_are_grounded():
+    from watchline.agent.answer import ungrounded_numbers
+    result = {"status": "ok", "resolution": {"bbl": "3008070024"}, "registered_owners": ["438 52 ST OWNERS CORP"], "cases": []}
+    assert ungrounded_numbers("The respondent is not the registered owner 438 52 ST OWNERS CORP.", [result], "who owns it") == []
