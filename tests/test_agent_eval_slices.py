@@ -124,6 +124,19 @@ def re_search(pattern: str, text: str) -> bool:
     return re.search(pattern, text, re.I) is not None
 
 
+def test_the_severity_patterns_allow_the_denial_and_reject_a_rating():
+    c = case("how-bad-is-it-is-not-a-severity")
+    denial = fake_turn("Violations are what was cited, and the records do not give a severity rating.")
+    assert check_deterministic({k: c[k] for k in ("must_not_match", "must_not_assert")}, denial, denial) == []   # the live answer of 2026-11-25
+    rated = fake_turn("The severity rating is high, a high severity building.")
+    assert check_deterministic({k: c[k] for k in ("must_not_match",)}, rated, rated)
+
+
+def test_the_prompt_keeps_registered_owners_to_litigation_answers():
+    from watchline.agent.agent import system_prompt
+    assert "`registered_owners` is only for `litigation_cases`" in " ".join(system_prompt().split())
+
+
 def test_the_severity_patterns_reject_a_rating():
     c = case("how-bad-is-it-is-not-a-severity")
     bad = fake_turn("Conditions are dangerous: a severity score of high, with 4 open violations in total.")
