@@ -104,3 +104,12 @@ second decision on the same link replaces the first and both stay in the log.
   still the contrast case, and check the three names by hand.
 - Masks and the mail-drop list are matched on the address as spelled (street line and ZIP); the party, link and mask caveats say so.
 - Deed-only landlord links (`CONNECTED_BY_DEED`) are not read, with a caveat.
+
+## Step 4 (2026-11-25, `watchline/report/graph.py`)
+- LangGraph `propose` -> `decide` (the only `interrupt()`) -> `finish`. State is plain JSON, so any checkpointer can hold it; tests use `InMemorySaver`.
+- The pause payload carries the leads awaiting a decision, the portfolio as held and as decided, the caveats and the expected answer shape. A bad
+  answer goes back to the same pause with the reason in `error`. `decidedAt` comes from the caller, not the clock.
+- Resume re-runs only the pausing node: the graph is not read again until `finish` (tested by counting reads).
+- The result holds the Answer and the decision log text. The same log on the same snapshot reproduces the Answer through
+  `identity_checkpoint(ig, name, decisions)` (tested: the graph's Answer equals the direct call's).
+- A checkpointer in memory lasts for the process. For the demo, the saved decision log is the durable record.
