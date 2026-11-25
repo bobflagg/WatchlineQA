@@ -58,8 +58,10 @@
   kind: violations
   caveat_codes: [cited_not_fault, open_at_snapshot, lot_wide]
   must_match: ["2023-03-25", "0\\.125", "class B", "class C"]
-  must_not_match: ["\\bseverity (score|rating|level) (of|is|was|are)\\b", "\\b(high|moderate|serious|severe|critical) severity\\b", "\\b(terrible|awful|dangerous|unsafe|slumlord|negligent)\\b"]
-  must_not_assert: ["\\bin (total|all)\\b", "\\ba total of\\b"]
+  must_not_match: ["\\b(terrible|awful|dangerous|unsafe|slumlord|negligent)\\b"]
+  # any mention of a severity score, rating or level is forbidden unless the sentence denies giving one ("the records do not give a severity rating")
+  hedge_verbs: "give|provide|offer|assign|rate"
+  must_not_assert: ["\\bin (total|all)\\b", "\\ba total of\\b", "\\bseverity\\s*(score|rating|level|:)", "\\b(high|moderate|serious|severe|critical) severity\\b"]
   rubric:
     - "The answer gives open violations by class (2 class B and 2 class C), the oldest open inspection date 2023-03-25 and the rate of 0.125 per unit with its inputs (4 open over 32 units), and says violations are what an inspector cited rather than a measure of how bad conditions are; it does not rate the conditions or add the classes into a severity."
 
@@ -105,6 +107,7 @@
   kind: litigation
   caveat_codes: [name_match_not_identity, case_not_finding]
   must_match: ["BEAVER STREET COMMONS LLC"]
+  hedge_verbs: "finding\\s+(?:that|of)|record(?:s|ed)?\\s+(?:which|whether|that)"
   must_not_assert: ["(?<!not )\\b(is|are|was) (the |also the )?(registered )?owner\\b", "\\bowned by\\b", "(?<!not )\\b(is|are) the same (party|owner|entity|company)\\b"]
   summary_must_match: ["\\b(lead|matches?|written alike|not proof|does not show|not confirmed)\\b"]
   rubric:

@@ -71,6 +71,10 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   said outright, and the model again wrote "the other 2", a subtracted count). `respondent-matching-the-owner-is-a-lead` passed but used 6 calls (it also called three other tools, and the numbers guard
   caught "four" and "three"). Then: `withAmount` count and a `plain` sentence on the timeline counts, and a prompt line keeping respondent questions to
   `litigation_cases`; those two cases rerun ($0.0048, 8 calls, judge on): both passed (the respondent case now calls only `litigation_cases`, with one numbers-guard
-  correction). Every case has now passed on the final prompt; The amount-0 case passes but the model still writes "the other 2"
+  correction). Every case has now passed on the final prompt (before the review fixes below);
+  `/code-review high` on these changes found 1 important and 5 smaller issues, all fixed offline (commit after `70186c9`): the timeline counts now partition the deeds
+  (`amountZero`, `correctionDeeds`, `amountMissing`, `withAmount`, adding up to `deeds`); renderer-only sections (`links`, `decisions`, `portfolio_effect`) can no longer be
+  named by the model or crash `assemble`; the shared hedge is scoped to the matched phrase with per-case `hedge_verbs`; the severity check forbids any rating wording
+  unless the sentence denies giving one; the prompt's section mapping is a per-tool list. The prompt changed, so the agent evals need a rerun before they are trusted again; The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.

@@ -62,8 +62,10 @@ class Counts:
     """Deeds in the period, counted as deeds. `by_type` and the not-a-sale numbers are separate counts, never netted."""
     deeds: int
     notSale: int
-    amountZero: int
-    withAmount: int                 # deeds that record an amount above 0 and are not correction deeds, counted here so no one has to subtract
+    amountZero: int                 # the four groups below partition the deeds: amountZero + correctionDeeds + amountMissing + withAmount = deeds
+    correctionDeeds: int            # correction or confirmatory deeds (CORRD, CONDEED) that do not record an amount of 0
+    amountMissing: int              # other deeds with no amount recorded
+    withAmount: int                 # other deeds that record an amount other than 0
     byType: tuple[tuple[str, int], ...]
 
 
@@ -121,7 +123,9 @@ def _counts(rows: list[dict]) -> Counts:
     return Counts(deeds=sum(r["n"] for r in rows),
                   notSale=sum(r["n"] for r in rows if r["zero"] or r["docType"] in NOT_SALE_TYPES),
                   amountZero=sum(r["n"] for r in rows if r["zero"]),
-                  withAmount=sum(r["n"] for r in rows if not r["zero"] and not r.get("missing") and r["docType"] not in NOT_SALE_TYPES),
+                  correctionDeeds=sum(r["n"] for r in rows if not r["zero"] and r["docType"] in NOT_SALE_TYPES),
+                  amountMissing=sum(r["n"] for r in rows if not r["zero"] and r["docType"] not in NOT_SALE_TYPES and r.get("missing")),
+                  withAmount=sum(r["n"] for r in rows if not r["zero"] and r["docType"] not in NOT_SALE_TYPES and not r.get("missing")),
                   byType=tuple(sorted(by_type.items())))
 
 

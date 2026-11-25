@@ -13,13 +13,14 @@ from pydantic import BaseModel, Field
 
 ModelKind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
 Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
+ModelSection = Literal["lookup", "lot", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "violations", "violations_rate", "cases", "case_counts", "registered_owners"]   # what the model may cite
 Section = Literal["lookup", "lot", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts", "registered_owners"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------
 
 class EvidenceRef(BaseModel):
-    section: Section = Field(description="Which part of the tool result the statement rests on.")
+    section: ModelSection = Field(description="Which part of the tool result the statement rests on.")
     bin: str | None = Field(default=None, description=(
         "The building's BIN, to point at one building under section 'buildings', 'registrations' or 'contacts'. Without it, the section "
         "means the whole list (use that to say no building or no registration is listed)."))
@@ -126,7 +127,7 @@ def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evi
                     if b.get("bin") == ref.bin:
                         return Evidence(section="buildings", bin=ref.bin, bbl=_bbl(out), data=b), i
         else:
-            data = out.get(_SECTION_KEY[ref.section])
+            data = out.get(_SECTION_KEY.get(ref.section, ref.section))        # a section no tool feeds finds nothing: the fact is shown as unresolved
             if data:                                    # None, [] and {} mean the tool had nothing for this section
                 return Evidence(section=ref.section, bbl=_bbl(out), data=data), i
     return None

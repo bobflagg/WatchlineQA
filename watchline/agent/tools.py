@@ -249,8 +249,9 @@ def litigation_to_dict(x: Litigation, max_cases: int = MAX_CASES_OUT) -> dict[st
 
 def timeline_plain(c) -> str:
     """The counts in one plain sentence, written by code, so no one has to add or subtract them."""
-    return (f"{c.deeds} deed{'s' if c.deeds != 1 else ''} recorded. Counted as not a sale (an amount of 0, or a correction deed): {c.notSale}. "
-            f"Recording an amount of 0: {c.amountZero}. Recording an amount (not a correction deed): {c.withAmount}.")
+    return (f"{c.deeds} deed{'s' if c.deeds != 1 else ''} recorded: {c.amountZero} record an amount of 0; {c.withAmount} record another amount; "
+            f"{c.correctionDeeds} are correction deeds with an amount other than 0; {c.amountMissing} have no amount recorded. "
+            f"Counted as not a sale (an amount of 0, or a correction deed): {c.notSale}.")
 
 
 def timeline_to_dict(x: DeedTimeline) -> dict[str, Any]:
@@ -267,7 +268,8 @@ def timeline_to_dict(x: DeedTimeline) -> dict[str, Any]:
             "grantors": list(d.grantors), "grantorRows": d.grantorRows, "grantees": list(d.grantees), "granteeRows": d.granteeRows,
         } for d in x.deeds],
         "timeline_counts": None if c is None else {
-            "deeds": c.deeds, "notSale": c.notSale, "amountZero": c.amountZero, "withAmount": c.withAmount, "byType": dict(c.byType),
+            "deeds": c.deeds, "notSale": c.notSale, "amountZero": c.amountZero, "correctionDeeds": c.correctionDeeds, "amountMissing": c.amountMissing,
+            "withAmount": c.withAmount, "byType": dict(c.byType),
             "since": x.since, "until": x.until, "plain": timeline_plain(c)},
         "caveats": [cv.as_dict() for cv in x.caveats],
         "sources": [GEOSUPPORT, *x.sources],
@@ -406,7 +408,7 @@ def make_deed_timeline_tool(client, graph: Graph, tg):
         Call this for questions about the deed history of a lot, how often it changed hands, whether it was held or transferred, or
         deeds in a period. A deed records a transfer of title, not a sale: an amount of 0, and correction or confirmatory deeds, are
         counted as not a sale, and no deed is called a sale of the building. Counts are of deeds and cover the whole period even when
-        the list is capped. Never add counts into one number and never subtract one from another; amountZero is the number of deeds that record an amount of 0 and withAmount the number that record an amount; quote them, or the plain sentence, and compute nothing. Grantor and grantee names are as recorded; variants are not merged and
+        the list is capped. Never add counts into one number and never subtract one from another; amountZero, withAmount, correctionDeeds and amountMissing split the deeds into four groups that add up to the deed count; quote them, or the plain sentence, and compute nothing. Grantor and grantee names are as recorded; variants are not merged and
         none is called "the owner". For the latest deed compared with the HPD registered owner, use deed_vs_owner. The returned
         caveats are attached to your answer for you; do not restate them. Check status first: ok means a lookup was made (read
         resolution.outcome for exact, variant, ambiguous or not_found); needs_borough means ask the user for the borough or ZIP;

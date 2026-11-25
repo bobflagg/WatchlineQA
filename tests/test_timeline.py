@@ -22,10 +22,10 @@ class FakeTG(FakeRG):
     @staticmethod
     def _counts_of(rows):
         g: dict = {}
-        for r in rows:
-            k = (r["docType"], r["amount"] == 0)
+        for r in rows:                                       # the same grouping as the Cypher: type, amount is 0, amount is missing
+            k = (r["docType"], r["amount"] == 0, r["amount"] is None)
             g[k] = g.get(k, 0) + 1
-        return [dict(docType=t, zero=z, n=n) for (t, z), n in sorted(g.items())]
+        return [dict(docType=t, zero=z, missing=m, n=n) for (t, z, m), n in sorted(g.items())]
 
     def timeline(self, bbl, since, until):
         self.asked.append((bbl, since, until))
@@ -202,6 +202,24 @@ def test_with_amount_is_counted_in_code_and_a_missing_amount_is_not_an_amount():
 def test_the_tool_gives_a_plain_sentence_so_nobody_subtracts():
     out = tool([trow("D1", amount=0), trow("D2", amount=900)]).invoke({"address": "1 Main St", "borough": "Manhattan"})
     c = out["timeline_counts"]
-    assert c["withAmount"] == 1 and c["plain"] == ("2 deeds recorded. Counted as not a sale (an amount of 0, or a correction deed): 1. "
-                                                    "Recording an amount of 0: 1. Recording an amount (not a correction deed): 1.")
+    assert c["withAmount"] == 1 and c["plain"] == ("2 deeds recorded: 1 record an amount of 0; 1 record another amount; "
+                                                    "0 are correction deeds with an amount other than 0; 0 have no amount recorded. "
+                                                    "Counted as not a sale (an amount of 0, or a correction deed): 1.")
     assert "withAmount" in " ".join(tool().description.split()) and "compute nothing" in " ".join(tool().description.split())
+
+
+def test_the_four_groups_partition_the_deeds_and_the_plain_sentence_says_so():
+    """The reviewer's lot: 2 amount-0, 1 correction deed with an amount, 1 deed with an amount, 1 deed with no amount."""
+    rows = [trow("D1", amount=0), trow("D2", amount=0), trow("D3", typ="CORRD", amount=10), trow("D4", amount=500), trow("D5", amount=None)]
+    out = tool(rows).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    c = out["timeline_counts"]
+    assert (c["deeds"], c["amountZero"], c["correctionDeeds"], c["withAmount"], c["amountMissing"]) == (5, 2, 1, 1, 1)
+    assert c["amountZero"] + c["correctionDeeds"] + c["withAmount"] + c["amountMissing"] == c["deeds"]
+    assert c["notSale"] == 3
+    assert c["plain"] == ("5 deeds recorded: 2 record an amount of 0; 1 record another amount; 1 are correction deeds with an amount other than 0; "
+                          "1 have no amount recorded. Counted as not a sale (an amount of 0, or a correction deed): 3.")
+
+
+def test_a_correction_deed_with_a_zero_amount_is_counted_once():
+    c = TL._counts([dict(docType="CORRD", zero=True, missing=False, n=2), dict(docType="CORRD", zero=False, missing=True, n=1)])
+    assert (c.deeds, c.notSale, c.amountZero, c.correctionDeeds, c.amountMissing, c.withAmount) == (3, 3, 2, 1, 0, 0)

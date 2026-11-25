@@ -59,7 +59,16 @@ Reply on the first line with exactly PASS or FAIL, then one short sentence of re
 
 # A match is allowed only inside a sentence that says what the lot does NOT mean or what the assistant cannot say,
 # for example "This does not mean the lot has no buildings." A bare "not" elsewhere in the sentence is not enough.
-HEDGE = re.compile(r"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){0,2}?(?:mean|imply|say|call|claim|conclude|judge|label|show|establish|prove|indicate|confirm(?:ed|ation)?\s+(?:that|whether|to be)|finding\s+(?:that|of)|record(?:s|ed)?\s+(?:which|whether|that))\b", re.I)
+_HEDGE_VERBS = r"mean|imply|say|call|claim|conclude|judge|label|show|establish|prove|indicate|confirm(?:ed|ation)?\s+(?:that|whether|to be)"
+
+
+def hedge_regex(extra: str = "") -> re.Pattern:
+    """The negation that excuses a match. `extra` adds verbs for one case (key `hedge_verbs` in the cases file), so the shared pattern stays narrow."""
+    verbs = _HEDGE_VERBS + (f"|{extra}" if extra else "")
+    return re.compile(rf"(?:\b(?:not|never|cannot|unable to)|n't)\s+(?:\w+\s+){{0,2}}?(?:{verbs})\b", re.I)
+
+
+HEDGE = hedge_regex()
 # "not confirmation that ..." / "not confirmed to be ..." excuse a phrase; "has not been confirmed elsewhere" does not (it says nothing about the phrase).
 
 SENTENCE_END = re.compile(r"[.!?](?=\s+[A-Z\"'(]|\s*$)|\n")
@@ -104,6 +113,7 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn, tool_results: 
         for ref in f.unresolved:
             failures.append(f"fact points at nothing in the tool results ({ref.section}, bin {ref.bin}): {f.statement!r}")
     text = a.model_text
+    hedge = hedge_regex(case["hedge_verbs"]) if case.get("hedge_verbs") else HEDGE
     for pattern in case.get("must_match", []):
         if not re.search(pattern, text, re.I | re.S):
             failures.append(f"model text does not match {pattern!r}")
@@ -113,7 +123,7 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn, tool_results: 
             failures.append(f"model text matches forbidden {pattern!r}: {m.group(0)!r}")
     for pattern in case.get("must_not_assert", []):
         for m in re.finditer(pattern, text, re.I):
-            if not HEDGE.search(sentence_around(text, m.start())):
+            if not is_hedged(text, m, hedge):
                 failures.append(f"model text asserts forbidden {pattern!r}: {sentence_around(text, m.start())!r}")
     if tool_results is not None:
         stray = ungrounded_numbers(text, tool_results, question)
@@ -122,7 +132,7 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn, tool_results: 
     # The summary is the line people read first, so a name match must not read as identity there (caveats alone do not fix it).
     for pattern in case.get("summary_must_not_assert", []):
         for m in re.finditer(pattern, a.summary, re.I):
-            if not HEDGE.search(sentence_around(a.summary, m.start())):
+            if not is_hedged(a.summary, m, hedge):
                 failures.append(f"summary asserts forbidden {pattern!r}: {sentence_around(a.summary, m.start())!r}")
     for pattern in case.get("summary_must_match", []):
         if not re.search(pattern, a.summary, re.I | re.S):
@@ -130,6 +140,14 @@ def check_deterministic(case: dict, turn: Turn, first_turn: Turn, tool_results: 
     if not a.summary.strip():
         failures.append("empty summary")
     return failures
+
+
+def is_hedged(text: str, m: re.Match, hedge: re.Pattern = HEDGE) -> bool:
+    """True when the sentence negates the phrase: the hedge must come before the end of the match (\"does not mean X is the owner\"), so a negation
+    that follows the claim (\"X is the owner, and the records do not record ...\") does not excuse it."""
+    sentence = sentence_around(text, m.start())
+    at = sentence.find(m.group(0))
+    return bool(hedge.search(sentence[: at + len(m.group(0))] if at >= 0 else sentence))
 
 
 def parse_verdict(text: str) -> tuple[bool, str]:

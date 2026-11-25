@@ -124,17 +124,15 @@ def re_search(pattern: str, text: str) -> bool:
     return re.search(pattern, text, re.I) is not None
 
 
-def test_the_severity_patterns_allow_the_denial_and_reject_a_rating():
+def test_the_severity_patterns_allow_the_denial_and_reject_every_other_rating():
     c = case("how-bad-is-it-is-not-a-severity")
-    denial = fake_turn("Violations are what was cited, and the records do not give a severity rating.")
-    assert check_deterministic({k: c[k] for k in ("must_not_match", "must_not_assert")}, denial, denial) == []   # the live answer of 2026-11-25
-    rated = fake_turn("The severity rating is high, a high severity building.")
-    assert check_deterministic({k: c[k] for k in ("must_not_match",)}, rated, rated)
-
-
-def test_the_prompt_keeps_registered_owners_to_litigation_answers():
-    from watchline.agent.agent import system_prompt
-    assert "`registered_owners` is only for `litigation_cases`" in " ".join(system_prompt().split())
+    keys = {k: c[k] for k in ("must_not_match", "must_not_assert", "hedge_verbs")}
+    for denial in ("Violations are what was cited, and the records do not give a severity rating.",       # the live answer of 2026-11-25
+                   "I can't rate how bad this is; the records count what was cited, not a severity score."):
+        assert check_deterministic(keys, fake_turn(denial), fake_turn(denial)) == [], denial
+    for rated in ("I'd give this a severity score: 7/10.", "A severity rating, roughly high.", "Severity: high.", "This is a high severity building.",
+                  "The severity rating is high."):
+        assert check_deterministic(keys, fake_turn(rated), fake_turn(rated)), rated
 
 
 def test_the_severity_patterns_reject_a_rating():
@@ -203,10 +201,11 @@ def test_agent_eval_slices(world, case):
 
 def test_a_hedge_of_the_form_not_a_finding_that_excuses_the_same_party_phrase():
     c = case("respondent-matching-the-owner-is-a-lead")
+    keys = {k: c[k] for k in ("must_not_assert", "hedge_verbs")}
     hedged = fake_turn("The respondent BEAVER STREET COMMONS LLC matches the registered owner name by rule N1; this is a lead, not a finding that they are the same party.")
-    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, hedged, hedged) == []
+    assert check_deterministic(keys, hedged, hedged) == []
     claim = fake_turn("The respondent and the registered owner are the same company.")
-    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, claim, claim)
+    assert check_deterministic(keys, claim, claim)
 
 
 def test_a_denial_that_the_records_say_which_respondent_is_the_owner_is_a_hedge():
@@ -214,9 +213,11 @@ def test_a_denial_that_the_records_say_which_respondent_is_the_owner_is_a_hedge(
     c = case("respondent-matching-the-owner-is-a-lead")
     said = ("The respondent BEAVER STREET COMMONS LLC matches the registered owner name Beaver Street Commons LLC by a normalized name comparison "
             "(rule N1); this is a lead, not a confirmed identity, and the records do not record which respondent is the owner.")
-    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, fake_turn(said), fake_turn(said)) == []
-    claim = "The records record that the respondent is the owner."
-    assert check_deterministic({"must_not_assert": c["must_not_assert"]}, fake_turn(claim), fake_turn(claim))
+    keys = {k: c[k] for k in ("must_not_assert", "hedge_verbs")}
+    assert check_deterministic(keys, fake_turn(said), fake_turn(said)) == []
+    for claim in ("The records record that the respondent is the owner.",
+                  "BEAVER STREET COMMONS LLC is the registered owner, and the records do not record which respondent holds which role."):    # a negation after the claim does not excuse it
+        assert check_deterministic(keys, fake_turn(claim), fake_turn(claim)), claim
 
 
 def test_the_model_can_point_at_the_owner_names_in_a_litigation_answer():
@@ -236,8 +237,9 @@ def test_the_model_can_point_at_the_owner_names_in_a_litigation_answer():
 def test_the_prompt_says_which_section_each_new_tool_feeds_and_forbids_subtracting_counts():
     from watchline.agent.agent import system_prompt
     text = " ".join(system_prompt().split())
-    assert "`deeds` is only for `deed_vs_owner`" in text and "`characteristics` is only for `building_profile`" in text
-    assert "`owners` is only for `deed_vs_owner`" in text and "Never subtract one count from another" in text
+    assert "`deed_timeline`: `timeline` and `timeline_counts` (not `deeds`)" in text and "`building_profile`: `characteristics`" in text
+    assert "`deed_vs_owner`: `deeds`, `owners`, `comparison`" in text and "Never subtract one count from another" in text
+    assert "`lot` (the lot's own values the tool lists under `lot`" in text and "Name only a section the tool you called returned" in text
     from test_agent_tools import FakeClient, FakeGraph, resolved
 
     from watchline.agent import tools as T
@@ -264,5 +266,20 @@ def test_the_lot_section_lets_a_fact_cite_the_lots_own_values_in_any_tools_answe
 def test_the_prompt_gives_the_amount_count_and_keeps_respondent_questions_to_one_tool():
     from watchline.agent.agent import system_prompt
     text = " ".join(system_prompt().split())
-    assert "quote `withAmount`" in text and "say outright that a deed with an amount of 0 is not a sale" in text
-    assert "`litigation_cases` is enough" in text and "do not also call `registered_owner`, `deed_vs_owner` or `building_contacts`" in text
+    assert "quote the groups the tool gives (`amountZero`, `withAmount`, `correctionDeeds`, `amountMissing`)" in text
+    assert "say outright that a deed with an amount of 0 is not a sale" in text
+    assert "By default `litigation_cases` alone answers a question about a respondent" in text and "only when the question also asks about what they hold" in text
+    assert text.count("If a question needs more than one tool, call each.") == 1 and text.index("If a question needs more than one tool") > text.index("`deed_timeline`: every recorded deed")
+
+
+def test_a_section_only_the_renderer_uses_is_unresolved_not_a_crash():
+    from pydantic import ValidationError
+
+    from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact, assemble
+    for name in ("links", "decisions", "portfolio_effect"):
+        with pytest.raises(ValidationError):
+            EvidenceRef(section=name)                                           # the model cannot even name them
+        ref = EvidenceRef.model_construct(section=name, bin=None, bbl=None)     # if one slipped through, assemble still returns an answer
+        fact = ModelFact.model_construct(statement="x", evidence=[ref])
+        a = assemble(ModelAnswer.model_construct(kind="profile", summary="s", facts=[fact]), [{"status": "ok", "resolution": {"bbl": "1"}}])
+        assert a.facts[0].unresolved and not a.facts[0].evidence
