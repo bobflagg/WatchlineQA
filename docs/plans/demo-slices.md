@@ -131,3 +131,7 @@ Not changed: the owner section for a 237-building lot has 61 bullets (ten buildi
   records by name key, all matching records shown and none chosen) and `entity_research` in `watchline/report/sections.py`; the report's "owner entity" section is now real, not "not yet covered". Decisions:
   matches are shown as leads with no extra pause; names looked up are registered owners and the latest deed's entity-like grantees (individuals are not looked up). Checked against the spec's anchors
   A and C and the demo lots (`docs/plans/report-demo-verification.md`); the two backup runs were rebuilt and still rebuild byte-for-byte from their decision logs. Not built as an agent tool.
+
+- Who Owns What comparison (2026-11-25): `docs/plans/wow-comparison.md`. Two findings that need a decision: **the graph holds about one violation in six of HPD's (e.g. 22 open against 86 for 2141
+  Washington Avenue; WoW and HPD agree with each other)**, and **HPD's current registration spells the head officer "Yonatan Bahumi", so the BADHUMI misspelling exists only in the snapshot**.
+  WoW returns the same 56-building portfolio as Watchline reaches by accepting the lead, so the difference to claim is how a link is shown and decided, not which buildings.

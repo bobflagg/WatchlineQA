@@ -1,6 +1,6 @@
 # Report demo verification (2026-11-25)
 
-Every number in the two demo reports was checked against read-only Cypher run on the live graph, separate from the report code. The reports are saved in
+Every number in the two demo reports was checked against read-only Cypher run on the live graph, separate from the report code. **That checks the report against the graph, not the graph against HPD: the violation counts are far below HPD's own (see `wow-comparison.md`); litigation, registrations and deeds agree with the sources.** The reports are saved in
 `docs/demo/backup-runs/<address>/` (`report.md` and `decisions.json`); rebuilding either from its saved decision log (`make report ADDRESS=... DECISIONS=...`) gives a
 byte-identical file. Decisions in these runs are rehearsal decisions (date 2026-12-01), not research findings. Re-check every number again before the talk: the graph snapshot may change.
 
