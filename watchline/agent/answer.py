@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 ModelKind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
 Kind = Literal["profile", "registration", "ownership_comparison", "timeline", "contacts", "identity_checkpoint", "violations", "litigation", "clarification", "not_found", "refusal", "error"]
-Section = Literal["lookup", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts", "registered_owners"]
+Section = Literal["lookup", "lot", "resolution", "characteristics", "counts", "buildings", "totals", "registrations", "deeds", "owners", "comparison", "timeline", "timeline_counts", "contacts", "links", "decisions", "portfolio_effect", "violations", "violations_rate", "cases", "case_counts", "registered_owners"]
 
 
 # ---- what the model fills -----------------------------------------------------------------------------------------------
@@ -101,6 +101,9 @@ def _resolve(ref: EvidenceRef, results: list[dict], floor: int = 0) -> tuple[Evi
         if ref.section == "lookup":
             if out.get("status"):
                 return Evidence(section="lookup", bbl=_bbl(out), data={"status": out["status"], "message": out.get("message")}), i
+        elif ref.section == "lot":                            # the lot's own values (year built, class, units), as a tool lists them
+            if out.get("lot") is not None and out.get("resolution"):
+                return Evidence(section="lot", bbl=_bbl(out), data=out["lot"]), i
         elif ref.section in ("registrations", "contacts"):
             blist = out.get("registration_buildings" if ref.section == "registrations" else "contact_buildings")
             if blist is None or not out.get("resolution"):

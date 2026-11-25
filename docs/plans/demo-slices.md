@@ -65,6 +65,7 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   hedge (tested offline against the recorded sentence). Rerun alone ($0.0018, 5 calls, judge on): passed. All 9 cases have now passed in a live run (across three runs, about $0.021 in total).
   Rerun of the five first-run passes after the prompt changes (2026-11-25, $0.0069, 15 calls, judge on): 3 passed, 2 failed. `how-bad-is-it-is-not-a-severity` failed on a checker false
   positive ("the records do not give a severity rating" is a denial; the pattern is now narrower, tested offline). `agent-is-not-the-owner` cited `registered_owners`, a section
-  I added for litigation, in a contacts answer (prompt now says it is only for `litigation_cases`). Both fixes are untested live; The amount-0 case passes but the model still writes "the other 2"
+  I added for litigation, in a contacts answer (prompt now says it is only for `litigation_cases`). Rerun of those two ($0.0036, 7 calls): `agent-is-not-the-owner` passed; `how-bad-is-it-is-not-a-severity` failed on a new cause (the model cited `characteristics`
+  for the lot's year built, class and units in a violations answer). A `lot` section now lets a fact cite the lot's own values; not yet rerun; The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.

@@ -244,3 +244,18 @@ def test_the_prompt_says_which_section_each_new_tool_feeds_and_forbids_subtracti
     from watchline.deeds.timeline import Neo4jTimelineGraph
     desc = " ".join(T.make_deed_timeline_tool(FakeClient(resolved()), FakeGraph(), Neo4jTimelineGraph.__new__(Neo4jTimelineGraph)).description.split())
     assert "never subtract one from another" in desc
+
+
+def test_the_lot_section_lets_a_fact_cite_the_lots_own_values_in_any_tools_answer():
+    from test_agent_tools import FakeClient, FakeGraph, resolved
+    from test_conditions import FakeCG, g
+
+    from watchline.agent import tools as T
+    from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact, assemble
+    out = T.make_open_violations_tool(FakeClient(resolved()), FakeGraph(), FakeCG(groups=[g()])).invoke({"address": "1 Main St", "borough": "Manhattan"})
+    a = assemble(ModelAnswer(kind="violations", summary="x", facts=[
+        ModelFact(statement="The lot has 24 residential units.", evidence=[EvidenceRef(section="lot")])]), [out])
+    assert not a.facts[0].unresolved and a.facts[0].evidence[0].data["unitsRes"] == 24
+    nolot = assemble(ModelAnswer(kind="not_found", summary="x", facts=[ModelFact(statement="y", evidence=[EvidenceRef(section="lot")])]),
+                     [{"status": "ok", "resolution": {"bbl": "1"}, "lot": None}])
+    assert nolot.facts[0].unresolved                                      # no lot, nothing to cite
