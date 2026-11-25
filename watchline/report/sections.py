@@ -165,8 +165,8 @@ def deed_history(timeline: dict, comparison: dict | None = None) -> Answer:
         else:
             amount = f"an amount of {_money(x['amount'])} recorded"
         other = f"; it also names {_say(x['otherLots'], 'other lot')}" if x["otherLots"] else ""
-        facts.append(Fact(statement=(f"Deed {x['documentId']}, recorded {x['recordedDate']} ({x['docType']}), {amount}; from {_party(x['grantors'], x['grantorRows'])} "
-                                     f"to {_party(x['grantees'], x['granteeRows'])}{other}."), evidence=[_ev("timeline", timeline, x)]))
+        line = f"Deed {x['documentId']}, recorded {x['recordedDate']} ({x['docType']}), {amount}; from {_party(x['grantors'], x['grantorRows'])} to {_party(x['grantees'], x['granteeRows'])}{other}"
+        facts.append(Fact(statement=line if line.endswith(".") else line + ".", evidence=[_ev("timeline", timeline, x)]))      # a name may already end in a period (N.A.)
     if len(deeds) > MAX_ITEMS_SHOWN:
         facts.append(Fact(statement=f"{len(deeds) - MAX_ITEMS_SHOWN} older deeds are listed in the evidence.", evidence=[_ev("timeline", timeline, deeds)]))
     if comparison and comparison.get("comparison"):

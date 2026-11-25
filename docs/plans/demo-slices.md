@@ -99,3 +99,6 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   entry point, apart from the chat page (merging the two into one `st.navigation` app is a follow-up). The page: address form, sections as they are read, the landlord picker, a card per lead
   (Lead pill, Used and Set aside evidence, what argues against, Accept, Reject or Decide later, a note, a role), then the finished report with the portfolio as held next to after
   your decisions, a takeaway box and downloads for report.md and decisions.json. AppTest covers each state. Not yet looked at in a browser.
+- Slice 5 (done, no model): live end-to-end tests for both demo addresses (`tests/test_report_full.py`, run by `make test-live`); every number in the two reports checked against
+  independent Cypher (`docs/plans/report-demo-verification.md`); two backup runs saved in `docs/demo/backup-runs/` and rebuilt byte-for-byte from their decision logs. Small fixes found while reading
+  the reports: "1 lot" not "1 lots", no doubled period after a name ending in one, and a pipe in a link id no longer breaks the decisions table.

@@ -184,3 +184,15 @@ def test_not_covered_says_what_is_missing_and_never_looks_silent():
 @pytest.mark.parametrize("fn, view", [(S.building_facts, lambda: facts_view()), (S.violations_section, lambda: vio([g()])), (S.litigation_section, lambda: lit([case()]))])
 def test_sections_are_deterministic(fn, view):
     assert fn(view()) == fn(view())
+
+
+def test_a_party_name_that_ends_in_a_period_does_not_get_a_second_one():
+    tl, _ = deed_views([trow("D1", amount=900, grantees=("U.S. BANK TRUST, N.A.",))])
+    t = text(S.deed_history(tl))
+    assert "to U.S. BANK TRUST, N.A." in t and "N.A.." not in t
+
+
+def test_one_lot_and_one_unit_are_not_plural():
+    from watchline.identity.section import _counts
+    assert _counts({"lots": 1, "units": 1, "unitsMissing": 0}) == "1 lot and 1 residential unit"
+    assert _counts({"lots": 56, "units": 179, "unitsMissing": 0}) == "56 lots and 179 residential units"

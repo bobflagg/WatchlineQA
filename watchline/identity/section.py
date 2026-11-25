@@ -96,7 +96,7 @@ _KIND = {"address": "a shared business address", "name": "the network method's n
 
 def _counts(f: dict) -> str:
     miss = f" (no unit count is recorded for {f['unitsMissing']} lot{'s' if f['unitsMissing'] != 1 else ''})" if f["unitsMissing"] else ""
-    return f"{f['lots']} lots and {f['units']} residential units{miss}"
+    return f"{f['lots']} lot{'s' if f['lots'] != 1 else ''} and {f['units']} residential unit{'s' if f['units'] != 1 else ''}{miss}"
 
 
 def _state(link: dict) -> str:

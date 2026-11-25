@@ -41,7 +41,7 @@ def test_the_report_has_the_header_the_five_questions_the_sections_and_the_decis
     assert "### Registered owner and contacts (guide step 3)" in md and "### Housing Court cases (guide step 8)" in md
     assert "### Related landlord records and the portfolio (guide steps 6 and 7)" in md
     assert "Not yet covered: Entity research." in md and "Not yet covered: Web research." in md
-    assert "| ACME OWNER|ACME OWNR | accept | researcher | 2026-12-01 | same office |" in md
+    assert "| ACME OWNER\\|ACME OWNR | accept | researcher | 2026-12-01 | same office |" in md
     assert "Written by the researcher, not generated:\n\nThe registration names both spellings" in md
     assert "**Caveats**" in md and "**Sources**" in md and "**What the records show**" in md
 

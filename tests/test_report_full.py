@@ -210,3 +210,28 @@ def test_live_2141_washington_avenue_end_to_end(live_report_deps):
     assert "2141 WASHINGTON AVE LLC" in " ".join(f["statement"] for f in by["owner"]["facts"])
     assert "9 deeds recorded: 7 record an amount of 0; 2 record another amount" in " ".join(f["statement"] for f in by["deeds"]["facts"])
     assert by["entity"]["kind"] == "not_covered" and by["web"]["kind"] == "not_covered"
+    # numbers checked against independent queries on 2026-11-25 (docs/plans/report-demo-verification.md)
+    t = lambda k: " ".join(f["statement"] for f in by[k]["facts"])      # noqa: E731
+    assert "built 1899, building class C0, with 3 residential units and an assessed total of $59,040" in t("building")
+    assert "registration 205148 (last registered 2025-07-08, registration ending 2026-09-01)" in t("owner")
+    assert "open violations class A: 5, class B: 14 and class C: 3; the oldest open inspection was on 2024-08-14" in t("violations")
+    assert "7.333 (22 open over 3 units" in t("violations") and "No Housing Court case is recorded" in by["litigation"]["summary"]
+
+
+def test_live_74_clinton_place_end_to_end(live_report_deps):
+    """Probed and checked 2026-11-25: a BAHUMI lot. The anchor is BAHUMI (55 lots, 176 units); the one lead is BADHUMI; the one harassment finding is on a case at this building."""
+    g_ = build_report_graph(live_report_deps, InMemorySaver())
+    cfg = {"configurable": {"thread_id": "live74"}}
+    (p,) = pending(g_.invoke({"text": "74 Clinton Place, Bronx", "generated_at": "live check"}, cfg))
+    assert [x["linkId"] for x in p["links"]] == ["YONATAN BAHUMI|YONATAN BADHUMI"]
+    assert (p["portfolio_effect"]["as_held"]["lots"], p["portfolio_effect"]["as_held"]["units"]) == (55, 176)
+    rep = g_.invoke(Command(resume={"decisions": [{"linkId": "YONATAN BAHUMI|YONATAN BADHUMI", "decision": "accept", "decidedBy": "researcher", "decidedAt": "2026-12-01"}]}), cfg)["report"]
+    assert (rep["checkpoint"]["portfolio_effect"]["as_decided"]["lots"], rep["checkpoint"]["portfolio_effect"]["as_decided"]["units"]) == (56, 179)
+    by = {s["key"]: s["answer"] for s in rep["sections"]}
+    t = lambda k: " ".join(f["statement"] for f in by[k]["facts"])      # noqa: E731
+    assert "built 1901, building class C0, with 3 residential units and an assessed total of $62,940" in t("building")
+    assert "registration 216075 (last registered 2024-10-23, registration ending 2025-09-01)" in t("owner") and "74 CLINTON PLACE LLC (CorporateOwner)" in t("owner")
+    assert "8 deeds recorded: 5 record an amount of 0; 3 record another amount" in t("deeds") and "the latest on 2021-12-22" in by["deeds"]["summary"]
+    assert "15 open violations" in by["violations"]["summary"] and "oldest open inspection was on 2015-05-11" in t("violations") and "Open violations per residential unit: 5 (15 open over 3 units" in t("violations")
+    assert "HPD recorded 8 Housing Court cases" in by["litigation"]["summary"] and "1 case carries a recorded harassment finding" in by["litigation"]["summary"]
+    assert "Case 284822" in t("litigation") and "After Trial, dated 2016-07-25, with a penalty of 5,200" in t("litigation") and "Respondent as recorded: McLORD OBIOHA. No part of it matches" in t("litigation")

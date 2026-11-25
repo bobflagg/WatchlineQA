@@ -16,6 +16,11 @@ HOW_TO_READ = (
 )
 
 
+def _cell(text: str) -> str:
+    """A table cell: a pipe would start a new column and a line break would end the row."""
+    return str(text).replace("|", "\\|").replace("\n", " ")
+
+
 def slug(address: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", address.lower()).strip("-") or "report"
 
@@ -40,7 +45,7 @@ def render_report(report: dict, takeaway: str | None = None) -> str:
     out += ["## Decisions", ""]
     if report["decisions"]:
         out += ["| Link | Decision | Decided by | Date | Note |", "|---|---|---|---|---|",
-                *(f"| {d['linkId']} | {d['decision']} | {d['decidedBy']} | {d['decidedAt']} | {d.get('note') or ''} |" for d in report["decisions"])]
+                *("| " + " | ".join(_cell(v) for v in (d["linkId"], d["decision"], d["decidedBy"], d["decidedAt"], d.get("note") or "")) + " |" for d in report["decisions"])]
         out += ["", "The decision log is saved with the report (decisions.json). Decisions are the researcher's own inference, not findings in the records."]
     else:
         out += ["No decision was made on any lead."]
