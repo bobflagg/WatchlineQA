@@ -67,6 +67,29 @@ def test_no_links_says_so():
     assert "No other landlord record is linked to it" in a.summary and len(a.facts) == 1
 
 
+def test_the_sources_include_the_registrations_only_when_a_pair_rests_on_one():
+    from test_identity_graph import REGS
+    plain = answer()
+    assert not any("registrations" in s for s in plain.sources)
+    with_reg = to_answer(identity_checkpoint(FakeIG(**BASE, registrations=REGS), "ACME OWNER"))
+    assert "HPD registrations (contacts listed on each registration)" in with_reg.sources
+    assert "linked by a shared business address and names listed together on an HPD registration" in with_reg.facts[0].statement
+
+
+def test_the_summary_does_not_claim_decisions_took_effect_when_none_was_applied():
+    a = answer([dec(lid="NOPE|NOPE")])
+    assert "No decision could be applied (see below)." in a.summary and "After the researcher's decisions" not in a.summary
+    assert "After the researcher's decisions" in answer([dec()]).summary
+    assert "No decision has been made yet." in answer().summary
+
+
+def test_the_lead_caveat_and_the_no_links_wording_mention_registrations():
+    from watchline.identity.checkpoint import CAVEAT_LINK_IS_LEAD
+    assert "shared-registration" in CAVEAT_LINK_IS_LEAD.text
+    ig = FakeIG(records=[rec(1, "ALONE", ADDR)], lots=[dict(nodeId=1, bbl="2000000001", unitsRes=3)])
+    assert "a shared business address, a similar name or a shared registration" in to_answer(identity_checkpoint(ig, "ALONE")).summary
+
+
 def test_the_answer_is_deterministic_and_the_json_view_has_no_score_keys():
     assert answer([dec()]) == answer([dec()])
     d = checkpoint_to_dict(identity_checkpoint(FakeIG(**BASE), "ACME OWNER", [dec()]))
@@ -90,7 +113,9 @@ def test_decision_file_round_trips_in_order():
     assert decisions_to_json(ds) == decisions_to_json(list(ds))                      # stable text, so a saved report diffs cleanly
 
 
-@pytest.mark.parametrize("text", ["{}", "[1]", '[{"linkId": "x"}]', '[{"linkId": "x", "decision": "accept", "decidedBy": "r", "decidedAt": "d", "extra": 1}]',
+@pytest.mark.parametrize("text", ["{}", "[1]",
+                                  '[{"linkId": "x", "decision": "accept", "decidedBy": null, "decidedAt": null}]',
+                                  '[{"linkId": "x", "decision": "accept", "decidedBy": "  ", "decidedAt": "d"}]', '[{"linkId": "x"}]', '[{"linkId": "x", "decision": "accept", "decidedBy": "r", "decidedAt": "d", "extra": 1}]',
                                   '[{"linkId": "x", "decision": 1, "decidedBy": "r", "decidedAt": "d"}]'])
 def test_bad_decision_files_are_errors(text):
     with pytest.raises(ValueError):
@@ -107,3 +132,8 @@ def test_live_bahumi_answer_awaiting_then_accepted(live_graph):
     assert any(f.statement.startswith("YONATAN BAHUMI and YONATAN BADHUMI are linked by a shared business address and names listed together on an HPD registration. A lead") for f in a.facts)
     b = to_answer(identity_checkpoint(live_graph, "YONATAN BAHUMI", [Decision(lid, "accept", "researcher", "2026-12-01")]))
     assert "After the researcher's decisions: 56 lots and 179 residential units." in b.summary and "researcher_decision" in {c.code for c in b.caveats}
+
+
+def test_a_note_may_be_null_but_the_four_required_fields_may_not():
+    ok = decisions_from_json('[{"linkId": "x", "decision": "accept", "decidedBy": "researcher", "decidedAt": "2026-12-01", "note": null}]')
+    assert ok[0].note is None

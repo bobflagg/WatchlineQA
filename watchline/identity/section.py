@@ -8,7 +8,14 @@ from dataclasses import asdict, dataclass
 
 from watchline.agent.answer import Answer, CaveatOut, Evidence, Fact
 from watchline.identity.checkpoint import Checkpoint, Decision, Footprint, LinkOut, build_checkpoint
-from watchline.identity.graph import SOURCE_HPD, SOURCE_NETWORK, IdentityGraph, Inputs, build_inputs
+from watchline.identity.graph import (
+    SOURCE_HPD,
+    SOURCE_NETWORK,
+    SOURCE_REGISTRATIONS,
+    IdentityGraph,
+    Inputs,
+    build_inputs,
+)
 from watchline.profile.profile import PLUTO
 
 SOURCES = (SOURCE_NETWORK, SOURCE_HPD, PLUTO)
@@ -40,8 +47,8 @@ def decisions_from_json(text: str) -> list[Decision]:
     for i, d in enumerate(data):
         if not isinstance(d, dict) or not {"linkId", "decision", "decidedBy", "decidedAt"} <= d.keys() or not d.keys() <= DECISION_KEYS:
             raise ValueError(f"decision {i} must be an object with linkId, decision, decidedBy, decidedAt and optionally note")
-        if not all(isinstance(d[k], str) for k in d if d[k] is not None):
-            raise ValueError(f"decision {i} has a value that is not text")
+        if not all(isinstance(d[k], str) and d[k].strip() for k in ("linkId", "decision", "decidedBy", "decidedAt")) or not isinstance(d.get("note", ""), (str, type(None))):
+            raise ValueError(f"decision {i}: linkId, decision, decidedBy and decidedAt must each be non-empty text, and note text or null")
         out.append(Decision(d["linkId"], d["decision"], d["decidedBy"], d["decidedAt"], d.get("note")))
     return out
 
@@ -62,11 +69,17 @@ def _footprint(f: Footprint) -> dict:
     return {"lots": f.lots, "units": f.units, "unitsMissing": f.unitsMissing, "parties": f.parties, "assumes": list(f.assumes)}
 
 
+def _sources(c: Checkpoint | None) -> list[str]:
+    """The sources behind the answer: the network, HPD contacts and PLUTO always, and the registrations when a pair rests on one."""
+    used = {e.source for x in (c.links if c else ()) for e in x.evidence}
+    return [*SOURCES, *([SOURCE_REGISTRATIONS] if SOURCE_REGISTRATIONS in used else [])]
+
+
 def checkpoint_to_dict(r: IdentityCheckpoint) -> dict:
     """JSON-safe view. `portfolio_effect` shows the portfolio as held and as decided side by side; nothing is summed into a score."""
     i, c = r.inputs, r.checkpoint
     out: dict = {"status": i.status, "name": i.name, "candidates": [list(x) for x in i.candidates],
-                 "caveats": [x.as_dict() for x in (*i.caveats, *(c.caveats if c else ()))], "sources": list(SOURCES) if i.status == "ok" else []}
+                 "caveats": [x.as_dict() for x in (*i.caveats, *(c.caveats if c else ()))], "sources": _sources(c) if i.status == "ok" else []}
     if c is not None:
         out.update(anchor={"key": c.anchor, "records": i.anchor.records}, links=[_link(x) for x in c.links],
                    decisions=[asdict(d) for d in c.decisions], issues=[asdict(x) for x in c.issues],
@@ -118,8 +131,10 @@ def to_answer(r: IdentityCheckpoint) -> Answer:
     summary = (f"{d['anchor']['key']}: as held in the graph, {_counts(held)} across {d['anchor']['records']} landlord "
                f"record{'s' if d['anchor']['records'] != 1 else ''}. ")
     summary += (f"{len(links)} possible link{'s' if len(links) != 1 else ''} to other landlord records, {waiting} awaiting a decision. "
-                if links else "No other landlord record is linked to it by a shared business address or name. ")
-    summary += f"After the researcher's decisions: {_counts(decided)}." if d["decisions"] else "No decision has been made yet."
+                if links else "No other landlord record is linked to it by a shared business address, a similar name or a shared registration. ")
+    applied = any(x["decision"] for x in links)                       # a decision on an unknown link or a bad one is logged but not applied
+    summary += (f"After the researcher's decisions: {_counts(decided)}." if applied else
+                "No decision could be applied (see below)." if d["decisions"] else "No decision has been made yet.")
     facts = [Fact(statement=_link_statement(x), evidence=[Evidence(section="links", data=x)]) for x in links]
     facts.append(Fact(statement=f"As held in the graph: {_counts(held)}. After the researcher's decisions: {_counts(decided)}.",
                       evidence=[Evidence(section="portfolio_effect", data=eff)]))

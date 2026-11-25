@@ -290,7 +290,7 @@ def test_many_registrations_are_capped_with_a_count_of_the_rest(monkeypatch):
     rows = [reg(100 + n, "2030370098", "ACME OWNER", "Officer", "ACME OWNR", "HeadOfficer") for n in range(5)]
     (ln,) = build_inputs(FakeIG(**BASE, registrations=rows), "ACME OWNER").links
     registrations = [e for e in ln.evidence if e.kind == "shared_contact"]
-    assert len(registrations) == 3 and registrations[-1].text == "3 more registrations list both names."
+    assert len(registrations) == 3 and registrations[-1].text == "3 more registrations also list both names."
 
 
 def test_a_registration_read_cut_at_its_row_limit_is_flagged(monkeypatch):
@@ -313,3 +313,88 @@ def test_the_registration_read_is_parameterized_limited_and_timed_out():
     ((q, params),) = seen
     assert q.timeout and "$limit" in q.text and "YONATAN" not in q.text and "2030370098" not in q.text
     assert params["bbls"] == ["2030370098"] and params["namesA"] == ["YONATAN BAHUMI"] and params["limit"] == G.MAX_REGISTRATION_ROWS
+
+
+# ---- fixes from the code review of the identity changes (2026-11-25) -------------------------------------------------------------------
+
+def test_a_name_on_both_sides_is_left_out_of_the_registration_read_and_the_query_needs_two_different_contacts():
+    base = dict(BASE, records=[rec(1, "ACME OWNER", ADDR), rec(2, "SHARED NAME", ADDR), rec(3, "ACME OWNR", ADDR), rec(4, "SHARED NAME")], identity=[(1, 2), (3, 4)])
+    ig = FakeIG(**base)
+    build_inputs(ig, "ACME OWNER")
+    ((_, names_a, names_b),) = ig.reg_calls
+    assert names_a == ["ACME OWNER"] and names_b == ["ACME OWNR"]          # SHARED NAME is on both sides, so neither list has it
+    seen = []
+
+    class Res:
+        records = []
+
+    class Drv:
+        def execute_query(self, q, params, **kw):
+            seen.append(q.text)
+            return Res()
+
+    G.Neo4jIdentityGraph(Drv(), "watchline").shared_registrations(["2030370098"], ["A"], ["B"])
+    assert "cb <> ca" in seen[0]
+
+
+def test_an_address_only_link_between_names_that_compare_equal_still_carries_the_rule():
+    base = dict(BASE, records=[rec(1, "ACME OWNER, LLC", ADDR), rec(2, "ACME OWNER, LLC"), rec(3, "ACME OWNER LLC", ADDR)])
+    i = build_inputs(FakeIG(**base), "ACME OWNER, LLC")
+    (ln,) = i.links
+    assert ln.kinds == ("address",) and ln.rule == "N2"
+    cp = build_checkpoint(i.anchor, i.links)
+    assert not any(x.startswith("The names differ") for x in cp.links[0].against) and "name_match_not_identity" in {c.code for c in cp.caveats}
+
+
+def test_a_contact_with_no_recorded_role_is_shown_as_such_and_does_not_crash():
+    rows = [dict(REGS[0], roleB=None), dict(REGS[0], roleA=None, roleB="HeadOfficer")]
+    (ln,) = build_inputs(FakeIG(**BASE, registrations=rows), "ACME OWNER").links
+    text = next(e.text for e in ln.evidence if e.kind == "shared_contact")
+    assert text == ("HPD registration 205148 of lot 2030370098 (2 B ST) lists ACME OWNER as Officer and role not recorded; "
+                    "ACME OWNR as HeadOfficer and role not recorded.")
+
+
+def test_records_are_read_in_chunks_so_none_is_left_out(monkeypatch):
+    monkeypatch.setattr(G, "RECORD_CHUNK", 2)
+    sizes = []
+
+    class Chunked(FakeIG):
+        def records(self, ids):
+            sizes.append(len(ids))
+            return super().records(ids)
+
+    i = build_inputs(Chunked(**BASE), "ACME OWNER")
+    assert sizes and max(sizes) <= 2 and sum(sizes) >= 3
+    assert i.anchor.key == "ACME OWNER" and [x.b.key for x in i.links] == ["ACME OWNR"]
+    assert G._key({99}, {}) == "(record not read)"
+
+
+def test_an_address_edge_to_a_record_with_no_address_is_still_a_lead_with_an_honest_line():
+    base = dict(BASE, records=[rec(1, "ACME OWNER", ADDR), rec(2, "ACME OWNER"), dict(nodeId=3, name="ACME OWNR", businessAddresses=None)])
+    (ln,) = build_inputs(FakeIG(**base), "ACME OWNER").links
+    assert ln.kinds == ("address",) and "no business address is recorded on ACME OWNR" in ln.evidence[0].text
+
+
+def test_one_registration_read_serves_every_party_and_each_party_gets_only_its_own_rows():
+    base = dict(records=[rec(1, "ACME OWNER", ADDR), rec(2, "PARTY ONE", ADDR), rec(3, "PARTY TWO", ADDR)], identity=[],
+                lots=[lot(1, "2000000001", 3), lot(2, "3000000001", 3), lot(3, "4000000001", 3)], edges=[edge(1, 2), edge(1, 3)],
+                registrations=[reg(1, "3000000001", "ACME OWNER", "Officer", "PARTY ONE", "Agent"),
+                               reg(2, "2000000001", "ACME OWNER", "Officer", "PARTY TWO", "Agent"),
+                               reg(3, "9999999999", "ACME OWNER", "Officer", "PARTY TWO", "Agent")])    # a lot of neither party: not evidence
+    ig = FakeIG(**base)
+    links = {x.b.key: x for x in build_inputs(ig, "ACME OWNER").links}
+    assert len(ig.reg_calls) == 1
+    contact = lambda k: [e.text for e in links[k].evidence if e.kind == "shared_contact"]   # noqa: E731
+    assert len(contact("PARTY ONE")) == 1 and "registration 1 " in contact("PARTY ONE")[0]
+    assert len(contact("PARTY TWO")) == 1 and "registration 2 " in contact("PARTY TWO")[0]
+
+
+def test_the_overflow_line_counts_registrations_not_items_and_says_when_only_lots_were_cut(monkeypatch):
+    monkeypatch.setattr(G, "MAX_REGISTRATION_ITEMS", 2)
+    many_lots = [reg(100, f"20300700{n:02d}", "ACME OWNER", "Officer", "ACME OWNR", "Agent") for n in range(5)]
+    lots = BASE["lots"] + [lot(3, f"20300700{n:02d}", 3) for n in range(5)]
+    (ln,) = build_inputs(FakeIG(**dict(BASE, lots=lots), registrations=many_lots), "ACME OWNER").links
+    assert [e.text for e in ln.evidence if e.kind == "shared_contact"][-1] == "The registrations shown also cover 3 more lots where both names are listed."
+    two = [reg(100 + n, "2030370098", "ACME OWNER", "Officer", "ACME OWNR", "Agent") for n in range(3)]
+    (ln,) = build_inputs(FakeIG(**BASE, registrations=two), "ACME OWNER").links
+    assert [e.text for e in ln.evidence if e.kind == "shared_contact"][-1] == "1 more registration also lists both names."

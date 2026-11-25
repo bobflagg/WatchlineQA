@@ -134,3 +134,11 @@ second decision on the same link replaces the first and both stay in the log.
 - Berkovics now shows 11 possible links (one per candidate party). Decision (2026-11-25): keep every lead for now and cut back later if the demo needs it.
   Where to cut: `MAX_PARTIES` in `watchline/identity/graph.py` (candidate parties per anchor, now 100, with a caveat when it cuts), or a filter in the
   report graph's `decide` node (offer fewer leads at the pause); the Answer and the decision log do not change shape.
+
+## Review fixes (2026-11-25, `/code-review high` on the identity changes)
+- Registration read: two different contacts are required (`cb <> ca`), a name on both sides is left out, and one batched read serves every candidate party (rows
+  split per party in Python by name and lot). A role that is not recorded shows as "role not recorded". The overflow line counts registrations, and says so when only lots were cut.
+- The named name rule is computed for every pair, whatever joined it, so `against` and the name caveat stay true for address-only and registration-only links.
+- Records are read in chunks below the read limit, so no party is left partly empty; an address edge to a record with no address stays a lead, with a line saying so.
+- Answer: the sources include the registrations when a pair rests on one; the summary says "No decision could be applied" when every decision was an issue; the lead caveat
+  and the no-links wording mention registrations. The decision log needs non-empty `linkId`, `decision`, `decidedBy` and `decidedAt` (only `note` may be null).

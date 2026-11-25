@@ -23,7 +23,9 @@ MAX_PARTIES = 100                 # candidate parties per anchor; beyond it the 
 SOURCE_NETWORK = "BOR operational network (landlord links)"
 SOURCE_HPD = "HPD contacts (business addresses on landlord records)"
 SOURCE_REGISTRATIONS = "HPD registrations (contacts listed on each registration)"
-MAX_REGISTRATION_ROWS = 500
+MAX_REGISTRATION_ROWS = 2000
+RECORD_CHUNK = 400                # records are read in chunks below MAX_RECORDS, so the read never cuts a party
+NO_ROLE = "role not recorded"
 MAX_REGISTRATION_ITEMS = 10      # evidence items kept per link; the text says how many more there are
 
 CAVEAT_CUT = Caveat("identity_party_cut", "A party or the list of candidate parties was cut at a size limit, so the portfolio may be incomplete.")
@@ -80,7 +82,7 @@ class Neo4jIdentityGraph(Neo4jRegistrationGraph):
         """Registrations of buildings on these lots that list a contact named in names_a and a contact named in names_b (upper-cased, as recorded)."""
         return self._read("CYPHER 25 MATCH (l:Lot WHERE l.bbl IN $bbls)-[:HAS_BUILDING]->(b:Building)-[:HAS_REGISTRATION]->(r:Registration) "
                           "MATCH (r)-[:HAS_CONTACT]->(ca:Contact WHERE toUpper(coalesce(ca.corporationName, ca.personName)) IN $namesA) "
-                          "MATCH (r)-[:HAS_CONTACT]->(cb:Contact WHERE toUpper(coalesce(cb.corporationName, cb.personName)) IN $namesB) "
+                          "MATCH (r)-[:HAS_CONTACT]->(cb:Contact WHERE toUpper(coalesce(cb.corporationName, cb.personName)) IN $namesB AND cb <> ca) "
                           "RETURN DISTINCT r.registrationId AS registrationId, l.bbl AS bbl, b.address AS address, "
                           "toUpper(coalesce(ca.corporationName, ca.personName)) AS nameA, ca.contactType AS roleA, "
                           "toUpper(coalesce(cb.corporationName, cb.personName)) AS nameB, cb.contactType AS roleB "
@@ -153,6 +155,14 @@ def _closure(ig: IdentityGraph, seed: set[int]) -> tuple[set[int], bool]:
     return seen, cut or bool(frontier)
 
 
+def _read_records(ig: IdentityGraph, ids: list[int]) -> dict[int, dict]:
+    """Landlord records by node id, read in chunks smaller than the read limit so no record is silently left out."""
+    out: dict[int, dict] = {}
+    for n in range(0, len(ids), RECORD_CHUNK):
+        out.update({r["nodeId"]: r for r in ig.records(ids[n:n + RECORD_CHUNK])})
+    return out
+
+
 def _party(key: str, ids: set[int], recs: dict[int, dict], lots: list[dict]) -> Party:
     by_bbl: dict[str, Lot] = {}
     for r in lots:
@@ -162,7 +172,7 @@ def _party(key: str, ids: set[int], recs: dict[int, dict], lots: list[dict]) -> 
 
 
 def _key(ids: set[int], recs: dict[int, dict]) -> str:
-    return " / ".join(sorted({recs[i]["name"] for i in ids if i in recs}))
+    return " / ".join(sorted({recs[i]["name"] for i in ids if i in recs})) or "(record not read)"
 
 
 def _registration_evidence(rows: list[dict]) -> tuple[Evidence, ...]:
@@ -170,15 +180,19 @@ def _registration_evidence(rows: list[dict]) -> tuple[Evidence, ...]:
     by_reg: dict[tuple, dict[str, set[str]]] = {}
     for r in rows:
         roles = by_reg.setdefault((r["registrationId"], r["bbl"], r.get("address") or ""), {})
-        roles.setdefault(r["nameA"], set()).add(r["roleA"])
-        roles.setdefault(r["nameB"], set()).add(r["roleB"])
+        roles.setdefault(r["nameA"], set()).add(r.get("roleA") or NO_ROLE)
+        roles.setdefault(r["nameB"], set()).add(r.get("roleB") or NO_ROLE)
     items = []
     for (rid, bbl, address), roles in sorted(by_reg.items(), key=lambda kv: (str(kv[0][0]), kv[0][1])):
         listed = "; ".join(f"{n} as {' and '.join(sorted(rs))}" for n, rs in sorted(roles.items()))
         items.append(Evidence("shared_contact", f"HPD registration {rid} of lot {bbl} ({address}) lists {listed}.", SOURCE_REGISTRATIONS))
     if len(items) > MAX_REGISTRATION_ITEMS:
-        more = len(items) - MAX_REGISTRATION_ITEMS
-        items = [*items[:MAX_REGISTRATION_ITEMS], Evidence("shared_contact", f"{more} more registrations list both names.", SOURCE_REGISTRATIONS)]
+        ordered = sorted(by_reg, key=lambda k: (str(k[0]), k[1]))
+        shown, hidden = ordered[:MAX_REGISTRATION_ITEMS], ordered[MAX_REGISTRATION_ITEMS:]
+        more_regs = {k[0] for k in hidden} - {k[0] for k in shown}
+        text = (f"{len(more_regs)} more registration{'s' if len(more_regs) != 1 else ''} also list{'' if len(more_regs) != 1 else 's'} both names."
+                if more_regs else f"The registrations shown also cover {len(hidden)} more lot{'s' if len(hidden) != 1 else ''} where both names are listed.")
+        items = [*items[:MAX_REGISTRATION_ITEMS], Evidence("shared_contact", text, SOURCE_REGISTRATIONS)]
     return tuple(items)
 
 
@@ -204,7 +218,7 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
         cut = cut or c
     if len(groups) > 1:
         ids = sorted(set().union(*groups))
-        recs = {r["nodeId"]: r for r in ig.records(ids)}
+        recs = _read_records(ig, ids)
         lots = ig.lots(ids)
         cut = cut or _full(lots)
         cands = tuple(sorted((_key(g, recs), len(_party("", g, recs, lots).lots)) for g in groups))
@@ -229,7 +243,7 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
         others, cut = others[:MAX_PARTIES], True
 
     every = sorted(anchor_ids | set().union(*others)) if others else sorted(anchor_ids)
-    recs = {r["nodeId"]: r for r in ig.records(every)}
+    recs = _read_records(ig, every)
     lots = ig.lots(every)
     cut = cut or _full(lots)
 
@@ -257,13 +271,25 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
         fixed.append((Party(key, p.lots, p.records) if key != p.key else p, g))
 
     anchor_addr = {_street_zip(a)[:2] for a in addresses(anchor_ids)}
-    anchor_names = sorted({recs[i]["name"].upper() for i in anchor_ids if i in recs})
+    anchor_names = {recs[i]["name"].upper() for i in anchor_ids if i in recs}
+    party_names = {p.key: {recs[i]["name"].upper() for i in g if i in recs} for p, g in fixed}
+    all_names = set().union(*party_names.values()) if party_names else set()
+    # One read for every candidate party. A name on both sides is left out: it cannot show that two different contacts share a registration.
+    reg_rows: list[dict] = []
+    if fixed:
+        lot_set = sorted({x.bbl for x in (*anchor.lots, *(x for p, _ in fixed for x in p.lots))})
+        reg_rows = ig.shared_registrations(lot_set, sorted(anchor_names - all_names), sorted(all_names - anchor_names))
+        cut = cut or len(reg_rows) >= MAX_REGISTRATION_ROWS
+    anchor_lot_bbls = {x.bbl for x in anchor.lots}
     links: list[Link] = []
     for p, g in fixed:                                           # one link, and one decision, per pair; every kind of evidence goes on it
         mine = [e for e in edges if e["toId"] in g]
         kinds: list[str] = []
         evidence: list[Evidence] = []
         rule = None
+        for a_name in {recs[i]["name"] for i in anchor_ids if i in recs}:        # the named Q22 rule, whatever joined the pair
+            for b_name in {recs[i]["name"] for i in g if i in recs}:
+                rule = rule or name_agreement(a_name, b_name)[1]
 
         def tail(ks: list[dict]) -> str:
             weight = max((e["weight"] for e in ks if e.get("weight") is not None), default=None)
@@ -278,15 +304,14 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
                 text = (f"Business address as recorded on both parties: {a}. Joined by a shared business address ({tail(ks)})." if shared else
                         f"Business address as recorded on {p.key}: {a}. The method found a shared address; which string is not identified ({tail(ks)}).")
                 evidence.append(Evidence("shared_address", text, SOURCE_HPD, setAside=why is not None, reason=why))
+            if not theirs:
+                evidence.append(Evidence("shared_address", f"The network method joined {p.key} to {anchor.key} on a business address, but no business "
+                                                           f"address is recorded on {p.key} to show ({tail(ks)}).", SOURCE_NETWORK))
         if ks := [e for e in mine if e["type"] == "CONNECTED_BY_NAME"]:
             kinds.append("name")
-            for a_name in {recs[i]["name"] for i in anchor_ids if i in recs}:
-                for b_name in {recs[i]["name"] for i in g if i in recs}:
-                    rule = rule or name_agreement(a_name, b_name)[1]
             evidence.append(Evidence("name_similarity", f"The network method linked the names {anchor.key} and {p.key} ({tail(ks)}).", SOURCE_NETWORK))
-        regs = ig.shared_registrations(sorted({x.bbl for x in (*anchor.lots, *p.lots)}), anchor_names,
-                                       sorted({recs[i]["name"].upper() for i in g if i in recs}))
-        cut = cut or len(regs) >= MAX_REGISTRATION_ROWS
+        regs = [r for r in reg_rows if r["nameB"] in party_names[p.key] and r["nameA"] in anchor_names
+                and r["bbl"] in anchor_lot_bbls | {x.bbl for x in p.lots}]
         if regs:
             kinds.append("contact")
             evidence.extend(_registration_evidence(regs))

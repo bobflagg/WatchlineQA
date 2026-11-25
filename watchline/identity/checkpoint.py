@@ -18,7 +18,7 @@ State = Literal["awaiting", "accepted", "rejected", "accepted_by_method", "unsup
 IN_EFFECT = ("accepted", "accepted_by_method")
 DECISIONS = ("accept", "reject")
 
-CAVEAT_LINK_IS_LEAD = Caveat("link_is_lead", "At least one link is a lead from a name or address match, awaiting the researcher's decision. It is not a finding.")
+CAVEAT_LINK_IS_LEAD = Caveat("link_is_lead", "At least one link is a lead from a name, address or shared-registration match, awaiting the researcher's decision. It is not a finding.")
 CAVEAT_RESEARCHER = Caveat("researcher_decision",
                            "At least one link was decided by the researcher. The result is the researcher's own inference, not a finding in the records.")
 CAVEAT_SET_ASIDE = Caveat("evidence_set_aside",
