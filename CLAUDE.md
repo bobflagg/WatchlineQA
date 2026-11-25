@@ -16,6 +16,8 @@ journalists, tenant advocates, watchdog agencies, the public. See `docs/process.
 
 - `watchline/geosupport/`: address resolution (Q1.3). Geosupport decides the outcome; the graph only says
   whether the lot is held and which lots share the BIN.
+- `watchline/identity/`, `watchline/report/`: the identity checkpoint (links, decisions, portfolio effect) and the report graph, templated sections, export and
+  `make report`; no model is called. `watchline/ui/report_page.py` is the report page (`make report-ui`).
 - `geosupport/`: the Docker sidecar (pass-through only; interpretation stays in `watchline/`).
 - `specs/questions/`: competency questions (a symlink to another project; read the files you need and do
   not browse the source project).
