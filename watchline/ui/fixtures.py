@@ -1,6 +1,7 @@
 """Hand-built answers, one per kind, for looking at the page without the model, the graph or the sidecar."""
 from watchline.agent.answer import Answer, CaveatOut, Evidence, Fact
 from watchline.deeds import deeds as _deeds
+from watchline.deeds import timeline as _timeline
 from watchline.registration import registration as _reg
 
 _BUILDING = {"bin": "3000001", "address": "1 Example Street", "violations_by_class": {"A": 2, "B": 5, "C": 1}}
@@ -27,6 +28,16 @@ _COMPARISON = [{"documentId": "2018000000000001", "grantee": "K S EXAMPLE LLC", 
                                      "owner": {"mailingAddress": "1 Owner Rd", "addressLine2": None, "zip": "11361"}}}]
 _DEED_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
                  (_deeds.CAVEAT_NAME_NOT_IDENTITY, _deeds.CAVEAT_RECORDED, _deeds.CAVEAT_SNAPSHOTS)]
+
+_TIMELINE = [
+    {"documentId": "2020000000000001", "docType": "DEED", "docDate": "2019-12-24", "recordedDate": "2020-01-09", "amount": 549855,
+     "notSale": False, "otherLots": 0, "grantors": ["EXAMPLE BANK N.A."], "grantorRows": 1, "grantees": ["EXAMPLE HOLDINGS LLC"], "granteeRows": 1},
+    {"documentId": "BK_7820000000001", "docType": "DEED", "docDate": "1978-08-08", "recordedDate": "1978-08-08", "amount": 0,
+     "notSale": True, "otherLots": 1075, "grantors": ["CITY OF EXAMPLE", "CITY OF EXAMPL"], "grantorRows": 27,
+     "grantees": ["CITY OF EXAMPLE"], "granteeRows": 14}]
+_TIMELINE_COUNTS = {"deeds": 2, "notSale": 1, "amountZero": 1, "byType": {"DEED": 2}, "since": None, "until": None}
+_TIMELINE_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
+                     (_timeline.CAVEAT_ORDER, _timeline.CAVEAT_PARTY_NAMES, _deeds.CAVEAT_NOT_SALE, _deeds.CAVEAT_MULTI_LOT)]
 
 FIXTURES: dict[str, Answer] = {
     "profile": Answer(
@@ -55,6 +66,17 @@ FIXTURES: dict[str, Answer] = {
                     evidence=[Evidence(section="comparison", bbl="3000010001", data=_COMPARISON)])],
         caveats=_DEED_CAVEATS,
         sources=["ACRIS deeds and parties (data through 2026-05-31)", "HPD registrations (data through 2026-05-29)"]),
+    "timeline": Answer(
+        kind="timeline",
+        summary="Two deeds are recorded on the lot. One of them is not a sale because its amount is 0.",
+        facts=[Fact(statement="Two deeds are recorded; one has an amount of 0, which is not a sale.",
+                    evidence=[Evidence(section="timeline_counts", bbl="3000010001", data=_TIMELINE_COUNTS)]),
+               Fact(statement="The newest deed, 2020000000000001, was recorded 2020-01-09 for an amount of 549855, from EXAMPLE BANK N.A. "
+                              "to EXAMPLE HOLDINGS LLC.",
+                    evidence=[Evidence(section="timeline", bbl="3000010001", data=_TIMELINE)]),
+               Fact(statement="The 1978 deed also names 1075 other lots.",
+                    evidence=[Evidence(section="timeline", bbl="3000010001", data=_TIMELINE)])],
+        caveats=_TIMELINE_CAVEATS, sources=["ACRIS deeds and parties (data through 2026-05-31)"]),
     "caveats": Answer(
         kind="profile", summary="One building is listed. A fact points at data the tools did not return.",
         facts=[Fact(statement="The building has open litigation.", unresolved=[{"section": "counts"}])],

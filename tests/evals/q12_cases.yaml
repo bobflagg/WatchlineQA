@@ -1,0 +1,63 @@
+# Q12.1 eval cases (deed timeline), run through the deed_timeline tool (what the model sees).
+# Values were probed against the live graph on 2026-11-25 (not taken from the spec); candidates until a snapshot is frozen.
+# input keys: address, borough, zip_code, since, until
+# expect keys: status, outcome, bbl, ids (document ids in order, newest recorded first), counts (deeds, notSale, amountZero, byType),
+#   other_lots ({document id: n}), grantees ({document id: [names]}), grantee_rows ({document id: n}),
+#   caveat_codes (all present), caveat_codes_absent
+
+- id: a-since-2015-sale-and-zero-deed
+  question: Q12.1
+  why: Anchor A since 2015 has two deeds, a 5,000,000 deed and a 0 deed. One is not a sale. Counts are separate numbers.
+  input: {address: "5413 7 Avenue, Brooklyn", since: "2015-01-01"}
+  expect:
+    status: ok
+    bbl: "3008260002"
+    ids: ["2025032100031001", "2021022201130003"]
+    counts: {deeds: 2, notSale: 1, amountZero: 1, byType: {DEED: 2}}
+    caveat_codes: [timeline_by_recorded, deed_not_sale, period_bounds, party_names_as_recorded]
+    caveat_codes_absent: [multi_lot_deed, no_deed_found, truncated]
+
+- id: a-whole-history
+  question: Q12.1
+  why: All seven deeds of anchor A (1966 to 2025). The 2003 deed is type DEEDO with amount 0.
+  input: {address: "5413 7 Avenue, Brooklyn"}
+  expect:
+    status: ok
+    bbl: "3008260002"
+    counts: {deeds: 7, notSale: 6, amountZero: 6, byType: {DEED: 6, DEEDO: 1}}
+    caveat_codes_absent: [period_bounds, truncated]
+
+- id: bronx-lot-with-a-mass-city-deed
+  question: Q12.1
+  why: The BADHUMI landlord record covers this lot. Nine deeds, seven with amount 0 (1966 to 2002), none naming a Bahumi party. The 1978
+       deed also names 1075 other lots and has 14 grantee rows, shown as at most 10 distinct names.
+  input: {address: "2141 Washington Avenue, Bronx"}
+  expect:
+    status: ok
+    bbl: "2030370098"
+    ids: ["2020010300628001", "2017102400509001", "FT_2790008861879", "FT_2920007095192", "FT_2270000815627", "FT_2090000696409",
+          "BK_7820036800635", "BK_7520028800257", "BK_6620013000147"]
+    counts: {deeds: 9, notSale: 7, amountZero: 7, byType: {DEED: 9}}
+    other_lots: {BK_7820036800635: 1075, "2020010300628001": 0}
+    grantees: {"2020010300628001": ["2141 WASHINGTON LLC"], FT_2790008861879: ["ALIJAJ, NIKOLA"]}
+    grantee_rows: {BK_7820036800635: 14}
+    caveat_codes: [deed_not_sale, multi_lot_deed, party_names_capped, party_names_as_recorded]
+    caveat_codes_absent: [no_deed_found, truncated]
+
+- id: period-with-no-deeds
+  question: Q12.1
+  why: No deed on the Bronx lot after 2021. The answer says none are recorded, not that the lot never changed hands.
+  input: {address: "2141 Washington Avenue, Bronx", since: "2021-01-01"}
+  expect:
+    status: ok
+    bbl: "2030370098"
+    ids: []
+    counts: {deeds: 0, notSale: 0, amountZero: 0, byType: {}}
+    caveat_codes: [no_deed_found, period_bounds]
+
+- id: needs-borough
+  question: Q12.1
+  why: An address with no borough or ZIP is a question, not a guess.
+  input: {address: "5413 7 Avenue"}
+  expect:
+    status: needs_borough

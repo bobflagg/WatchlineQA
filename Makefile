@@ -13,8 +13,8 @@ test:  ## Fast tests (no Neo4j or sidecar needed)
 test-live:  ## Live tests (need Neo4j and the Geosupport sidecar; skip if unreachable)
 	uv run pytest -k live -m "not llm" -rs
 
-eval:  ## Q1, Q2 and Q3 tool-level evals (need Neo4j and the sidecar; skip if unreachable)
-	uv run pytest tests/test_eval_q01.py tests/test_eval_q02.py tests/test_eval_q03.py -rs
+eval:  ## Q1, Q2, Q3 and Q12 tool-level evals (need Neo4j and the sidecar; skip if unreachable)
+	uv run pytest tests/test_eval_q01.py tests/test_eval_q02.py tests/test_eval_q03.py tests/test_eval_q12.py -rs
 
 eval-agent:  ## Agent-level evals on the real model (need Neo4j, the sidecar and EVAL_ANTHROPIC_API_KEY; costs money). Judge off by default (`make eval-agent JUDGE=1` turns it on). Spend caps come from the environment or .env, else the code defaults (EVAL_MAX_USD=0.25, EVAL_MAX_CALLS=12 per case)
 	EVAL_JUDGE=$(if $(or $(filter 1,$(JUDGE)),$(filter 1,$(EVAL_JUDGE))),1,0) uv run pytest -m llm -rs -v

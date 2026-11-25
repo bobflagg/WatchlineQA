@@ -42,6 +42,18 @@ def test_registration_fixture_shows_its_caveats_and_the_building_tag():
     assert "registrations BIN 3000001" in text
 
 
+def test_timeline_fixture_shows_counts_caveats_and_the_section_tags():
+    at = AppTest.from_function(_page)
+    at.session_state["name"] = "timeline"
+    at.run()
+    assert not at.exception
+    text = " ".join(m.value for m in at.markdown) + " " + " ".join(c.value for c in at.caption)
+    for c in FIXTURES["timeline"].caveats:
+        assert c.text in text                                  # the not-a-sale and party-name caveats cannot be dropped
+    assert "timeline_counts" in text and "timeline" in text
+    assert "total" not in " ".join(f.statement for f in FIXTURES["timeline"].facts).lower()   # counts are never netted into a total
+
+
 def test_a_sample_question_runs_in_the_chat(monkeypatch):
     from types import SimpleNamespace
 

@@ -24,6 +24,21 @@ An answer has: a summary, facts with their evidence, caveats, sources and a `kin
 - **Record**: neutral. Violations, complaints and cases are what was cited, reported or brought, not
   findings of fault. Show counts by class or type, never a combined severity score.
 
+## Kinds added for the report slices
+All kinds use the one generic renderer today (summary, facts, caveat line, Evidence expander). A kind-specific renderer may change the
+layout of the facts but may not drop a caveat, a lead label or the evidence tags. Each fact's evidence tag names its section.
+
+- **`registration`** (Q2): per building, its registrations with last-registered and end dates, and the owner contacts as recorded.
+- **`ownership_comparison`** (Q3): the latest deed(s), the grantees, the owners, and name and address agreement as two separate
+  fields. Agreement is a Lead pill, never "same owner".
+- **`timeline`** (Q12.1): a table of deeds, newest recorded first: recorded date, type, amount, grantors, grantees, and a "Not a sale"
+  tag on amount 0 and on CORRD or CONDEED deeds. Above it, the counts as separate figures ("Deeds", "Not a sale"), never a
+  combined number. A multi-lot deed shows "also names N other lots". Show at most a few names per party with "N rows recorded" for
+  the rest. Evidence sections: `timeline` (the list) and `timeline_counts`.
+- **Identity checkpoint** (Q22, Q7 with the Q9 effect, planned, design only; see `docs/plans/identity-checkpoint.md`): each name-match link is a
+  Lead card with its evidence, shows its decision state (Awaiting decision, Accepted, Rejected) as a pill, and a counts strip that
+  shows the portfolio count before and after the researcher's decisions, each labelled with the decisions it assumes.
+
 ## Names and people
 Show a person's name only with the role it was recorded in, and only in the answer that needs it.
 

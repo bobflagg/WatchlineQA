@@ -11,12 +11,14 @@ from typing import Any
 from langchain.tools import tool
 
 from watchline.deeds.deeds import DeedComparison, deed_vs_owner
+from watchline.deeds.timeline import DeedTimeline, deed_timeline
 from watchline.geosupport.resolution import BoroughRequired, Graph, Match
 from watchline.profile.profile import (
     GEOSUPPORT,
     HPD,
     MAX_BUILDINGS,
     PLUTO,
+    Caveat,
     CaveatTemplate,
     Profile,
     ProfileGraph,
@@ -38,6 +40,9 @@ CAVEAT_DEEDS_CAPPED = CaveatTemplate("deeds_capped", "Showing {shown} of {total}
 CAVEAT_OWNERS_CAPPED = CaveatTemplate("owners_capped", "Showing {shown} of {total} registered owner contacts; the rest are omitted from this output.")
 CAVEAT_COMPARISON_CAPPED = CaveatTemplate("comparison_capped",
                                           "Showing {shown} of {total} grantee and owner comparisons; the rest are omitted from this output.")
+CAVEAT_NAMES_CAPPED = Caveat("party_names_capped",
+                             ("For at least one deed, only the first distinct party names are listed. The row totals (grantorRows, "
+                              "granteeRows) count every party row recorded, including repeats and spelling variants."))
 ERROR_CAVEAT = CaveatTemplate("lookup_failed", "The lookup failed ({kind}). This is an outage or a fault, not an answer about the address; "
                               "do not guess.")
 
@@ -152,6 +157,30 @@ def deeds_to_dict(x: DeedComparison, max_deeds: int = MAX_DEEDS_OUT, max_pairs: 
         out["caveats"].append(CAVEAT_OWNERS_CAPPED.format(shown=MAX_OWNERS_OUT, total=len(x.owners)).as_dict())
     if len(x.pairs) > max_pairs:
         out["caveats"].append(CAVEAT_COMPARISON_CAPPED.format(shown=max_pairs, total=len(x.pairs)).as_dict())
+    return out
+
+
+def timeline_to_dict(x: DeedTimeline) -> dict[str, Any]:
+    """JSON-safe view of a DeedTimeline. Deeds are newest first as recorded; counts are of deeds and cover the whole period, not just the list."""
+    r = x.resolution
+    c = x.counts
+    out: dict[str, Any] = {
+        "status": "error" if r.outcome is Match.UNAVAILABLE else "ok",
+        "resolution": _resolution_dict(r),
+        "lot": x.lot,
+        "timeline": [{
+            "documentId": d.documentId, "docType": d.docType, "docDate": d.docDate, "recordedDate": d.recordedDate,
+            "amount": d.amount, "notSale": d.notSale, "otherLots": d.otherLots,
+            "grantors": list(d.grantors), "grantorRows": d.grantorRows, "grantees": list(d.grantees), "granteeRows": d.granteeRows,
+        } for d in x.deeds],
+        "timeline_counts": None if c is None else {
+            "deeds": c.deeds, "notSale": c.notSale, "amountZero": c.amountZero, "byType": dict(c.byType),
+            "since": x.since, "until": x.until},
+        "caveats": [cv.as_dict() for cv in x.caveats],
+        "sources": [GEOSUPPORT, *x.sources],
+    }
+    if any(d.grantorRows > len(d.grantors) or d.granteeRows > len(d.grantees) for d in x.deeds):
+        out["caveats"].append(CAVEAT_NAMES_CAPPED.as_dict())
     return out
 
 
@@ -270,3 +299,46 @@ def make_deed_vs_owner_tool(client, graph: Graph, rg):
 
     deed_vs_owner_tool.name = "deed_vs_owner"
     return deed_vs_owner_tool
+
+
+def make_deed_timeline_tool(client, graph: Graph, tg):
+    """Bind the deed-timeline lookup to its clients. `tg` is a Neo4jTimelineGraph. Returns a LangChain tool."""
+
+    @tool(parse_docstring=True)
+    def deed_timeline_tool(address: str, borough: str | None = None, zip_code: str | int | None = None,
+                           since: str | None = None, until: str | None = None) -> dict:
+        """List every ACRIS deed recorded on a New York City street address's tax lot, newest first: document id, recorded and
+        document dates, amount, grantors and grantees as recorded, and counts of deeds.
+
+        Call this for questions about the deed history of a lot, how often it changed hands, whether it was held or transferred, or
+        deeds in a period. A deed records a transfer of title, not a sale: an amount of 0, and correction or confirmatory deeds, are
+        counted as not a sale, and no deed is called a sale of the building. Counts are of deeds and cover the whole period even when
+        the list is capped. Never add counts into one number. Grantor and grantee names are as recorded; variants are not merged and
+        none is called "the owner". For the latest deed compared with the HPD registered owner, use deed_vs_owner. The returned
+        caveats are attached to your answer for you; do not restate them. Check status first: ok means a lookup was made (read
+        resolution.outcome for exact, variant, ambiguous or not_found); needs_borough means ask the user for the borough or ZIP;
+        invalid_input means the text was not an address; error means an outage or fault, not an answer about the address.
+
+        Args:
+            address: House number and street as the user typed it, optionally with a borough, ZIP or neighborhood.
+            borough: Manhattan, Brooklyn, Queens, Bronx or Staten Island, when the user gave it separately.
+            zip_code: Five-digit ZIP, when the user gave it separately.
+            since: First recorded date to include, as YYYY-MM-DD, only when the user gave a period.
+            until: Last recorded date to include, as YYYY-MM-DD, only when the user gave a period.
+        """
+        try:
+            zip5 = None if zip_code is None else str(zip_code).strip()
+            try:
+                x = deed_timeline(client, graph, tg, address, since=since, until=until, borough=borough, zip5=zip5)
+            except BoroughRequired as e:
+                return {"status": "needs_borough", "message": f"{e}. Ask the user for the borough or ZIP; do not guess."}
+            except ValueError as e:
+                return {"status": "invalid_input", "message": str(e)}
+            return timeline_to_dict(x)
+        except Exception as e:  # noqa: BLE001  same rule as the other tools: the model gets an answer, never a stack trace
+            caveat = ERROR_CAVEAT.format(kind=type(e).__name__)
+            return {"status": "error", "message": caveat.text, "caveats": [caveat.as_dict()], "sources": []}
+
+    deed_timeline_tool.name = "deed_timeline"
+    return deed_timeline_tool
+

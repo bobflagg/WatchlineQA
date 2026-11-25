@@ -22,7 +22,12 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from watchline.agent.answer import EvidenceRef, ModelAnswer, ModelFact
 from watchline.agent.config import agent_model
 from watchline.agent.repeat_guard import RepeatGuardMiddleware
-from watchline.agent.tools import make_building_profile_tool, make_deed_vs_owner_tool, make_registered_owner_tool
+from watchline.agent.tools import (
+    make_building_profile_tool,
+    make_deed_timeline_tool,
+    make_deed_vs_owner_tool,
+    make_registered_owner_tool,
+)
 
 PROMPTS = Path(__file__).parent / "prompts"
 BUILTIN_TOOLS = frozenset({"ls", "read_file", "write_file", "edit_file", "delete", "glob", "grep", "execute", "task",
@@ -69,6 +74,8 @@ def build_agent(client, graph, pg, rg=None, *, model: str | BaseChatModel | None
         tools.append(make_registered_owner_tool(client, graph, rg))
         if hasattr(rg, "deeds"):          # the deed read lives on Neo4jDeedGraph; a registration-only graph gets no deed tool
             tools.append(make_deed_vs_owner_tool(client, graph, rg))
+        if hasattr(rg, "timeline"):
+            tools.append(make_deed_timeline_tool(client, graph, rg))
     return create_deep_agent(
         model=model,
         tools=tools,

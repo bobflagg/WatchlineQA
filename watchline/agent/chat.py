@@ -149,7 +149,7 @@ def connect():
     import httpx
     from neo4j import GraphDatabase
 
-    from watchline.deeds.deeds import Neo4jDeedGraph
+    from watchline.deeds.timeline import Neo4jTimelineGraph
     from watchline.geosupport.geosupport import Client
     from watchline.geosupport.resolution import Neo4jGraph
     from watchline.profile.profile import Neo4jProfileGraph
@@ -171,7 +171,7 @@ def connect():
     except httpx.HTTPError:
         driver.close()
         raise StartupError(f"The Geosupport sidecar is not reachable at {client.url} (start it with `make sidecar`).") from None
-    return client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), Neo4jDeedGraph(driver, db), driver.close
+    return client, Neo4jGraph(driver, db), Neo4jProfileGraph(driver, db), Neo4jTimelineGraph(driver, db), driver.close
 
 
 def converse(agent, config: dict, read=input, write=print) -> None:
