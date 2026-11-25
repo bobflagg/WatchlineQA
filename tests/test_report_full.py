@@ -235,3 +235,19 @@ def test_live_74_clinton_place_end_to_end(live_report_deps):
     assert "15 open violations" in by["violations"]["summary"] and "oldest open inspection was on 2015-05-11" in t("violations") and "Open violations per residential unit: 5 (15 open over 3 units" in t("violations")
     assert "HPD recorded 8 Housing Court cases" in by["litigation"]["summary"] and "1 case carries a recorded harassment finding" in by["litigation"]["summary"]
     assert "Case 284822" in t("litigation") and "After Trial, dated 2016-07-25, with a penalty of 5,200" in t("litigation") and "Respondent as recorded: McLORD OBIOHA. No part of it matches" in t("litigation")
+
+
+def test_live_every_sample_address_builds_a_report(live_report_deps):
+    """Each address in the report page's pulldown, run end to end on the live graph (no model). The two BAHUMI-side lots pause on one lead; 5413 7 Avenue has no landlord record."""
+    from watchline.ui.samples import REPORT_SAMPLES
+    expected_lead = {"2141 Washington Avenue, Bronx": "YONATAN BADHUMI|YONATAN BAHUMI", "74 Clinton Place, Bronx": "YONATAN BAHUMI|YONATAN BADHUMI", "5413 7 Avenue, Brooklyn": None}
+    assert list(REPORT_SAMPLES) == list(expected_lead)
+    for n, address in enumerate(REPORT_SAMPLES):
+        g_ = build_report_graph(live_report_deps, InMemorySaver())
+        cfg = {"configurable": {"thread_id": f"sample{n}"}}
+        r = g_.invoke({"text": address, "generated_at": "sample check"}, cfg)
+        if expected_lead[address] is None:
+            assert pending(r) == [] and r["report"]["status"] == "ok" and r["report"]["landlord"] is None, address
+        else:
+            (p,) = pending(r)
+            assert [x["linkId"] for x in p["links"]] == [expected_lead[address]], address

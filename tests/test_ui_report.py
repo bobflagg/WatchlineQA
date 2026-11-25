@@ -127,3 +127,25 @@ def test_one_lot_and_one_unit_are_not_plural_and_a_note_does_not_end_in_a_double
     assert (_lots({"lots": 1}), _lots({"lots": 56}), _units({"units": 1}), _units({"units": 179})) == ("1 lot", "56 lots", "1 residential unit", "179 residential units")
     link = {"state": "accepted", "decision": {"decidedBy": "researcher", "decidedAt": "2026-12-01", "note": "Same office."}}
     assert "note: Same office)." in _state(link)
+
+
+def test_the_sidebar_pulldown_runs_a_sample_address_like_a_typed_one():
+    from watchline.ui.samples import REPORT_SAMPLES
+    at = AppTest.from_function(_page, args=(deps(), TODAY), default_timeout=20).run()
+    box = at.sidebar.selectbox(key="rp_sample")
+    assert list(box.options) == list(REPORT_SAMPLES) and box.value is None and list(REPORT_SAMPLES)[0] == "2141 Washington Avenue, Bronx"
+    box.select("2141 Washington Avenue, Bronx").run()
+    assert not at.exception, at.exception
+    assert at.text_input(key="rp_address").value == "2141 Washington Avenue, Bronx"        # the form shows what was run
+    assert at.session_state["rp_graph"] is not None and at.subheader[-1].value == "Your decision on the leads"      # the fake graph resolves any text and finds the lead
+    assert at.sidebar.selectbox(key="rp_sample").value is None                              # cleared, so the same sample can be chosen again
+    at.sidebar.selectbox(key="rp_sample").select("2141 Washington Avenue, Bronx").run()
+    assert not at.exception and at.subheader[-1].value == "Your decision on the leads"
+
+
+def test_the_sample_addresses_are_listed_with_what_each_shows():
+    from watchline.ui.samples import REPORT_SAMPLES
+    assert len(REPORT_SAMPLES) == 3 and all(", " in a and d for a, d in REPORT_SAMPLES.items())
+    at = AppTest.from_function(_page, args=(deps(), TODAY)).run()
+    help_text = at.sidebar.selectbox(key="rp_sample").help
+    assert "**2141 Washington Avenue, Bronx**: the lot of the misspelled BADHUMI record" in help_text and "**5413 7 Avenue, Brooklyn**: no landlord record covers the lot" in help_text

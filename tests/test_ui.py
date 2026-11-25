@@ -249,5 +249,21 @@ def test_the_logo_and_the_links_stay_when_the_report_page_is_chosen(monkeypatch)
     at.run()
     at.switch_page("app_pages/report.py").run()
     assert not at.exception and at.title[0].value == "Landlord report"
-    assert _sidebar_order(at) == ["image", "page_link", "page_link"]                       # the chat's pulldowns are gone, the logo and the links are not
+    assert _sidebar_order(at) == ["image", "page_link", "page_link", "selectbox"]           # the chat's two pulldowns are gone (the report's one is there); the logo and the links are not
     assert any("wl-footer" in h.value for h in at.sidebar.get("html"))                      # and so is the footer
+
+
+def test_the_sample_address_pulldown_appears_only_on_the_report_page(monkeypatch):
+    import streamlit as st
+    from test_report_export import deps as fake_deps
+
+    from watchline.agent import chat
+    st.cache_resource.clear()
+    d = fake_deps()
+    monkeypatch.setattr(chat, "connect_all", lambda: (d.client, d.graph, d.pg, d.rg, d.ig, lambda: None))
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    assert [s.key for s in at.sidebar.selectbox] == ["sample_group", "sample"]                 # the chat has its question pulldowns, no sample addresses
+    at.switch_page("app_pages/report.py").run()
+    assert not at.exception and [s.key for s in at.sidebar.selectbox] == ["rp_sample"]
+    assert _sidebar_order(at) == ["image", "page_link", "page_link", "selectbox"]              # below the logo and the links

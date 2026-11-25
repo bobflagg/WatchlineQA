@@ -14,6 +14,7 @@ from watchline.agent.answer import Answer
 from watchline.report.export import render_report
 from watchline.report.graph import CHOOSE_LANDLORD, SECTIONS, ReportDeps, build_report_graph
 from watchline.ui.render import render_answer
+from watchline.ui.samples import REPORT_SAMPLES
 
 ROLES = ("researcher", "organizer", "legal staff")
 CHOICES = ("Decide later", "Accept", "Reject")
@@ -27,6 +28,14 @@ def _lots(f: dict) -> str:
 
 def _units(f: dict) -> str:
     return f"{f['units']} residential unit{'s' if f['units'] != 1 else ''}"
+
+
+def _pick_sample() -> None:
+    """A sample address was chosen: put it in the form, queue the run, and clear the pulldown so the same sample can be chosen again."""
+    ss = st.session_state
+    ss.rp_address = ss.rp_sample
+    ss.rp_pending = ss.rp_sample
+    ss.rp_sample = None
 
 
 def _config() -> dict:
@@ -131,13 +140,17 @@ def _show_final(report: dict) -> None:
 def render_report_page(deps: ReportDeps, *, today: str | None = None) -> None:
     """The whole page. `today` is the date recorded on decisions (the page's own clock unless a test passes one)."""
     today = today or date.today().isoformat()
+    with st.sidebar:
+        st.selectbox("Sample addresses", list(REPORT_SAMPLES), index=None, key="rp_sample", placeholder="Pick a sample address to run", on_change=_pick_sample,
+                     label_visibility="collapsed", help="\n\n".join(f"**{a}**: {d}." for a, d in REPORT_SAMPLES.items()))
     st.title("Landlord report")
     st.caption(INTRO)
     with st.form("rp_form"):
         st.text_input("Building address", key="rp_address", placeholder="2141 Washington Avenue, Bronx")
         st.text_input("Report label (printed in the header, for example the date)", key="rp_label")
         go = st.form_submit_button("Build the report", type="primary", key="rp_go")
-    if go and st.session_state.rp_address.strip():
+    queued = st.session_state.pop("rp_pending", None)           # a sample address picked in the sidebar runs like a typed one
+    if (go or queued) and st.session_state.rp_address.strip():
         with st.spinner("Reading the records"):
             _start(deps, st.session_state.rp_address, st.session_state.rp_label)
     result = st.session_state.get("rp_result")

@@ -38,3 +38,11 @@ SAMPLE_QUESTIONS: dict[str, tuple[str, ...]] = {
         "Is the respondent in the Housing Court case at 20 Beaver Street, Manhattan the building's owner?",
     ),
 }
+
+
+# Addresses for the report page's pulldown (first the one the demo leads with), each with what the report shows for it. All were run end to end on the live graph.
+REPORT_SAMPLES: dict[str, str] = {
+    "2141 Washington Avenue, Bronx": "the lot of the misspelled BADHUMI record: one lead, to the BAHUMI portfolio (1 lot becomes 56 if accepted)",
+    "74 Clinton Place, Bronx": "a BAHUMI lot: 15 open violations over 3 units and one harassment finding on a case at the building",
+    "5413 7 Avenue, Brooklyn": "no landlord record covers the lot, so there is no portfolio; owner, contacts, deeds and conditions still show",
+}

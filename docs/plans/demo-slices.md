@@ -110,3 +110,6 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   evals were written on.
 - Sidebar (2026-11-25): the logo, then the links to the Chat and Landlord report pages, then the page's own widgets, then the author footer, drawn once by `app.py` through
   `watchline/ui/sidebar.py`, so the logo and footer stay on both pages (`st.navigation(..., position="hidden")` with `st.page_link`). Checked in Chrome.
+- Report page samples (2026-11-25): a pulldown in the sidebar, shown only on the report page, runs the report on a sample address like a typed one (`REPORT_SAMPLES` in
+  `watchline/ui/samples.py`: 2141 Washington Avenue, 74 Clinton Place, 5413 7 Avenue, each run end to end on the live graph by `test_live_every_sample_address_builds_a_report`;
+  a help tooltip says what each shows). Checked in Chrome: the chat page has its two pulldowns, the report page has this one.
