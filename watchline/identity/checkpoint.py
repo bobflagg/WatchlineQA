@@ -34,8 +34,9 @@ class Lot:
 
 @dataclass(frozen=True)
 class Party:
-    key: str                        # the name as recorded; the same name on records the graph joined is one party
+    key: str                        # the name(s) as recorded; records the graph joined by identity are one party
     lots: tuple[Lot, ...] = ()
+    records: int = 1                # how many landlord records the party holds (more than one when the graph joined them by identity)
 
 
 @dataclass(frozen=True)

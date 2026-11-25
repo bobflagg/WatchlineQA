@@ -55,6 +55,32 @@ path.
   them a way to check the output against what they know.
 - Verify every number in the chosen reports by hand before the talk.
 
+### Working choice (2026-11-24)
+
+Found by read-only probing of the graph, then a web check for public recognition.
+
+- **Main demo: the Yonatan Bahumi portfolio.** Publicly recognizable: he appeared on the Public Advocate's
+  2025 Worst Landlords list (Bronx Times, 22 Jan 2025). Show that list as context only, never as a graph
+  answer, and never as a court finding. In the graph: 55 lots, 176 residential units, 7 landlord records
+  (six exact-name records joined by an identity cluster, plus one misspelled record, "BADHUMI", linked only
+  by a shared address), 69 corporate names on building registrations (31 with an exact-name DOS match,
+  which are leads), 354 deeds (239 with amount 0, which is not a free sale), 89 litigation cases, 1
+  recorded harassment finding. The BADHUMI record is the planned checkpoint: accept or reject it, and the
+  portfolio changes.
+- **Contrast: the Moses Berkovics portfolio.** Many leads (about 30 name-match edges, 44 corporate names, 31
+  with a DOS match), no recorded findings, low violations per unit according to a third-party aggregator
+  (unverified). Shows "leads need a human" without an accusation. A similarly spelled name with a very
+  different record exists; useful to illustrate why we never merge on similar names. Do not claim they are
+  related.
+- **Dropped:** Pinchasov, Westreich, Dushinsky (no public coverage found). Weinberger (too large).
+  Ohebshalom: the press-covered owner and his alias are not in the graph under those names, so it cannot
+  show alias handling.
+- **Unverified before use:** the actual values of Violation `status` and `violationClass` (the counts
+  above assumed `Open` and `C`); the borough breakdown, and whether the Public Advocate's 19 Bronx
+  buildings are among the 55 lots; every number, by hand, before the talk. Portfolio and network IDs are
+  run-local and must not appear on a slide.
+- Show person names only with their recorded role.
+
 ## Why
 
 We are building two different products, and a single 28-tool agent serves neither well:

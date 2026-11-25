@@ -92,3 +92,15 @@ second decision on the same link replaces the first and both stay in the log.
 - **`2141 WASHINGTON LLC`.** Not part of this slice. It is a 2020 grantee on the BADHUMI lot, a lead between a deed and the HPD owners, not a link
   between landlord records. Before the demo, run `deed_vs_owner` on 2141 Washington Avenue (no model) to see what it shows. If the name appears
   in the BAHUMI records it becomes a second checkpoint candidate. Not yet probed.
+
+## Step 2 findings (2026-11-25, `watchline/identity/graph.py`)
+- A party is a closure of landlord records joined by `CONNECTED_BY_IDENTITY`, so identity joins sit inside a party (shown as `records`), and links are
+  only name and address leads. Identity-basis links as designed therefore do not occur with this reading; the "reject an identity link" path in
+  `checkpoint.py` stays available but unused until a source of identity-basis links is chosen.
+- BAHUMI: 6 records, 55 lots, 176 units. The BADHUMI record is linked to 3 of the 6 by `CONNECTED_BY_ADDRESS` (one link, address as recorded
+  `4058 BRONX BOULEVARD 1B, Bronx, NY 10466`, not masked or on the mail-drop list). Accepting it gives 56 lots and 179 units, as designed.
+- BERKOVICS: the identity group around `MOSES BERKOVICS` holds 8 records under three recorded names (`ALBERT LABOZ`, `AMNON SHALHOV`,
+  `MOSES BERKOVICS`): 48 lots, 1,628 units. That is more than the "six records" in the working choice. Decide before the demo whether it is
+  still the contrast case, and check the three names by hand.
+- Masks and the mail-drop list are matched on the address as spelled (street line and ZIP); the party, link and mask caveats say so.
+- Deed-only landlord links (`CONNECTED_BY_DEED`) are not read, with a caveat.
