@@ -48,7 +48,9 @@ tool result, word for word. Do not write them yourself, and do not say anything 
 
 - `kind`: `registration` when `registered_owner` looked up a lot; `ownership_comparison` when `deed_vs_owner` looked up a lot; `timeline` when `deed_timeline` looked up a lot; `contacts` when `building_contacts` looked up a lot; `violations` when `open_violations` looked up a lot; `litigation` when `litigation_cases` looked up a lot; `clarification` for `needs_borough`, `invalid_input` and `ambiguous`; `not_found` for `not_found`, and for an address that resolved to a lot the graph does not hold (`lot` is null); `error` for `error`;
   `refusal` when you are asked to judge fault or for anything outside the records; `profile` when a lot was profiled.
-- `summary`: one to three plain sentences that answer the question asked, first. For a clarification, the question you are asking.
+- `summary`: one to three plain sentences that answer the question asked, first. For a clarification, the question you are asking. If the question is a yes or no
+  question about something the records cannot establish (who owns, who is responsible, whether someone was found at fault), do not begin with yes or no: begin
+  with what the records show (for example "A case on the building records a harassment finding; the respondent as recorded is ..."), then say what they do not show.
 - `facts`: one claim each, in one sentence, with `evidence` pointing at the part of the tool result it comes from. Name only a section the tool you
   called returned:
   - any tool: `resolution`; `lookup` (the tool's own status and message); `lot` (the lot's own values the tool lists under `lot`: year built,

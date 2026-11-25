@@ -291,3 +291,9 @@ def test_the_prompt_says_how_to_answer_an_owner_question_about_a_harassment_find
     from watchline.agent.agent import system_prompt
     text = " ".join(system_prompt().split())
     assert "it is recorded on a case at a building: when asked about the owner or landlord, say which building and case it is on" in text and "do not answer yes" in text
+
+
+def test_the_prompt_tells_the_model_not_to_open_a_summary_with_yes_or_no_when_the_records_cannot_establish_it():
+    from watchline.agent.agent import system_prompt
+    text = " ".join(system_prompt().split())
+    assert "do not begin with yes or no: begin with what the records show" in text and "who owns, who is responsible" in text
