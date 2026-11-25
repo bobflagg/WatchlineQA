@@ -131,4 +131,6 @@ second decision on the same link replaces the first and both stay in the log.
   shared-registration evidence together, so BAHUMI and BADHUMI are one lead with two evidence items (address, registration 205148).
 - `against` is computed from that link's own evidence, so "no joining record other than a shared address" appears only when the address is all there is.
 - A link is usable if any of its evidence is usable: an address set aside as a mail drop does not make the pair unsupported when a registration lists both names.
-- Berkovics now shows 11 possible links (one per candidate party). Decide before the demo whether that is the contrast you want.
+- Berkovics now shows 11 possible links (one per candidate party). Decision (2026-11-25): keep every lead for now and cut back later if the demo needs it.
+  Where to cut: `MAX_PARTIES` in `watchline/identity/graph.py` (candidate parties per anchor, now 100, with a caveat when it cuts), or a filter in the
+  report graph's `decide` node (offer fewer leads at the pause); the Answer and the decision log do not change shape.
