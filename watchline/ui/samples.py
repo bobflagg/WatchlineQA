@@ -17,4 +17,24 @@ SAMPLE_QUESTIONS: dict[str, tuple[str, ...]] = {
         "Who is the grantee on the most recent deed for 5413 7 Avenue, Brooklyn, and is it the HPD registered owner?",
         "Does the deed grantee at 548 52 Street, Brooklyn match the HPD registered owner?",
     ),
+    "Q4: managing agent and contacts": (
+        "Who is the managing agent for 5413 7 Avenue, Brooklyn, and is that person the owner?",
+        "Who is the site manager at 5413 7 Avenue, Brooklyn?",
+        "Who are the HPD contacts for 2141 Washington Avenue, Bronx, and in what roles?",
+    ),
+    "Q12: deed history": (
+        "What deeds have been recorded for 2141 Washington Avenue, Bronx?",
+        "What deeds were recorded for 5413 7 Avenue, Brooklyn since 2015?",
+        "How many times has 2141 Washington Avenue in the Bronx changed hands, and how many of those were sales?",
+    ),
+    "Q15: open violations": (
+        "What are the open violations at 438 52 Street, Brooklyn?",
+        "How many open violations per unit does 74 Clinton Place, Bronx have?",
+        "What is the rate of open violations per residential unit at 126 Pearl Street, Manhattan?",
+    ),
+    "Q28: litigation": (
+        "What Housing Court cases has HPD brought against 74 Clinton Place, Bronx?",
+        "Was there a harassment finding in the Housing Court case at 438 52 Street, Brooklyn?",
+        "Is the respondent in the Housing Court case at 20 Beaver Street, Manhattan the building's owner?",
+    ),
 }

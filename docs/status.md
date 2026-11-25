@@ -53,7 +53,7 @@ Read this first in a fresh session. Update it at the end of every slice.
 
 - Demo slices (2026-11-25, `docs/plans/demo-slices.md`): Q4 contacts, Q12.1 deed timeline, Q15 open violations and Q28 litigation as tools and sections; the identity checkpoint
   (`watchline/identity/`: pure links and decisions, graph reads with address, name and shared-registration evidence, one decision per pair); the report graph
-  (`watchline/report/`: `build_report_graph`, templated sections, Markdown export, `make report`, Streamlit page `make report-ui`); two verified, saved backup runs
+  (`watchline/report/`: `build_report_graph`, templated sections, Markdown export, `make report`, report page in `make ui`); two verified, saved backup runs
   (`docs/demo/backup-runs/`, `docs/plans/report-demo-verification.md`). Agent-level evals for the four new tools (`tests/test_agent_eval_slices.py`): all 9 cases have passed live at least
   once, not all in one run (variance noted in `demo-slices.md`). No model is called by the report graph.
 

@@ -17,7 +17,7 @@ byte-identical file. Decisions in these runs are rehearsal decisions (date 2026-
 | Portfolio | anchor YONATAN BADHUMI: 1 lot, 3 units as held; accepting the lead for YONATAN BAHUMI gives 56 lots, 179 units | anchor YONATAN BAHUMI: 55 lots, 176 units (6 records) as held; accepting the lead for YONATAN BADHUMI gives 56 lots, 179 units |
 | The lead | address 4058 BRONX BOULEVARD 1B and registration 205148, which lists BADHUMI as HeadOfficer and BAHUMI as Officer and Shareholder | the same pair, seen from the BAHUMI side |
 
-## Browser walkthrough (2026-11-25, Chrome, `make report-ui`)
+## Browser walkthrough (2026-11-25, Chrome, `make ui`)
 Both addresses were walked through in a real browser: address form, the sections as they are read, the lead card, Accept with a note, the finished report with the portfolio as held
 next to after the decision (2141 Washington: 1 lot to 56; 74 Clinton: 55 lots to 56), and the two download buttons. No exception box, no console error. Fixes made from what was seen:
 "1 lots" in the metric cards and the decision text, a misleading up-arrow on the unit counts, a doubled stop after a note, and the network "weight" shown to five decimals.
@@ -32,4 +32,4 @@ Do not present it as a finding about the current owner or the BAHUMI parties.
 ## Still to check by hand before the talk
 - The Public Advocate's 19 Bronx buildings against the 55 BAHUMI lots (working choice, `report-graph.md`), and the "Worst Landlords" list context, which is never shown as a graph answer.
 - Whether the audience should see 74 Clinton Place's finding at all: it is a finding on a case at the building whose respondent is an individual, not a BAHUMI party and not the registered owner.
-- The browser look of the report page (`make report-ui`) on both addresses.
+- The browser look of the report page (`make ui`) on both addresses.

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup test test-live eval eval-agent chat report report-ui ui notebook notebook-check lint fmt check sidecar sidecar-stop
+.PHONY: help setup test test-live eval eval-agent chat report ui notebook notebook-check lint fmt check sidecar sidecar-stop
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -25,10 +25,7 @@ chat:  ## Terminal chat with the agent (needs Neo4j, the sidecar and AGENT_ANTHR
 report:  ## Landlord report for a building address, no model: make report ADDRESS="74 Clinton Place, Bronx" [DECISIONS=file.json LANDLORD=name LABEL=text] (needs Neo4j and the sidecar)
 	uv run python -m watchline.report.run "$(ADDRESS)" $(if $(DECISIONS),--decisions $(DECISIONS)) $(if $(LANDLORD),--landlord "$(LANDLORD)") $(if $(LABEL),--label "$(LABEL)")
 
-report-ui:  ## Streamlit page for the landlord report (needs Neo4j and the sidecar; no model, no API key)
-	uv run streamlit run watchline/ui/report_app.py
-
-ui:  ## Streamlit page (needs Neo4j, the sidecar and AGENT_ANTHROPIC_API_KEY; add ?fixtures=1 to the URL to preview without them)
+ui:  ## Streamlit app: the chat (needs AGENT_ANTHROPIC_API_KEY) and the landlord report (no key); both need Neo4j and the sidecar; add ?fixtures=1 to preview without them
 	uv run streamlit run watchline/ui/app.py
 
 notebook:  ## Re-execute the notebooks in place (need Neo4j, the sidecar and AGENT_ANTHROPIC_API_KEY; the agent notebook calls the model); commit the refreshed outputs

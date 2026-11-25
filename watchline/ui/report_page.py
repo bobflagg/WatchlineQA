@@ -1,6 +1,6 @@
 """The landlord report page: enter a building address, read the sections, decide on the leads, download the report. No model is called.
 
-The page takes its dependencies as an argument (`ReportDeps`), so tests run it on fakes and `report_app.py` runs it on the real graph. It keeps the
+The page takes its dependencies as an argument (`ReportDeps`), so tests run it on fakes and `app_pages/report.py` runs it on the real graph. It keeps the
 graph and its last result in session state, answers the graph's pauses from widgets, and renders every section with `render_answer`, so no caveat can be dropped.
 """
 import uuid
@@ -134,7 +134,7 @@ def render_report_page(deps: ReportDeps, *, today: str | None = None) -> None:
     st.title("Landlord report")
     st.caption(INTRO)
     with st.form("rp_form"):
-        st.text_input("Building address", key="rp_address", placeholder="74 Clinton Place, Bronx")
+        st.text_input("Building address", key="rp_address", placeholder="2141 Washington Avenue, Bronx")
         st.text_input("Report label (printed in the header, for example the date)", key="rp_label")
         go = st.form_submit_button("Build the report", type="primary", key="rp_go")
     if go and st.session_state.rp_address.strip():

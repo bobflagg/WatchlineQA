@@ -1,5 +1,6 @@
 [client]
 showErrorDetails = "none"
+toolbarMode = "minimal"      # hides the Deploy button and the developer menu
 
 [theme]
 base = "light"

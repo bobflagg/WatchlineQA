@@ -167,3 +167,60 @@ def test_footer_icons_are_css_masks_that_survive_the_sanitizer():
     css = next(h.value for h in at.get("html") if ".wl-icon-mail" in h.value)   # style-only html goes to the event container
     assert css.count("data:image/svg+xml,") == 4                            # mask and -webkit-mask, for both icons
     assert "<svg" not in css and "background-color: currentColor" in css      # the data URIs are percent-encoded
+
+
+def test_every_new_tool_has_sample_queries_and_each_names_a_checked_address():
+    from watchline.ui.samples import SAMPLE_QUESTIONS
+    groups = {"Q4: managing agent and contacts": ("5413 7 Avenue", "2141 Washington Avenue"), "Q12: deed history": ("2141 Washington Avenue", "5413 7 Avenue"),
+              "Q15: open violations": ("438 52 Street", "74 Clinton Place", "126 Pearl Street"), "Q28: litigation": ("74 Clinton Place", "438 52 Street", "20 Beaver Street")}
+    for name, addresses in groups.items():
+        queries = SAMPLE_QUESTIONS[name]
+        assert len(queries) == len(addresses) or len(queries) == 3
+        assert all(any(a in q for a in addresses) for q in queries), name
+    every = [q for qs in SAMPLE_QUESTIONS.values() for q in qs]
+    assert len(every) == len(set(every))
+
+
+def test_a_sample_from_a_new_group_runs_in_the_chat(monkeypatch):
+    from types import SimpleNamespace
+
+    from watchline.agent import agent as agent_module
+    from watchline.agent import chat
+    from watchline.ui.samples import SAMPLE_QUESTIONS
+    asked = []
+    monkeypatch.setattr(chat, "connect", lambda: (None, None, None, None, lambda: None))
+    monkeypatch.setattr(agent_module, "build_agent", lambda *a, **k: object())
+    monkeypatch.setattr(chat, "ask", lambda agent, text, config: asked.append(text) or SimpleNamespace(structured=None, answer="An answer.", unverified=[]))
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    at.sidebar.selectbox(key="sample_group").select("Q28: litigation").run()
+    question = SAMPLE_QUESTIONS["Q28: litigation"][0]
+    at.sidebar.selectbox(key="sample").select(question).run()
+    assert not at.exception and asked == [question]
+
+
+def test_the_app_has_a_chat_page_and_a_report_page_under_one_navigation(monkeypatch):
+    import streamlit as st
+    from test_report_export import deps as fake_deps
+
+    from watchline.agent import chat
+    st.cache_resource.clear()                                    # the report page caches its dependencies for the process
+    d = fake_deps()
+    monkeypatch.setattr(chat, "connect_all", lambda: (d.client, d.graph, d.pg, d.rg, d.ig, lambda: None))
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    assert not at.exception and at.sidebar.selectbox(key="sample_group") is not None                  # the chat page is the default
+    at.switch_page("app_pages/report.py").run()
+    assert not at.exception and at.title[0].value == "Landlord report" and at.text_input(key="rp_address").label == "Building address"
+
+
+def test_the_report_page_says_why_when_the_graph_cannot_be_reached(monkeypatch):
+    import streamlit as st
+
+    from watchline.agent import chat
+    st.cache_resource.clear()
+    monkeypatch.setattr(chat, "connect_all", lambda: (_ for _ in ()).throw(chat.StartupError("no database in this test")))
+    at = AppTest.from_file("../watchline/ui/app.py", default_timeout=10)
+    at.run()
+    at.switch_page("app_pages/report.py").run()
+    assert not at.exception and at.error[0].value == "Cannot start: no database in this test" and not at.title
