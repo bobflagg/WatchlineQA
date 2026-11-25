@@ -113,3 +113,14 @@ second decision on the same link replaces the first and both stay in the log.
 - The result holds the Answer and the decision log text. The same log on the same snapshot reproduces the Answer through
   `identity_checkpoint(ig, name, decisions)` (tested: the graph's Answer equals the direct call's).
 - A checkpointer in memory lasts for the process. For the demo, the saved decision log is the durable record.
+
+## Shared-registration evidence (2026-11-25, `watchline/identity/graph.py`)
+- Found by running `deed_vs_owner` on 2141 Washington Avenue: HPD registration 205148 of the BADHUMI lot lists `YONATAN BADHUMI` as HeadOfficer and
+  `YONATAN BAHUMI` as Officer and Shareholder. Q22 counts "same registration" as a joining record, so the link was better supported than "a shared address only".
+- New read `shared_registrations`: for each candidate party, the registrations of buildings on either party's lots that list a contact named like the
+  anchor party and a contact named like the other (names upper-cased, as spelled; roles shown). One evidence item per registration, at most 10 per link.
+  It strengthens candidates found by name or address edges; it does not discover new ones.
+- It is its own link (`<anchor>|<other>|contact`), decided on its own evidence. `against` on the address link no longer says only an address joins the
+  parties when a contact link exists for the same pair. New caveats: `shared_registration_not_identity` and `registration_names_as_recorded`.
+- BAHUMI now shows two leads for BADHUMI (address and registration); accepting either gives 56 lots and 179 units. Berkovics gets one contact link
+  (`MICHAEL MAKHARADZE`); not yet reviewed by hand. Possible follow-up: group the links of one pair under one decision for the demo.

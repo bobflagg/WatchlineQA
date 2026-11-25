@@ -23,6 +23,9 @@ CAVEAT_RESEARCHER = Caveat("researcher_decision",
                            "At least one link was decided by the researcher. The result is the researcher's own inference, not a finding in the records.")
 CAVEAT_SET_ASIDE = Caveat("evidence_set_aside",
                           "Some shared evidence was set aside because the address is masked or on the mail-drop list. A set-aside item supports nothing.")
+CAVEAT_SHARED_REGISTRATION = Caveat("shared_registration_not_identity",
+                                     ("Two names on one HPD registration shows both were listed there, in the roles recorded. It is not proof they are one party "
+                                      "or that either holds title."))
 CAVEAT_RUN_LOCAL = Caveat("portfolio_run_local", "Portfolio and network ids belong to one run and are not stable. Parties are named as recorded.")
 
 
@@ -123,12 +126,15 @@ def _usable(link: Link) -> bool:
     return any(not e.setAside for e in link.evidence)
 
 
-def _against(link: Link) -> tuple[str, ...]:
+def _against(link: Link, siblings: tuple[Link, ...] = ()) -> tuple[str, ...]:
+    """What argues against treating the parties as one. `siblings` are the other links between the same two parties: a link made by a shared
+    registration or an identity is a joining record beyond the address, so the address link no longer lacks one."""
     out = []
     if link.kind != "identity" and link.rule is None:
         out.append("The names differ as recorded, and no named rule makes them equal.")
     usable = {e.kind for e in link.evidence if not e.setAside}
-    if link.kind != "identity" and usable <= {"shared_address"}:
+    joined = any(s.kind in ("contact", "identity") and _usable(s) for s in siblings)
+    if link.kind != "identity" and usable <= {"shared_address"} and not joined:
         out.append("No joining record other than a shared address was found.")
     if any(e.setAside for e in link.evidence):
         out.append("Some shared evidence was set aside (masked or mail-drop address).")
@@ -201,7 +207,7 @@ def build_checkpoint(anchor: Party, links: list[Link] | tuple[Link, ...], decisi
         else:
             state = "awaiting"
         out.append(LinkOut(ln.linkId, ln.a.key, ln.b.key, ln.kind, "identity" if ln.kind == "identity" else "lead", state,
-                           ln.evidence, _against(ln), ln.rule, d))
+                           ln.evidence, _against(ln, tuple(s for s in ordered if s is not ln and (s.a.key, s.b.key) == (ln.a.key, ln.b.key))), ln.rule, d))
 
     held_ids = {ln.linkId for ln in ordered if ln.kind == "identity"}
     decided_ids = {o.linkId for o in out if o.state in IN_EFFECT}
@@ -219,6 +225,8 @@ def build_checkpoint(anchor: Party, links: list[Link] | tuple[Link, ...], decisi
         caveats.append(CAVEAT_SHARED_ADDRESS)
     if any(o.kind == "name" or o.rule for o in out):
         caveats.append(CAVEAT_NAME_NOT_IDENTITY)
+    if any(e.kind == "shared_contact" for o in out for e in o.evidence):
+        caveats.append(CAVEAT_SHARED_REGISTRATION)
     if any(e.setAside for o in out for e in o.evidence):
         caveats.append(CAVEAT_SET_ASIDE)
     return Checkpoint(anchor.key, tuple(out), tuple(decisions), tuple(issues), effect, tuple(caveats))

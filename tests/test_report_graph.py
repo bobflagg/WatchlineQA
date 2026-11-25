@@ -136,7 +136,9 @@ def test_live_bahumi_pause_and_resume(live_graph):
     cfg = {"configurable": {"thread_id": "live"}}
     r = g.invoke({"name": "YONATAN BAHUMI"}, cfg)
     (p,) = pending(r)
-    assert [x["linkId"] for x in p["links"]] == ["YONATAN BAHUMI|YONATAN BADHUMI|address"]
+    assert [x["linkId"] for x in p["links"]] == ["YONATAN BAHUMI|YONATAN BADHUMI|address", "YONATAN BAHUMI|YONATAN BADHUMI|contact"]
+    address = next(x for x in p["links"] if x["kind"] == "address")
+    assert "No joining record other than a shared address was found." not in address["against"]       # registration 205148 lists both names
     assert (p["portfolio_effect"]["as_held"]["lots"], p["portfolio_effect"]["as_held"]["units"]) == (55, 176)
-    r = g.invoke(Command(resume={"decisions": [d(lid=p["links"][0]["linkId"], note="same office")]}), cfg)
+    r = g.invoke(Command(resume={"decisions": [d(lid=address["linkId"], note="same office")]}), cfg)
     assert "After the researcher's decisions: 56 lots and 179 residential units." in r["answer"]["summary"]

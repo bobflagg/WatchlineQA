@@ -103,6 +103,8 @@ def test_live_bahumi_answer_awaiting_then_accepted(live_graph):
     lid = "YONATAN BAHUMI|YONATAN BADHUMI|address"
     a = to_answer(identity_checkpoint(live_graph, "YONATAN BAHUMI"))
     assert "as held in the graph, 55 lots and 176 residential units across 6 landlord records" in a.summary and "No decision has been made yet." in a.summary
+    assert "2 possible links to other landlord records, 2 awaiting a decision" in a.summary
     assert any(f.statement.startswith("YONATAN BAHUMI and YONATAN BADHUMI are linked by a shared business address. A lead") for f in a.facts)
+    assert any(f.statement.startswith("YONATAN BAHUMI and YONATAN BADHUMI are linked by names listed together on an HPD registration. A lead") for f in a.facts)
     b = to_answer(identity_checkpoint(live_graph, "YONATAN BAHUMI", [Decision(lid, "accept", "researcher", "2026-12-01")]))
     assert "After the researcher's decisions: 56 lots and 179 residential units." in b.summary and "researcher_decision" in {c.code for c in b.caveats}

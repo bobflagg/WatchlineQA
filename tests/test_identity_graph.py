@@ -12,9 +12,11 @@ load_dotenv()
 
 class FakeIG:
     """Landlord records, identity pairs, covered lots, name and address edges, and masks, as plain rows."""
-    def __init__(self, records, identity=(), lots=(), edges=(), masks=()):
+    def __init__(self, records, identity=(), lots=(), edges=(), masks=(), registrations=()):
         self._r = {r["nodeId"]: r for r in records}
         self._id, self._lots, self._edges, self._masks = list(identity), list(lots), list(edges), list(masks)
+        self._regs = list(registrations)
+        self.reg_calls = []
         self.calls = []
 
     def records_named(self, name):
@@ -38,6 +40,10 @@ class FakeIG:
         return out
 
     def masks(self, streets): return [m for m in self._masks if m["address"] in streets]
+
+    def shared_registrations(self, bbls, names_a, names_b):
+        self.reg_calls.append((bbls, names_a, names_b))
+        return [r for r in self._regs if r["bbl"] in bbls and r["nameA"] in names_a and r["nameB"] in names_b]
 
 
 def rec(i, name, *addrs): return dict(nodeId=i, name=name, businessAddresses=list(addrs))
@@ -172,9 +178,14 @@ def test_live_bahumi_and_the_badhumi_checkpoint(live_graph):
     """Probed 2026-11-25: BAHUMI is 6 records joined by identity, 55 lots, 176 units; BADHUMI is 1 record, 1 lot, 3 units, linked by address."""
     i = build_inputs(live_graph, "YONATAN BAHUMI")
     assert i.status == "ok" and (i.anchor.key, i.anchor.records, len(i.anchor.lots)) == ("YONATAN BAHUMI", 6, 55)
-    (ln,) = [x for x in i.links if "BADHUMI" in x.linkId]
+    by_kind = {x.kind: x for x in i.links if "BADHUMI" in x.linkId}
+    assert sorted(by_kind) == ["address", "contact"]                                  # the address edge, and registration 205148 listing both names
+    ln = by_kind["address"]
     assert ln.linkId == "YONATAN BAHUMI|YONATAN BADHUMI|address" and [x.bbl for x in ln.b.lots] == ["2030370098"]
     assert [e.setAside for e in ln.evidence] == [False]
+    (reg,) = by_kind["contact"].evidence
+    assert reg.kind == "shared_contact" and "registration 205148" in reg.text and "YONATAN BADHUMI as HeadOfficer" in reg.text
+    assert "YONATAN BAHUMI as Officer and Shareholder" in reg.text
     cp = build_checkpoint(i.anchor, i.links, [Decision(ln.linkId, "accept", "researcher", "2026-12-01")])
     assert (cp.effect.as_held.lots, cp.effect.as_held.units) == (55, 176)
     assert (cp.effect.as_decided.lots, cp.effect.as_decided.units) == (56, 179) and cp.effect.added_lots == ("2030370098",)
@@ -214,3 +225,78 @@ def test_reads_cut_at_the_row_limit_are_flagged(monkeypatch):
     assert "identity_party_cut" not in {c.code for c in build_inputs(FakeIG(**BASE), "ACME OWNER").caveats}
     monkeypatch.setattr(G, "MAX_GROUPS", 1)
     assert "identity_party_cut" in {c.code for c in build_inputs(FakeIG(**dict(BASE, edges=[edge(1, 3)])), "ACME OWNER").caveats}   # edges, pairs
+
+
+# ---- shared registrations: names listed together on one HPD registration -----------------------------------------------------
+
+def reg(rid, bbl, name_a, role_a, name_b, role_b, address="2 B ST"):
+    return dict(registrationId=rid, bbl=bbl, address=address, nameA=name_a, roleA=role_a, nameB=name_b, roleB=role_b)
+
+
+REGS = [reg(205148, "2030370098", "ACME OWNER", "Officer", "ACME OWNR", "HeadOfficer"),
+        reg(205148, "2030370098", "ACME OWNER", "Shareholder", "ACME OWNR", "HeadOfficer")]
+
+
+def test_a_registration_listing_both_names_is_one_evidence_item_with_every_role():
+    ig = FakeIG(**BASE, registrations=REGS)
+    i = build_inputs(ig, "ACME OWNER")
+    by_kind = {x.kind: x for x in i.links}
+    assert sorted(by_kind) == ["address", "contact"] and by_kind["contact"].linkId == "ACME OWNER|ACME OWNR|contact"
+    (e,) = by_kind["contact"].evidence
+    assert e.kind == "shared_contact" and not e.setAside and e.source == G.SOURCE_REGISTRATIONS
+    assert e.text == "HPD registration 205148 of lot 2030370098 (2 B ST) lists ACME OWNER as Officer and Shareholder; ACME OWNR as HeadOfficer."
+    assert "registration_names_as_recorded" in {c.code for c in i.caveats}
+    bbls, names_a, names_b = ig.reg_calls[0]
+    assert names_a == ["ACME OWNER"] and names_b == ["ACME OWNR"] and set(bbls) == {"2000000001", "2000000002", "2000000003", "2030370098"}
+
+
+def test_no_shared_registration_means_no_contact_link_and_no_caveat():
+    i = build_inputs(FakeIG(**BASE), "ACME OWNER")
+    assert [x.kind for x in i.links] == ["address"] and "registration_names_as_recorded" not in {c.code for c in i.caveats}
+
+
+def test_a_shared_registration_removes_the_claim_that_only_an_address_joins_the_parties():
+    alone = build_checkpoint(*(lambda i: (i.anchor, i.links))(build_inputs(FakeIG(**BASE), "ACME OWNER")))
+    assert "No joining record other than a shared address was found." in alone.links[0].against
+    both = build_checkpoint(*(lambda i: (i.anchor, i.links))(build_inputs(FakeIG(**BASE, registrations=REGS), "ACME OWNER")))
+    address = next(x for x in both.links if x.kind == "address")
+    assert "No joining record other than a shared address was found." not in address.against
+    assert "shared_registration_not_identity" in {c.code for c in both.caveats}
+
+
+def test_each_link_is_decided_on_its_own_evidence_and_either_one_adds_the_lots():
+    i = build_inputs(FakeIG(**BASE, registrations=REGS), "ACME OWNER")
+    only_contact = build_checkpoint(i.anchor, i.links, [Decision("ACME OWNER|ACME OWNR|contact", "accept", "researcher", "2026-12-01")])
+    states = {x.kind: x.state for x in only_contact.links}
+    assert states == {"address": "awaiting", "contact": "accepted"} and only_contact.effect.as_decided.lots == 4
+    rejected = build_checkpoint(i.anchor, i.links, [Decision("ACME OWNER|ACME OWNR|contact", "reject", "researcher", "2026-12-01")])
+    assert {x.kind: x.state for x in rejected.links} == {"address": "awaiting", "contact": "rejected"} and rejected.effect.as_decided.lots == 3
+
+
+def test_many_registrations_are_capped_with_a_count_of_the_rest(monkeypatch):
+    monkeypatch.setattr(G, "MAX_REGISTRATION_ITEMS", 2)
+    rows = [reg(100 + n, "2030370098", "ACME OWNER", "Officer", "ACME OWNR", "HeadOfficer") for n in range(5)]
+    (contact,) = [x for x in build_inputs(FakeIG(**BASE, registrations=rows), "ACME OWNER").links if x.kind == "contact"]
+    assert len(contact.evidence) == 3 and contact.evidence[-1].text == "3 more registrations list both names."
+
+
+def test_a_registration_read_cut_at_its_row_limit_is_flagged(monkeypatch):
+    monkeypatch.setattr(G, "MAX_REGISTRATION_ROWS", 1)
+    assert "identity_party_cut" in {c.code for c in build_inputs(FakeIG(**BASE, registrations=REGS[:1]), "ACME OWNER").caveats}
+
+
+def test_the_registration_read_is_parameterized_limited_and_timed_out():
+    seen = []
+
+    class Res:
+        records = []
+
+    class Drv:
+        def execute_query(self, q, params, **kw):
+            seen.append((q, params))
+            return Res()
+
+    G.Neo4jIdentityGraph(Drv(), "watchline").shared_registrations(["2030370098"], ["YONATAN BAHUMI"], ["YONATAN BADHUMI"])
+    ((q, params),) = seen
+    assert q.timeout and "$limit" in q.text and "YONATAN" not in q.text and "2030370098" not in q.text
+    assert params["bbls"] == ["2030370098"] and params["namesA"] == ["YONATAN BAHUMI"] and params["limit"] == G.MAX_REGISTRATION_ROWS

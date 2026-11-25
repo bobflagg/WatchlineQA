@@ -25,7 +25,8 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   graph never changes. Build order is in the design note.
 - **C steps 1 to 4 (done).** `watchline/identity/checkpoint.py` (pure links, decisions, portfolio effect) and `watchline/identity/graph.py`
   (graph reads and `build_inputs`). `watchline/identity/section.py` adds the section, its JSON view, the decision log file and the templated Answer (kind
-  `identity_checkpoint`, no model, UI fixtures and tests). Step 4: `watchline/report/graph.py`, a LangGraph workflow (propose, pause with `interrupt()`, finish) that
+  `identity_checkpoint`, no model, UI fixtures and tests). Shared-registration evidence added (BAHUMI and BADHUMI are both listed on HPD registration 205148, so the BADHUMI link has two leads, address and
+  registration). Step 4: `watchline/report/graph.py`, a LangGraph workflow (propose, pause with `interrupt()`, finish) that
   takes the researcher's decisions on resume and saves them as the JSON log; no model. Next for the report graph: the other PESP sections as
   nodes, report export, and the narrative layer.
 - **D. Conditions, Q15 and Q28 (done).** `watchline/conditions/conditions.py`; tools `open_violations` (kind `violations`, sections `violations` and

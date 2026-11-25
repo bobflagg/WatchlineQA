@@ -22,8 +22,14 @@ MAX_ROUNDS = 8
 MAX_PARTIES = 100                 # candidate parties per anchor; beyond it the rest are omitted and flagged
 SOURCE_NETWORK = "BOR operational network (landlord links)"
 SOURCE_HPD = "HPD contacts (business addresses on landlord records)"
+SOURCE_REGISTRATIONS = "HPD registrations (contacts listed on each registration)"
+MAX_REGISTRATION_ROWS = 500
+MAX_REGISTRATION_ITEMS = 10      # evidence items kept per link; the text says how many more there are
 
 CAVEAT_CUT = Caveat("identity_party_cut", "A party or the list of candidate parties was cut at a size limit, so the portfolio may be incomplete.")
+CAVEAT_REGISTRATION_NAMES = Caveat("registration_names_as_recorded",
+                                   ("Names on a registration are matched as spelled (upper-cased). A registration that lists two names shows both were "
+                                    "listed there in the roles recorded; it does not show they are one party, and a person is shown only in the role recorded."))
 CAVEAT_MASK_AS_SPELLED = Caveat("mask_matched_as_spelled",
                                 ("Masked and mail-drop addresses are matched on the address as spelled (street line and ZIP). An address "
                                  "spelled differently is not flagged."))
@@ -38,6 +44,7 @@ class IdentityGraph(Protocol):
     def lots(self, ids: list[int]) -> list[dict]: ...
     def lead_edges(self, ids: list[int]) -> list[dict]: ...
     def masks(self, streets: list[str]) -> list[dict]: ...
+    def shared_registrations(self, bbls: list[str], names_a: list[str], names_b: list[str]) -> list[dict]: ...
 
 
 class Neo4jIdentityGraph(Neo4jRegistrationGraph):
@@ -68,6 +75,17 @@ class Neo4jIdentityGraph(Neo4jRegistrationGraph):
                           "(b:Landlord WHERE NOT b.nodeId IN $ids) "
                           "RETURN a.nodeId AS fromId, b.nodeId AS toId, type(r) AS type, r.weight AS weight "
                           "ORDER BY toId, type, fromId LIMIT $limit", ids=ids, limit=MAX_GROUPS)
+
+    def shared_registrations(self, bbls: list[str], names_a: list[str], names_b: list[str]) -> list[dict]:
+        """Registrations of buildings on these lots that list a contact named in names_a and a contact named in names_b (upper-cased, as recorded)."""
+        return self._read("CYPHER 25 MATCH (l:Lot WHERE l.bbl IN $bbls)-[:HAS_BUILDING]->(b:Building)-[:HAS_REGISTRATION]->(r:Registration) "
+                          "MATCH (r)-[:HAS_CONTACT]->(ca:Contact WHERE toUpper(coalesce(ca.corporationName, ca.personName)) IN $namesA) "
+                          "MATCH (r)-[:HAS_CONTACT]->(cb:Contact WHERE toUpper(coalesce(cb.corporationName, cb.personName)) IN $namesB) "
+                          "RETURN DISTINCT r.registrationId AS registrationId, l.bbl AS bbl, b.address AS address, "
+                          "toUpper(coalesce(ca.corporationName, ca.personName)) AS nameA, ca.contactType AS roleA, "
+                          "toUpper(coalesce(cb.corporationName, cb.personName)) AS nameB, cb.contactType AS roleB "
+                          "ORDER BY registrationId, bbl, nameA, roleA, nameB, roleB LIMIT $limit",
+                          bbls=bbls, namesA=names_a, namesB=names_b, limit=MAX_REGISTRATION_ROWS)
 
     def masks(self, streets: list[str]) -> list[dict]:
         """Which of these street lines the masks and the mail-drop list carry (matched as spelled)."""
@@ -145,6 +163,23 @@ def _party(key: str, ids: set[int], recs: dict[int, dict], lots: list[dict]) -> 
 
 def _key(ids: set[int], recs: dict[int, dict]) -> str:
     return " / ".join(sorted({recs[i]["name"] for i in ids if i in recs}))
+
+
+def _registration_evidence(rows: list[dict]) -> tuple[Evidence, ...]:
+    """One evidence item per registration and lot: which names it lists, each with the roles it was recorded in."""
+    by_reg: dict[tuple, dict[str, set[str]]] = {}
+    for r in rows:
+        roles = by_reg.setdefault((r["registrationId"], r["bbl"], r.get("address") or ""), {})
+        roles.setdefault(r["nameA"], set()).add(r["roleA"])
+        roles.setdefault(r["nameB"], set()).add(r["roleB"])
+    items = []
+    for (rid, bbl, address), roles in sorted(by_reg.items(), key=lambda kv: (str(kv[0][0]), kv[0][1])):
+        listed = "; ".join(f"{n} as {' and '.join(sorted(rs))}" for n, rs in sorted(roles.items()))
+        items.append(Evidence("shared_contact", f"HPD registration {rid} of lot {bbl} ({address}) lists {listed}.", SOURCE_REGISTRATIONS))
+    if len(items) > MAX_REGISTRATION_ITEMS:
+        more = len(items) - MAX_REGISTRATION_ITEMS
+        items = [*items[:MAX_REGISTRATION_ITEMS], Evidence("shared_contact", f"{more} more registrations list both names.", SOURCE_REGISTRATIONS)]
+    return tuple(items)
 
 
 def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
@@ -249,8 +284,17 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
                         rule = rule or r
                 links.append(Link(anchor, p, "name", (Evidence(
                     "name_similarity", f"The network method linked the names {anchor.key} and {p.key} ({tail}).", SOURCE_NETWORK),), rule))
+    anchor_names = sorted({recs[i]["name"].upper() for i in anchor_ids if i in recs})
+    for p, g in fixed:
+        regs = ig.shared_registrations(sorted({x.bbl for x in (*anchor.lots, *p.lots)}), anchor_names,
+                                       sorted({recs[i]["name"].upper() for i in g if i in recs}))
+        cut = cut or len(regs) >= MAX_REGISTRATION_ROWS
+        if regs:
+            links.append(Link(anchor, p, "contact", _registration_evidence(regs)))
     if any(e.kind == "shared_address" for ln in links for e in ln.evidence):
         caveats.append(CAVEAT_MASK_AS_SPELLED)
+    if any(ln.kind == "contact" for ln in links):
+        caveats.append(CAVEAT_REGISTRATION_NAMES)
     if cut:
         caveats.append(CAVEAT_CUT)
     return Inputs("ok", name, anchor, tuple(links), caveats=tuple(caveats))

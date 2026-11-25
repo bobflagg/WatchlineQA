@@ -77,7 +77,7 @@ def checkpoint_to_dict(r: IdentityCheckpoint) -> dict:
 
 # ---- the Answer, from templates ------------------------------------------------------------------------------------------
 
-_KIND = {"address": "a shared business address", "name": "the network method's name comparison", "contact": "a shared contact",
+_KIND = {"address": "a shared business address", "name": "the network method's name comparison", "contact": "names listed together on an HPD registration",
          "identity": "an identity link"}
 
 
