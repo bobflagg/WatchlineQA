@@ -69,6 +69,8 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   for the lot's year built, class and units in a violations answer). A `lot` section now lets a fact cite the lot's own values; rerun alone ($0.0018, 3 calls): passed, citing `violations_rate` and `lot`.
   Full run of all 9 on the final prompt (2026-11-25, $0.0128, 32 calls, judge on): 8 passed, 1 failed (`zero-amount-deeds-are-not-sales`: the judge wanted "amount 0 is not a sale"
   said outright, and the model again wrote "the other 2", a subtracted count). `respondent-matching-the-owner-is-a-lead` passed but used 6 calls (it also called three other tools, and the numbers guard
-  caught "four" and "three"); The amount-0 case passes but the model still writes "the other 2"
+  caught "four" and "three"). Then: `withAmount` count and a `plain` sentence on the timeline counts, and a prompt line keeping respondent questions to
+  `litigation_cases`; those two cases rerun ($0.0048, 8 calls, judge on): both passed (the respondent case now calls only `litigation_cases`, with one numbers-guard
+  correction). Every case has now passed on the final prompt; The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.
