@@ -53,7 +53,7 @@ def decisions_to_json(decisions: list[Decision] | tuple[Decision, ...]) -> str:
 # ---- the JSON view -----------------------------------------------------------------------------------------------------
 
 def _link(x: LinkOut) -> dict:
-    return {"linkId": x.linkId, "a": x.a, "b": x.b, "kind": x.kind, "basis": x.basis, "state": x.state, "rule": x.rule,
+    return {"linkId": x.linkId, "a": x.a, "b": x.b, "kinds": list(x.kinds), "basis": x.basis, "state": x.state, "rule": x.rule,
             "evidence": [asdict(e) for e in x.evidence], "against": list(x.against),
             "decision": None if x.decision is None else asdict(x.decision)}
 
@@ -97,7 +97,7 @@ def _state(link: dict) -> str:
 
 
 def _link_statement(link: dict) -> str:
-    how = _KIND[link["kind"]] + (f" (name rule {link['rule']})" if link["rule"] else "")
+    how = " and ".join(_KIND[k] for k in link["kinds"]) + (f" (name rule {link['rule']})" if link["rule"] else "")
     return f"{link['a']} and {link['b']} are linked by {how}. {_state(link)}"
 
 

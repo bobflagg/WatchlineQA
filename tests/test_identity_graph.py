@@ -65,7 +65,7 @@ def test_identity_joined_records_are_one_party_and_a_lead_edge_is_one_link():
     assert i.status == "ok" and i.anchor.key == "ACME OWNER" and i.anchor.records == 2
     assert [x.bbl for x in i.anchor.lots] == ["2000000001", "2000000002", "2000000003"]       # a lot covered twice is one lot
     (ln,) = i.links
-    assert ln.linkId == "ACME OWNER|ACME OWNR|address" and ln.b.records == 1 and [x.bbl for x in ln.b.lots] == ["2030370098"]
+    assert ln.linkId == "ACME OWNER|ACME OWNR" and ln.b.records == 1 and [x.bbl for x in ln.b.lots] == ["2030370098"]
     (e,) = ln.evidence
     assert e.kind == "shared_address" and not e.setAside and ADDR in e.text and "2 links" in e.text
 
@@ -120,23 +120,24 @@ def test_when_the_shared_string_is_not_identified_the_evidence_says_so():
 def test_name_links_carry_the_named_rule_only_when_the_names_compare_equal():
     base = dict(BASE, records=[rec(1, "ACME OWNER, LLC"), rec(2, "ACME OWNER, LLC"), rec(3, "ACME OWNER LLC")], edges=[edge(1, 3, "NAME", 1.0)])
     (ln,) = build_inputs(FakeIG(**base), "ACME OWNER, LLC").links
-    assert ln.kind == "name" and ln.rule == "N2" and ln.evidence[0].kind == "name_similarity"
+    assert ln.kinds == ("name",) and ln.rule == "N2" and ln.evidence[0].kind == "name_similarity"
     base["records"][2] = rec(3, "OTHER NAME")
     (ln,) = build_inputs(FakeIG(**base), "ACME OWNER, LLC").links
     assert ln.rule is None
 
 
-def test_address_and_name_edges_to_one_party_are_two_links_judged_separately():
+def test_address_and_name_edges_to_one_party_are_one_link_with_both_kinds_of_evidence():
     base = dict(BASE, edges=[edge(1, 3), edge(1, 3, "NAME", 1.0)])
-    links = build_inputs(FakeIG(**base), "ACME OWNER").links
-    assert sorted(x.linkId for x in links) == ["ACME OWNER|ACME OWNR|address", "ACME OWNER|ACME OWNR|name"]
+    (ln,) = build_inputs(FakeIG(**base), "ACME OWNER").links
+    assert ln.linkId == "ACME OWNER|ACME OWNR" and ln.kinds == ("address", "name")
+    assert [e.kind for e in ln.evidence] == ["shared_address", "name_similarity"]
 
 
 def test_two_candidate_groups_with_one_name_are_told_apart_by_a_lot_not_an_id():
     base = dict(records=[rec(1, "ACME OWNER", ADDR), rec(2, "SAME NAME", ADDR), rec(3, "SAME NAME", ADDR)], identity=[],
                 lots=[lot(1, "2000000001", 3), lot(2, "3000000001", 3), lot(3, "3000000002", 3)], edges=[edge(1, 2), edge(1, 3)])
     ids = sorted(x.linkId for x in build_inputs(FakeIG(**base), "ACME OWNER").links)
-    assert ids == ["ACME OWNER|SAME NAME [lot 3000000002]|address", "ACME OWNER|SAME NAME|address"]
+    assert ids == ["ACME OWNER|SAME NAME", "ACME OWNER|SAME NAME [lot 3000000002]"]
 
 
 def test_a_result_is_deterministic():
@@ -178,14 +179,14 @@ def test_live_bahumi_and_the_badhumi_checkpoint(live_graph):
     """Probed 2026-11-25: BAHUMI is 6 records joined by identity, 55 lots, 176 units; BADHUMI is 1 record, 1 lot, 3 units, linked by address."""
     i = build_inputs(live_graph, "YONATAN BAHUMI")
     assert i.status == "ok" and (i.anchor.key, i.anchor.records, len(i.anchor.lots)) == ("YONATAN BAHUMI", 6, 55)
-    by_kind = {x.kind: x for x in i.links if "BADHUMI" in x.linkId}
-    assert sorted(by_kind) == ["address", "contact"]                                  # the address edge, and registration 205148 listing both names
-    ln = by_kind["address"]
-    assert ln.linkId == "YONATAN BAHUMI|YONATAN BADHUMI|address" and [x.bbl for x in ln.b.lots] == ["2030370098"]
-    assert [e.setAside for e in ln.evidence] == [False]
-    (reg,) = by_kind["contact"].evidence
+    (ln,) = [x for x in i.links if "BADHUMI" in x.linkId]                             # one link for the pair
+    assert ln.linkId == "YONATAN BAHUMI|YONATAN BADHUMI" and [x.bbl for x in ln.b.lots] == ["2030370098"]
+    assert ln.kinds == ("address", "contact")                                          # the address edge, and registration 205148 listing both names
+    address, reg = ln.evidence
+    assert address.kind == "shared_address" and not address.setAside
     assert reg.kind == "shared_contact" and "registration 205148" in reg.text and "YONATAN BADHUMI as HeadOfficer" in reg.text
     assert "YONATAN BAHUMI as Officer and Shareholder" in reg.text
+    assert "No joining record other than a shared address was found." not in build_checkpoint(i.anchor, i.links).links[0].against
     cp = build_checkpoint(i.anchor, i.links, [Decision(ln.linkId, "accept", "researcher", "2026-12-01")])
     assert (cp.effect.as_held.lots, cp.effect.as_held.units) == (55, 176)
     assert (cp.effect.as_decided.lots, cp.effect.as_decided.units) == (56, 179) and cp.effect.added_lots == ("2030370098",)
@@ -237,47 +238,59 @@ REGS = [reg(205148, "2030370098", "ACME OWNER", "Officer", "ACME OWNR", "HeadOff
         reg(205148, "2030370098", "ACME OWNER", "Shareholder", "ACME OWNR", "HeadOfficer")]
 
 
-def test_a_registration_listing_both_names_is_one_evidence_item_with_every_role():
+def test_a_registration_listing_both_names_is_one_evidence_item_with_every_role_on_the_same_link():
     ig = FakeIG(**BASE, registrations=REGS)
     i = build_inputs(ig, "ACME OWNER")
-    by_kind = {x.kind: x for x in i.links}
-    assert sorted(by_kind) == ["address", "contact"] and by_kind["contact"].linkId == "ACME OWNER|ACME OWNR|contact"
-    (e,) = by_kind["contact"].evidence
-    assert e.kind == "shared_contact" and not e.setAside and e.source == G.SOURCE_REGISTRATIONS
-    assert e.text == "HPD registration 205148 of lot 2030370098 (2 B ST) lists ACME OWNER as Officer and Shareholder; ACME OWNR as HeadOfficer."
+    (ln,) = i.links                                                        # one link, one decision, per pair
+    assert ln.linkId == "ACME OWNER|ACME OWNR" and ln.kinds == ("address", "contact")
+    shared, registration = ln.evidence
+    assert shared.kind == "shared_address" and registration.kind == "shared_contact"
+    assert not registration.setAside and registration.source == G.SOURCE_REGISTRATIONS
+    assert registration.text == "HPD registration 205148 of lot 2030370098 (2 B ST) lists ACME OWNER as Officer and Shareholder; ACME OWNR as HeadOfficer."
     assert "registration_names_as_recorded" in {c.code for c in i.caveats}
     bbls, names_a, names_b = ig.reg_calls[0]
     assert names_a == ["ACME OWNER"] and names_b == ["ACME OWNR"] and set(bbls) == {"2000000001", "2000000002", "2000000003", "2030370098"}
 
 
-def test_no_shared_registration_means_no_contact_link_and_no_caveat():
+def test_no_shared_registration_means_address_evidence_only_and_no_caveat():
     i = build_inputs(FakeIG(**BASE), "ACME OWNER")
-    assert [x.kind for x in i.links] == ["address"] and "registration_names_as_recorded" not in {c.code for c in i.caveats}
+    assert [x.kinds for x in i.links] == [("address",)] and "registration_names_as_recorded" not in {c.code for c in i.caveats}
+
+
+def test_a_party_found_only_by_a_registration_edge_is_not_discovered():
+    ig = FakeIG(**dict(BASE, edges=[]), registrations=REGS)
+    assert build_inputs(ig, "ACME OWNER").links == ()
 
 
 def test_a_shared_registration_removes_the_claim_that_only_an_address_joins_the_parties():
     alone = build_checkpoint(*(lambda i: (i.anchor, i.links))(build_inputs(FakeIG(**BASE), "ACME OWNER")))
     assert "No joining record other than a shared address was found." in alone.links[0].against
     both = build_checkpoint(*(lambda i: (i.anchor, i.links))(build_inputs(FakeIG(**BASE, registrations=REGS), "ACME OWNER")))
-    address = next(x for x in both.links if x.kind == "address")
-    assert "No joining record other than a shared address was found." not in address.against
+    assert "No joining record other than a shared address was found." not in both.links[0].against
     assert "shared_registration_not_identity" in {c.code for c in both.caveats}
 
 
-def test_each_link_is_decided_on_its_own_evidence_and_either_one_adds_the_lots():
+def test_one_decision_covers_the_pair_and_its_evidence_of_every_kind():
     i = build_inputs(FakeIG(**BASE, registrations=REGS), "ACME OWNER")
-    only_contact = build_checkpoint(i.anchor, i.links, [Decision("ACME OWNER|ACME OWNR|contact", "accept", "researcher", "2026-12-01")])
-    states = {x.kind: x.state for x in only_contact.links}
-    assert states == {"address": "awaiting", "contact": "accepted"} and only_contact.effect.as_decided.lots == 4
-    rejected = build_checkpoint(i.anchor, i.links, [Decision("ACME OWNER|ACME OWNR|contact", "reject", "researcher", "2026-12-01")])
-    assert {x.kind: x.state for x in rejected.links} == {"address": "awaiting", "contact": "rejected"} and rejected.effect.as_decided.lots == 3
+    accepted = build_checkpoint(i.anchor, i.links, [Decision("ACME OWNER|ACME OWNR", "accept", "researcher", "2026-12-01")])
+    assert [(x.state, len(x.evidence)) for x in accepted.links] == [("accepted", 2)] and accepted.effect.as_decided.lots == 4
+    rejected = build_checkpoint(i.anchor, i.links, [Decision("ACME OWNER|ACME OWNR", "reject", "researcher", "2026-12-01")])
+    assert [x.state for x in rejected.links] == ["rejected"] and rejected.effect.as_decided.lots == 3
+
+
+def test_the_pair_is_usable_when_the_address_is_set_aside_but_a_registration_lists_both_names():
+    masks = [dict(list="maildrop", address="4058 BRONX BOULEVARD 1B", degree=None, kind="registered_agent", zip5="10466", status="unreviewed")]
+    i = build_inputs(FakeIG(**BASE, masks=masks, registrations=REGS), "ACME OWNER")
+    cp = build_checkpoint(i.anchor, i.links)
+    assert cp.links[0].state == "awaiting" and [e.setAside for e in cp.links[0].evidence] == [True, False]
 
 
 def test_many_registrations_are_capped_with_a_count_of_the_rest(monkeypatch):
     monkeypatch.setattr(G, "MAX_REGISTRATION_ITEMS", 2)
     rows = [reg(100 + n, "2030370098", "ACME OWNER", "Officer", "ACME OWNR", "HeadOfficer") for n in range(5)]
-    (contact,) = [x for x in build_inputs(FakeIG(**BASE, registrations=rows), "ACME OWNER").links if x.kind == "contact"]
-    assert len(contact.evidence) == 3 and contact.evidence[-1].text == "3 more registrations list both names."
+    (ln,) = build_inputs(FakeIG(**BASE, registrations=rows), "ACME OWNER").links
+    registrations = [e for e in ln.evidence if e.kind == "shared_contact"]
+    assert len(registrations) == 3 and registrations[-1].text == "3 more registrations list both names."
 
 
 def test_a_registration_read_cut_at_its_row_limit_is_flagged(monkeypatch):

@@ -257,43 +257,44 @@ def build_inputs(ig: IdentityGraph, name: str) -> Inputs:
         fixed.append((Party(key, p.lots, p.records) if key != p.key else p, g))
 
     anchor_addr = {_street_zip(a)[:2] for a in addresses(anchor_ids)}
-    links: list[Link] = []
-    for p, g in fixed:
-        mine = [e for e in edges if e["toId"] in g]
-        for kind in ("address", "name"):
-            ks = [e for e in mine if e["type"] == f"CONNECTED_BY_{kind.upper()}"]
-            if not ks:
-                continue
-            weight = max((e["weight"] for e in ks if e.get("weight") is not None), default=None)
-            tail = f"{len(ks)} link{'s' if len(ks) != 1 else ''}" + (f", weight {weight:g}" if weight is not None else "")
-            if kind == "address":
-                theirs = addresses(g)
-                shared = [a for a in theirs if _street_zip(a)[:2] in anchor_addr]
-                ev = []
-                for a in shared or theirs:
-                    why = _mask_reason(a, masks)
-                    text = (f"Business address as recorded on both parties: {a}. Joined by a shared business address ({tail})." if shared else
-                            f"Business address as recorded on {p.key}: {a}. The method found a shared address; which string is not identified ({tail}).")
-                    ev.append(Evidence("shared_address", text, SOURCE_HPD, setAside=why is not None, reason=why))
-                links.append(Link(anchor, p, "address", tuple(ev)))
-            else:
-                rule = None
-                for a_name in {recs[i]["name"] for i in anchor_ids if i in recs}:
-                    for b_name in {recs[i]["name"] for i in g if i in recs}:
-                        outcome, r = name_agreement(a_name, b_name)
-                        rule = rule or r
-                links.append(Link(anchor, p, "name", (Evidence(
-                    "name_similarity", f"The network method linked the names {anchor.key} and {p.key} ({tail}).", SOURCE_NETWORK),), rule))
     anchor_names = sorted({recs[i]["name"].upper() for i in anchor_ids if i in recs})
-    for p, g in fixed:
+    links: list[Link] = []
+    for p, g in fixed:                                           # one link, and one decision, per pair; every kind of evidence goes on it
+        mine = [e for e in edges if e["toId"] in g]
+        kinds: list[str] = []
+        evidence: list[Evidence] = []
+        rule = None
+
+        def tail(ks: list[dict]) -> str:
+            weight = max((e["weight"] for e in ks if e.get("weight") is not None), default=None)
+            return f"{len(ks)} link{'s' if len(ks) != 1 else ''}" + (f", weight {weight:g}" if weight is not None else "")
+
+        if ks := [e for e in mine if e["type"] == "CONNECTED_BY_ADDRESS"]:
+            kinds.append("address")
+            theirs = addresses(g)
+            shared = [a for a in theirs if _street_zip(a)[:2] in anchor_addr]
+            for a in shared or theirs:
+                why = _mask_reason(a, masks)
+                text = (f"Business address as recorded on both parties: {a}. Joined by a shared business address ({tail(ks)})." if shared else
+                        f"Business address as recorded on {p.key}: {a}. The method found a shared address; which string is not identified ({tail(ks)}).")
+                evidence.append(Evidence("shared_address", text, SOURCE_HPD, setAside=why is not None, reason=why))
+        if ks := [e for e in mine if e["type"] == "CONNECTED_BY_NAME"]:
+            kinds.append("name")
+            for a_name in {recs[i]["name"] for i in anchor_ids if i in recs}:
+                for b_name in {recs[i]["name"] for i in g if i in recs}:
+                    rule = rule or name_agreement(a_name, b_name)[1]
+            evidence.append(Evidence("name_similarity", f"The network method linked the names {anchor.key} and {p.key} ({tail(ks)}).", SOURCE_NETWORK))
         regs = ig.shared_registrations(sorted({x.bbl for x in (*anchor.lots, *p.lots)}), anchor_names,
                                        sorted({recs[i]["name"].upper() for i in g if i in recs}))
         cut = cut or len(regs) >= MAX_REGISTRATION_ROWS
         if regs:
-            links.append(Link(anchor, p, "contact", _registration_evidence(regs)))
+            kinds.append("contact")
+            evidence.extend(_registration_evidence(regs))
+        if evidence:
+            links.append(Link(anchor, p, tuple(kinds), tuple(evidence), rule))
     if any(e.kind == "shared_address" for ln in links for e in ln.evidence):
         caveats.append(CAVEAT_MASK_AS_SPELLED)
-    if any(ln.kind == "contact" for ln in links):
+    if any("contact" in ln.kinds for ln in links):
         caveats.append(CAVEAT_REGISTRATION_NAMES)
     if cut:
         caveats.append(CAVEAT_CUT)

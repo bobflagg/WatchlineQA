@@ -55,13 +55,13 @@ class Evidence:
 class Link:
     a: Party
     b: Party
-    kind: LinkKind
+    kinds: tuple[LinkKind, ...]     # how the two parties are joined; one link and one decision per pair, whatever the evidence
     evidence: tuple[Evidence, ...] = ()
     rule: str | None = None         # the named Q22 rule when the names compare equal (N1, N2, S1, L1, AB1)
 
     @property
     def linkId(self) -> str:
-        return f"{self.a.key}|{self.b.key}|{self.kind}"
+        return f"{self.a.key}|{self.b.key}"
 
 
 @dataclass(frozen=True)
@@ -85,7 +85,7 @@ class LinkOut:
     linkId: str
     a: str
     b: str
-    kind: LinkKind
+    kinds: tuple[LinkKind, ...]
     basis: Literal["identity", "lead"]
     state: State
     evidence: tuple[Evidence, ...]
@@ -126,15 +126,13 @@ def _usable(link: Link) -> bool:
     return any(not e.setAside for e in link.evidence)
 
 
-def _against(link: Link, siblings: tuple[Link, ...] = ()) -> tuple[str, ...]:
-    """What argues against treating the parties as one. `siblings` are the other links between the same two parties: a link made by a shared
-    registration or an identity is a joining record beyond the address, so the address link no longer lacks one."""
+def _against(link: Link) -> tuple[str, ...]:
+    """What argues against treating the parties as one, from the link's own evidence."""
     out = []
-    if link.kind != "identity" and link.rule is None:
+    if "identity" not in link.kinds and link.rule is None:
         out.append("The names differ as recorded, and no named rule makes them equal.")
     usable = {e.kind for e in link.evidence if not e.setAside}
-    joined = any(s.kind in ("contact", "identity") and _usable(s) for s in siblings)
-    if link.kind != "identity" and usable <= {"shared_address"} and not joined:
+    if "identity" not in link.kinds and usable <= {"shared_address"}:
         out.append("No joining record other than a shared address was found.")
     if any(e.setAside for e in link.evidence):
         out.append("Some shared evidence was set aside (masked or mail-drop address).")
@@ -200,16 +198,16 @@ def build_checkpoint(anchor: Party, links: list[Link] | tuple[Link, ...], decisi
         d = in_force.get(ln.linkId)
         if d is not None:
             state: State = "accepted" if d.decision == "accept" else "rejected"
-        elif ln.kind == "identity":
+        elif "identity" in ln.kinds:
             state = "accepted_by_method"
         elif not _usable(ln):
             state = "unsupported"
         else:
             state = "awaiting"
-        out.append(LinkOut(ln.linkId, ln.a.key, ln.b.key, ln.kind, "identity" if ln.kind == "identity" else "lead", state,
-                           ln.evidence, _against(ln, tuple(s for s in ordered if s is not ln and (s.a.key, s.b.key) == (ln.a.key, ln.b.key))), ln.rule, d))
+        out.append(LinkOut(ln.linkId, ln.a.key, ln.b.key, ln.kinds, "identity" if "identity" in ln.kinds else "lead", state,
+                           ln.evidence, _against(ln), ln.rule, d))
 
-    held_ids = {ln.linkId for ln in ordered if ln.kind == "identity"}
+    held_ids = {ln.linkId for ln in ordered if "identity" in ln.kinds}
     decided_ids = {o.linkId for o in out if o.state in IN_EFFECT}
     held_seen, held_lots = _reach(anchor, ordered, held_ids)
     decided_seen, decided_lots = _reach(anchor, ordered, decided_ids)
@@ -223,7 +221,7 @@ def build_checkpoint(anchor: Party, links: list[Link] | tuple[Link, ...], decisi
         caveats.append(CAVEAT_RESEARCHER)
     if any(e.kind == "shared_address" for o in out for e in o.evidence):
         caveats.append(CAVEAT_SHARED_ADDRESS)
-    if any(o.kind == "name" or o.rule for o in out):
+    if any("name" in o.kinds or o.rule for o in out):
         caveats.append(CAVEAT_NAME_NOT_IDENTITY)
     if any(e.kind == "shared_contact" for o in out for e in o.evidence):
         caveats.append(CAVEAT_SHARED_REGISTRATION)

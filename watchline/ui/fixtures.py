@@ -54,7 +54,7 @@ _CONTACT_CAVEATS = [CaveatOut(code=c.code, text=c.text) for c in
 
 _MAIN = _cp.Party("EXAMPLE OWNER", tuple(_cp.Lot(f"3000000{i:03d}", 3) for i in range(10)), records=3)
 _NEAR = _cp.Party("EXAMPLE OWNR", (_cp.Lot("3000009999", 4),))
-_LINK = _cp.Link(_MAIN, _NEAR, "address", (_cp.Evidence(
+_LINK = _cp.Link(_MAIN, _NEAR, ("address",), (_cp.Evidence(
     "shared_address", "Business address as recorded on both parties: 9 Office Rd, Bronx, NY 10466. Joined by a shared business address (3 links, weight 5.44).",
     _ig.SOURCE_HPD),))
 _INPUTS = _ig.Inputs("ok", "EXAMPLE OWNER", _MAIN, (_LINK,), caveats=(_ig.CAVEAT_NO_DEED_LINKS, _ig.CAVEAT_MASK_AS_SPELLED))

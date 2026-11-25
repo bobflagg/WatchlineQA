@@ -21,13 +21,14 @@ appear in evidence only with the run, and never on a slide.
 2. The section function is pure: same graph snapshot and same decisions give the same section, byte for byte. No LLM.
 3. A name or address match stays a lead until the researcher decides. An accepted link is the researcher's own inference, shown as
    such, with the evidence beside it. It is never restated as a graph finding.
-4. Each link is judged on its own evidence. Accepting one never accepts another.
+4. One link and one decision per pair of parties. The link carries every kind of evidence (address, name, shared registration) and the researcher
+   judges the pair on all of it (changed 2026-11-25; before, each kind was its own link). Accepting one pair never accepts another.
 
 ## Representation
 
 **Link** (one candidate join between two landlord records; built by code from graph rows):
-- `linkId`: a stable key made of the two names as recorded and the evidence kind, for example `BAHUMI|BADHUMI|address`. Never a
-  run-local id.
+- `linkId`: a stable key made of the two party names as recorded, for example `YONATAN BAHUMI|YONATAN BADHUMI` (a lot suffix or `#n` only to tell
+  two same-named parties apart). Never a run-local id. `kinds` lists how the pair is joined (address, name, contact, identity).
 - `a`, `b`: the two records (name as recorded, role, number of lots covered).
 - `evidence`: list of items, each `{kind: shared_address | name_similarity | identity_edge | shared_contact, text, source, setAside}`.
   `setAside` is true and the reason is given when the address is masked or on the mail-drop list (Q6); a set-aside item supports
@@ -124,3 +125,10 @@ second decision on the same link replaces the first and both stay in the log.
   parties when a contact link exists for the same pair. New caveats: `shared_registration_not_identity` and `registration_names_as_recorded`.
 - BAHUMI now shows two leads for BADHUMI (address and registration); accepting either gives 56 lots and 179 units. Berkovics gets one contact link
   (`MICHAEL MAKHARADZE`); not yet reviewed by hand. Possible follow-up: group the links of one pair under one decision for the demo.
+
+## One decision per pair (2026-11-25)
+- `Link.kinds` replaces `Link.kind`; `linkId` is the pair, with no kind. `build_inputs` builds one link per candidate party with the address, name and
+  shared-registration evidence together, so BAHUMI and BADHUMI are one lead with two evidence items (address, registration 205148).
+- `against` is computed from that link's own evidence, so "no joining record other than a shared address" appears only when the address is all there is.
+- A link is usable if any of its evidence is usable: an address set aside as a mail drop does not make the pair unsupported when a registration lists both names.
+- Berkovics now shows 11 possible links (one per candidate party). Decide before the demo whether that is the contrast you want.

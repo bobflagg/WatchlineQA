@@ -9,7 +9,7 @@ from test_identity_graph import ADDR, BASE, FakeIG, edge, rec
 from watchline.identity.section import decisions_from_json, identity_checkpoint, to_answer
 from watchline.report.graph import PROMPT, build_report_graph, pending
 
-LID = "ACME OWNER|ACME OWNR|address"
+LID = "ACME OWNER|ACME OWNR"
 
 
 def d(what="accept", lid=LID, note=None, by="researcher", at="2026-12-01"):
@@ -73,7 +73,7 @@ def test_a_bad_answer_goes_back_to_the_same_pause_with_the_reason(bad):
     assert pending(r) == [] and "4 lots" in r["answer"]["summary"]
 
 
-@pytest.mark.parametrize("bad, why", [(d(lid="NOPE|NOPE|address"), "no link has the id"), (d("approve"), "must be accept or reject"),
+@pytest.mark.parametrize("bad, why", [(d(lid="NOPE|NOPE"), "no link has the id"), (d("approve"), "must be accept or reject"),
                                       (d("yes"), "must be accept or reject")])
 def test_a_bad_decision_value_or_an_unknown_link_goes_back_to_the_same_pause(bad, why):
     g, cfg, _, _ = start()
@@ -91,7 +91,7 @@ def test_a_link_with_only_set_aside_evidence_cannot_be_accepted_at_the_pause():
     g, cfg, _, r = start(ig)
     (p,) = pending(r)
     assert [x["linkId"] for x in p["links"]] == [LID]                   # only the usable lead is offered
-    r = g.invoke(Command(resume={"decisions": [d(lid="ACME OWNER|ACME OWNX|address")]}), cfg)
+    r = g.invoke(Command(resume={"decisions": [d(lid="ACME OWNER|ACME OWNX")]}), cfg)
     (p,) = pending(r)
     assert "only set-aside evidence" in p["error"]
 
@@ -136,8 +136,8 @@ def test_live_bahumi_pause_and_resume(live_graph):
     cfg = {"configurable": {"thread_id": "live"}}
     r = g.invoke({"name": "YONATAN BAHUMI"}, cfg)
     (p,) = pending(r)
-    assert [x["linkId"] for x in p["links"]] == ["YONATAN BAHUMI|YONATAN BADHUMI|address", "YONATAN BAHUMI|YONATAN BADHUMI|contact"]
-    address = next(x for x in p["links"] if x["kind"] == "address")
+    (address,) = p["links"]                                          # one decision for the pair
+    assert address["linkId"] == "YONATAN BAHUMI|YONATAN BADHUMI" and address["kinds"] == ["address", "contact"]
     assert "No joining record other than a shared address was found." not in address["against"]       # registration 205148 lists both names
     assert (p["portfolio_effect"]["as_held"]["lots"], p["portfolio_effect"]["as_held"]["units"]) == (55, 176)
     r = g.invoke(Command(resume={"decisions": [d(lid=address["linkId"], note="same office")]}), cfg)
