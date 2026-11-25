@@ -108,6 +108,8 @@ def test_the_harassment_patterns_catch_a_finding_about_the_owner_and_allow_the_b
     c = case("finding-on-the-building-not-the-landlord")
     bad = fake_turn("Yes, the owner was found to have harassed tenants after a trial in 2016.")
     assert check_deterministic({"must_not_assert": c["must_not_assert"], "summary_must_not_assert": c["summary_must_not_assert"]}, bad, bad)
+    yes = fake_turn("Yes, the records show a harassment finding in litigation against the buildings at 74 Clinton Place.")      # the live answer of 2026-11-25
+    assert any("summary asserts forbidden" in m for m in check_deterministic({"summary_must_not_assert": c["summary_must_not_assert"]}, yes, yes))
     ok = fake_turn("A case on the building has a recorded harassment finding, After Trial, dated 2016. The respondent, McLORD OBIOHA, "
                    "does not match the registered owner name; the records do not say the owner was found to have harassed anyone.")
     assert check_deterministic({"must_not_assert": c["must_not_assert"], "summary_must_not_assert": c["summary_must_not_assert"]}, ok, ok) == []
@@ -283,3 +285,9 @@ def test_a_section_only_the_renderer_uses_is_unresolved_not_a_crash():
         fact = ModelFact.model_construct(statement="x", evidence=[ref])
         a = assemble(ModelAnswer.model_construct(kind="profile", summary="s", facts=[fact]), [{"status": "ok", "resolution": {"bbl": "1"}}])
         assert a.facts[0].unresolved and not a.facts[0].evidence
+
+
+def test_the_prompt_says_how_to_answer_an_owner_question_about_a_harassment_finding():
+    from watchline.agent.agent import system_prompt
+    text = " ".join(system_prompt().split())
+    assert "it is recorded on a case at a building: when asked about the owner or landlord, say which building and case it is on" in text and "do not answer yes" in text

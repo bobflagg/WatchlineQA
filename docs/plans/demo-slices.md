@@ -75,6 +75,7 @@ Every step 3 to 8 has a question. No question: step 9 (web research; only Q24 an
   `/code-review high` on these changes found 1 important and 5 smaller issues, all fixed offline (commit after `70186c9`): the timeline counts now partition the deeds
   (`amountZero`, `correctionDeeds`, `amountMissing`, `withAmount`, adding up to `deeds`); renderer-only sections (`links`, `decisions`, `portfolio_effect`) can no longer be
   named by the model or crash `assemble`; the shared hedge is scoped to the matched phrase with per-case `hedge_verbs`; the severity check forbids any rating wording
-  unless the sentence denies giving one; the prompt's section mapping is a per-tool list. The prompt changed, so the agent evals need a rerun before they are trusted again; The amount-0 case passes but the model still writes "the other 2"
+  unless the sentence denies giving one; the prompt's section mapping is a per-tool list. Full rerun of the 9 after those fixes ($0.0139, 35 calls, judge on): 8 passed; `finding-on-the-building-not-the-landlord` failed (the model opened with "Yes, … against the buildings" to a
+  question about the owner). A deterministic check for an opening yes and a prompt line were added; not yet rerun; The amount-0 case passes but the model still writes "the other 2"
   (a subtracted count); the judge accepted it; `/code-review` of Slices A and B; explainer updates; sidebar sample questions
   for Q4 and Q12; a look at the new fixtures in a browser.
