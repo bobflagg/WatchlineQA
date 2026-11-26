@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup test test-live eval eval-agent chat report ui notebook notebook-check lint fmt check sidecar sidecar-stop
+.PHONY: help setup test test-live eval eval-agent chat report ui notebook notebook-check lint fmt check sidecar sidecar-stop schema-check
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -33,6 +33,9 @@ notebook:  ## Re-execute the notebooks in place (need Neo4j, the sidecar and AGE
 
 notebook-check:  ## Execute the notebooks into build/ to catch drift (same needs as `notebook`); the committed copies are untouched
 	uv run jupyter nbconvert --to notebook --execute --output-dir build/notebook-check docs/notebooks/*.ipynb
+
+schema-check:  ## Check that the live graph has every label, property and relationship the code reads (needs Neo4j; run after a rebuild)
+	uv run python -m watchline.schema.check
 
 lint:  ## Lint with ruff
 	uv run ruff check .

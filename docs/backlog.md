@@ -12,9 +12,7 @@ Entry shape: id, title, state, one paragraph, **Needs** (if any), **Model calls*
 Reconcile against `git log` when you work on F00; some entries may already be done.
 
 ## Ready
-- **F01 Graph schema check.** ready. List every label, property and relationship the code reads, and check them
-  against the live graph, failing with a clear message when the rebuilt graph lacks or renames one. Build and test
-  against the current graph so it is ready when the new snapshot arrives. `make schema-check`. **Model calls:** none.
+_No entries are ready right now._
 
 ## Needs you
 - **F02 Snapshot dates from the graph.** needs-you. Dates such as "HPD registrations through 2026-05-29" are text in
@@ -54,4 +52,4 @@ Done features are recorded in `docs/status.md`, one line each.
 - **F11 Report page review and navigation.** done per `git log` (`9737016`, `838747f`, `53c4c40`, `2f07441`); developer to confirm. Look at the report page in a browser on
   both demo addresses; add sample questions for the new tools; merge the report page into the chat app's navigation.
   **Model calls:** none.
-
+- **F01 Graph schema check.** done (2026-11-26). `make schema-check`; plan: `docs/plans/schema-check.md`. **Model calls:** none.

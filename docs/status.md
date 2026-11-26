@@ -22,10 +22,11 @@ Read this first in a fresh session. One line per feature; details are in the pla
 - Q5 entity research (DOS records as leads, owner-entity report section): commit `5cefaac`.
 - Who Owns What comparison (what WoW shows, where it matches, two findings): `docs/plans/wow-comparison.md`.
 - Status and backlog reconciled with `git log` (F00): old status archived in `docs/history.md`; backlog in `docs/backlog.md` (no plan file; docs only).
+- Graph schema check (F01): `make schema-check` compares `watchline/schema/expected.py` with the live graph; drift guard in `make check`: `docs/plans/schema-check.md`.
 - Reviews: `/code-review` done on Q2 and Q3 (fixes `6b9964c`) and on the slices.
 
 ## Next
-Ready entries in `docs/backlog.md`: F01 graph schema check. Needs-you, blocked and later entries are not started.
+No entry is `ready`; the rest are needs-you, blocked or later and are not started. Run `make schema-check` after the graph rebuild.
 Not covered by a section yet: web research (F17), complaints Q27 (F04), pest violations Q15.3 (F05). The narrative layer
 (F10) comes after, in early January.
 
