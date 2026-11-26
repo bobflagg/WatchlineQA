@@ -12,12 +12,30 @@ journalists, tenant advocates, watchdog agencies, the public. See `docs/process.
 - Geosupport sidecar (Docker, see `geosupport/README.md`) resolves typed addresses to BBL and BIN.
 - Dev-time Neo4j exploration uses the `neo4j-watchline` MCP server (`.mcp.json`, read-only).
 
+## Session protocol (one feature per session)
+
+We build one backlog feature per session, then `/clear`, to keep context small.
+
+- Start with `/feature <id>` (ids are in `docs/backlog.md`). Read only `docs/status.md`, that entry and the plan it links.
+  Do not read other plans, `docs/history.md`, notebooks or `specs/` unless the entry names them.
+- Plan first (plan mode), then build in small steps and run `make check`. One feature only: new ideas become
+  entries in `docs/backlog.md`; do not start them.
+- A `needs-you`, `blocked`, `hold` or `later` entry is not started. Say what is needed and stop.
+- Finish with `/wrap`: update `docs/status.md` (one line per feature; details go in the feature's `docs/plans/<name>.md`)
+  and the backlog entry, stage files by name, propose a commit message. The developer commits and runs `/clear`.
+
 ## Layout
 
 - `watchline/geosupport/`: address resolution (Q1.3). Geosupport decides the outcome; the graph only says
   whether the lot is held and which lots share the BIN.
+- Other modules, one per question area: `watchline/profile/` (Q1), `registration/` (Q2), `deeds/` (Q3, Q12),
+  `contacts/` (Q4), `entities/` (Q5), `conditions/` (Q15, Q28), `agent/` (tools, answer contract, chat),
+  `evals/` (spend caps, usage log), `ui/` (Streamlit). Tests in `tests/`, eval cases in `tests/evals/`.
 - `watchline/identity/`, `watchline/report/`: the identity checkpoint (links, decisions, portfolio effect) and the report graph, templated sections, export and
   `make report`; no model is called. `watchline/ui/report_page.py` is the report page; `make ui` runs the app with the chat and the report as two pages (`watchline/ui/app_pages/`).
+- `watchline/schema/`: `expected.py` lists every label, property and relationship the code reads; `make schema-check`
+  compares it with the live graph (run after a rebuild). `tests/test_schema_manifest.py` fails when a query uses a name
+  that is not listed, so add new names to `expected.py`.
 - `geosupport/`: the Docker sidecar (pass-through only; interpretation stays in `watchline/`).
 - `specs/questions/`: competency questions (a symlink to another project; read the files you need and do
   not browse the source project).
@@ -81,3 +99,4 @@ The graph label is `Lot` (ontology: TaxLot). Some properties are shorter: `units
 
 - Do not guess expected values for evals or tests (an address's lot, outcome or shared BIN). Probe the live
   graph and Geosupport first, then write the expectation.
+- Never read `.env` through the shell either (cat, grep, sed, awk). To learn whether a setting exists, ask the developer.

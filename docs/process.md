@@ -5,6 +5,10 @@ while the developer still understands the key components and how they work.
 
 ## The loop for each slice
 
+**One slice, one session.** Each slice is a backlog entry (`docs/backlog.md`) done in its own session: `/feature <id>`
+to start, `/wrap` to finish, then `/clear`. State between sessions lives in files, never in the conversation:
+`docs/status.md` (current state, one line per feature), the backlog, and the slice's plan in `docs/plans/`.
+
 A slice is one small, end-to-end piece of behavior (for example: "type an address, get a building profile").
 
 1. **Intent.** The slice starts from a competency question in `specs/questions/`. If the question is
